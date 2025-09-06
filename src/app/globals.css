@@ -130,7 +130,7 @@ html, body, #__next {
 /* subtle reusable white text glow */
 .text-glow {
   /* tiny, soft blur to create a subtle glow without overpowering text */
- text-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+ text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
   /* slightly increase perceived brightness */
   filter: drop-shadow(0 1px 4px rgba(255,255,255,0.03));
 }
@@ -139,7 +139,7 @@ html, body, #__next {
 html, body {
   /* Firefox: thumb-color track-color */
   scrollbar-width: thin;
-  scrollbar-color: rgba(142,95,255,0.75) rgba(0,0,0,0.35);
+  scrollbar-color: rgba(16, 0, 54, 0.75) rgba(0,0,0,0.35);
 }
 
 /* WebKit/Blink (Chrome, Edge, Safari) */
@@ -168,3 +168,89 @@ html, body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
+
+/* Violet button with subtle glow */
+.btn-violet {
+  background: linear-gradient(180deg, rgb(83, 17, 250) 0%, rgb(91, 26, 243) 100%);
+  color: white !important;
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.18), 0 2px 6px rgba(99,102,241,0.08);
+  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+.btn-violet:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0px 30px rgba(120, 43, 253, 0.8);
+}
+.btn-violet:active { transform: translateY(0); }
+.btn-violet:focus { outline: none; box-shadow: 0 0 0 4px rgba(98, 21, 231, 0.12); }
+
+/* subtle glow helper for elements that need an outer violet glow */
+.glow-violet {
+  filter: drop-shadow(0 6px 18px rgba(124,58,237,0.14));
+}
+
+/* Style select dropdown inside the AI Studio section for better contrast */
+#ai-studio select {
+  background: linear-gradient(180deg, rgba(12,6,30,0.9), rgba(18,10,40,0.9));
+  color: var(--foreground);
+  border-color: rgba(255,255,255,0.08);
+  padding-right: 1.5rem; /* keep space for native dropdown arrow */
+}
+
+/* Native option styling - browsers vary, but this improves appearance in modern browsers */
+#ai-studio option {
+  background: rgba(12,6,30,1);
+  color: var(--foreground);
+}
+
+/* WebKit: make the dropdown arrow match the theme (where supported) */
+#ai-studio select::-ms-expand { display: block; }
+
+/* Ensure focus ring is visible and themed */
+#ai-studio select:focus {
+  box-shadow: 0 0 0 4px rgba(124,58,237,0.10);
+  outline: none;
+}
+
+/* Loading bar container and responsive styling used by ImageGenerator */
+.pg-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+.pg-loading .pg-bar-wrap {
+  width: 100%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  border-radius: 9999px;
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.pg-loading .pg-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(137,90,255,1), rgba(99,102,241,1));
+  box-shadow: 0 6px 18px rgba(124,58,237,0.12);
+  transition: width 420ms cubic-bezier(.2,.9,.2,1);
+}
+.pg-loading .pg-msg {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.85);
+}
+.pg-loading .pg-msg .pg-left {
+  color: rgba(255,255,255,0.9);
+}
+.pg-loading .pg-msg .pg-right {
+  color: rgba(255,255,255,0.6);
+  font-size: 0.85rem;
+}
+
+/* smaller bar on mobile for compact layout */
+@media (max-width: 640px) {
+  .pg-loading .pg-bar-wrap { height: 8px; }
+  .pg-loading .pg-msg { font-size: 0.85rem; }
+}
+

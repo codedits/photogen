@@ -1,4 +1,5 @@
 import ImageGenerator from "../../components/ImageGenerator";
+import DarkVeil from "../../components/DarkVeil";
 
 export const metadata = {
   title: "PhotoGen AI Studio",
@@ -6,9 +7,18 @@ export const metadata = {
 };
 
 export default function StudioPage() {
+  const resolutionScale = typeof window !== 'undefined' ? Math.min(1, window.devicePixelRatio || 1) : 1;
   return (
-    <div className="font-sans min-h-screen px-6 pb-16 sm:px-8 pt-24">
-      <ImageGenerator />
+    <div className="relative min-h-screen font-sans">
+      <div className="absolute inset-0 -z-10">
+        <DarkVeil hueShift={10} noiseIntensity={0.01} scanlineIntensity={0.05} speed={1.8} warpAmount={0.03} resolutionScale={resolutionScale} />
+        <div className="absolute inset-0 bg-black/40" />
+      </div>
+
+      {/* Left-aligned content within a centered max-width container */}
+      <main className="min-h-screen px-6 sm:px-8 pt-24 pb-16 max-w-7xl mx-auto flex items-start justify-start">
+        <ImageGenerator />
+      </main>
     </div>
   );
 }

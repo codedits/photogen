@@ -1,3 +1,5 @@
+"use client";
+
 import { useRef, useEffect } from 'react';
 import { Renderer, Program, Mesh, Triangle, Vec2 } from 'ogl';
 
@@ -57,10 +59,11 @@ vec4 cppn_fn(vec2 coordinate,float in0,float in1,float in2){
 }
 
 void mainImage(out vec4 fragColor,in vec2 fragCoord){
-  // Center coordinates and normalize by the smaller dimension so the
-  // composition remains consistent across different aspect ratios.
+  // Center coordinates and normalize using the larger dimension so the
+  // composition behaves like background-size: cover (no distortion,
+  // cropped when aspect ratios differ).
   vec2 center = fragCoord - 0.5 * uResolution;
-  float m = min(uResolution.x, uResolution.y);
+  float m = max(uResolution.x, uResolution.y);
   vec2 uv = (center / m) * 2.0;
   // match previous vertical orientation
   uv.y *= -1.0;
@@ -99,6 +102,9 @@ export default function DarkVeil({
   resolutionScale = 1
 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
+
+
+
   useEffect(() => {
     const canvas = ref.current as HTMLCanvasElement;
     const parent = canvas.parentElement as HTMLElement;
@@ -111,7 +117,7 @@ export default function DarkVeil({
     const gl = renderer.gl;
     const geometry = new Triangle(gl);
 
-    const program = new Program(gl, {
+  const program = new Program(gl, {
       vertex,
       fragment,
       uniforms: {
@@ -125,19 +131,21 @@ export default function DarkVeil({
       }
     });
 
+    
+
     const mesh = new Mesh(gl, { geometry, program });
 
     const resize = () => {
       const w = parent.clientWidth,
         h = parent.clientHeight;
-  // set renderer to the parent size (scaled by resolutionScale)
-  renderer.setSize(w * resolutionScale, h * resolutionScale);
-  // Use the GL drawing buffer size for the shader resolution uniform so
-  // fragCoord (in device pixels) maps correctly to uResolution. This
-  // prevents the shader from appearing 'contracted' on small/high-DPR screens.
-  const pixelW = gl.drawingBufferWidth;
-  const pixelH = gl.drawingBufferHeight;
-  program.uniforms.uResolution.value.set(pixelW, pixelH);
+      // To emulate object-cover, we set the renderer size to match the
+      // parent element, but we also compute the drawing buffer resolution
+      // in device pixels so the shader can decide how to crop via the
+      // max(uResolution.x, uResolution.y) logic used above.
+      renderer.setSize(w * resolutionScale, h * resolutionScale);
+      const pixelW = gl.drawingBufferWidth;
+      const pixelH = gl.drawingBufferHeight;
+      program.uniforms.uResolution.value.set(pixelW, pixelH);
     };
 
     window.addEventListener('resize', resize);

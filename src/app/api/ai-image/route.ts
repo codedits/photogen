@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest } from "next/server";
 
 // Simple server-side proxy to avoid CORS and keep the client domain constant

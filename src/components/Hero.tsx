@@ -38,7 +38,7 @@ export default function Hero() {
     // caret blink
     caretRef.current = window.setInterval(() => {
       setCaretVisible((v) => !v);
-    }, 500);
+    }, 200);
 
     return () => {
       if (typingRef.current) clearInterval(typingRef.current);
@@ -62,7 +62,7 @@ export default function Hero() {
         <div className="w-full max-w-[420px] mx-auto px-4 text-center">
           <h1
             className="text-white text-glow drop-shadow-lg leading-tight md:leading-snug"
-            style={{ fontWeight: 500, fontSize: "clamp(1.75rem, 3.5vw, 2rem)" }}
+            style={{ fontWeight: 550, fontSize: "clamp(1.75rem, 3.5vw, 2rem)", lineHeight: 0.9 }}
           >
             {/* Render the typed text but keep the original exact content as the source */}
             <span aria-live="polite">{typed || ""}<span aria-hidden className="ml-1">{caretVisible ? '▌' : ''}</span></span>

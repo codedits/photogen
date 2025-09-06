@@ -173,11 +173,13 @@ html, body {
 .btn-violet {
   background: linear-gradient(180deg, rgb(83, 17, 250) 0%, rgb(91, 26, 243) 100%);
   color: white !important;
+
   box-shadow: 0 6px 18px rgba(124, 58, 237, 0.18), 0 2px 6px rgba(99,102,241,0.08);
   transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
 }
 .btn-violet:hover {
   transform: translateY(-1px);
+    text-shadow:0 0px 15px rgb(255, 255, 255) ;
   box-shadow: 0 0px 30px rgba(120, 43, 253, 0.8);
 }
 .btn-violet:active { transform: translateY(0); }

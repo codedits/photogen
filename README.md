@@ -14,6 +14,18 @@ pnpm dev
 bun dev
 ```
 
+Local additions:
+
+- `src/components/Nav.tsx` — a centered pill-shaped glass navbar using Tailwind, Framer Motion, and Lucide icons. Importantly, install `framer-motion` and `lucide-react` for it to compile.
+
+To run locally after installing deps:
+
+```powershell
+npm install
+npm install framer-motion lucide-react
+npm run dev
+```
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.

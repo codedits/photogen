@@ -190,6 +190,37 @@ html, body {
   filter: drop-shadow(0 6px 18px rgba(124,58,237,0.14));
 }
 
+/* Chat widget floating button color (explicit RGBA as requested) */
+.chat-widget-button {
+  /* dark translucent surface with backdrop blur so it fits a dark UI */
+  background-color: rgba(6, 6, 8, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,0.04);
+  color: white !important; /* default icon/text color */
+  /* neutral shadow only — remove violet glow from the button itself */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.55);
+  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+.chat-widget-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.6);
+}
+
+/* Icon adjustments: make the icon visually white (no violet fill) and give it a soft violet glow */
+.chat-widget-button svg {
+  color: white; /* lucide icons use currentColor */
+  stroke: currentColor;
+  fill: none;
+  /* thicker stroke to make the icon appear bold */
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* stronger, multi-layered glow focused on the icon */
+  filter: drop-shadow(0 6px 20px rgba(142,95,255,0.36)) drop-shadow(0 2px 8px rgba(0,0,0,0.35));
+  transition: filter 160ms ease, transform 120ms ease;
+}
+
 /* Style select dropdown inside the AI Studio section for better contrast */
 #ai-studio select {
   background: linear-gradient(180deg, rgba(12,6,30,0.9), rgba(18,10,40,0.9));
@@ -248,6 +279,10 @@ html, body {
 .pg-loading .pg-msg .pg-right {
   color: rgba(255,255,255,0.6);
   font-size: 0.85rem;
+}
+.glow-sm {
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.39),
+               0 0 8px rgba(255, 255, 255, 0.25);
 }
 
 /* smaller bar on mobile for compact layout */

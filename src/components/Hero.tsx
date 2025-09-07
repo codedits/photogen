@@ -6,51 +6,83 @@ import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 
 export default function Hero() {
-  // Preserve exact original text but animate its reveal
-  const FULL_TEXT = "PhotoGen Created by _visualsbytalha";
+  // Dynamic typing: cycle through three phrases, type, wait 3s, delete, then next
   const typedEl = useRef<HTMLSpanElement | null>(null);
   const caretEl = useRef<HTMLSpanElement | null>(null);
-  const rafRef = useRef<number | null>(null);
   const caretIntervalRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    // DOM-driven typing using requestAnimationFrame to avoid React re-renders per character.
-    const targetDuration = 3500; // total ms to reveal full text
-    const start = performance.now();
+  const phrases = [
+    "PhotoGen Created by _visualsbytalha",
+    "Next-Level visuals.",
+    "Rizzup Boys and Girls.",
+  ];
 
-    const step = (now: number) => {
-      const t = Math.min(1, (now - start) / targetDuration);
-      const chars = Math.floor(t * FULL_TEXT.length);
-      if (typedEl.current) typedEl.current.textContent = FULL_TEXT.slice(0, chars);
-      if (t < 1) {
-        rafRef.current = requestAnimationFrame(step);
-      } else {
-        rafRef.current = null;
-        // ensure full text is present at the end
-        if (typedEl.current) typedEl.current.textContent = FULL_TEXT;
-        // stop caret blinking
-        if (caretIntervalRef.current) {
-          clearInterval(caretIntervalRef.current);
-          caretIntervalRef.current = null;
-        }
-        if (caretEl.current) caretEl.current.textContent = '';
-      }
+  useEffect(() => {
+    const TYPE_SPEED = 100; // ms per char when typing
+    const DELETE_SPEED = 60; // ms per char when deleting
+    const PAUSE_AFTER_FULL = 4000; // ms pause when full text shown
+
+    let current = 0;
+    let charIndex = 0;
+    let typingTimer: number | null = null;
+    let deletingTimer: number | null = null;
+    let pauseTimeout: number | null = null;
+
+    const startCaret = () => {
+      if (caretIntervalRef.current) return;
+      if (caretEl.current) caretEl.current.textContent = '▌';
+      caretIntervalRef.current = window.setInterval(() => {
+        if (!caretEl.current) return;
+        caretEl.current.textContent = caretEl.current.textContent ? '' : '▌';
+      }, 500);
     };
 
-    // start caret blinking by toggling textContent directly
-    if (caretEl.current) caretEl.current.textContent = '▌';
-    caretIntervalRef.current = window.setInterval(() => {
-      if (!caretEl.current) return;
-      caretEl.current.textContent = caretEl.current.textContent ? '' : '▌';
-    }, 500);
+    const stopCaret = () => {
+      if (caretIntervalRef.current) {
+        clearInterval(caretIntervalRef.current);
+        caretIntervalRef.current = null;
+      }
+      if (caretEl.current) caretEl.current.textContent = '';
+    };
 
-    rafRef.current = requestAnimationFrame(step);
+    const typeCurrent = () => {
+      const text = phrases[current];
+      charIndex = 0;
+      if (typedEl.current) typedEl.current.textContent = '';
+      startCaret();
+      typingTimer = window.setInterval(() => {
+        charIndex++;
+        if (typedEl.current) typedEl.current.textContent = text.slice(0, charIndex);
+        if (charIndex >= text.length) {
+          if (typingTimer) { clearInterval(typingTimer); typingTimer = null; }
+          pauseTimeout = window.setTimeout(() => startDeleting(), PAUSE_AFTER_FULL);
+        }
+      }, TYPE_SPEED);
+    };
+
+    const startDeleting = () => {
+      const text = phrases[current];
+      deletingTimer = window.setInterval(() => {
+        charIndex--;
+        if (typedEl.current) typedEl.current.textContent = text.slice(0, charIndex);
+        if (charIndex <= 0) {
+          if (deletingTimer) { clearInterval(deletingTimer); deletingTimer = null; }
+          pauseTimeout = window.setTimeout(() => {
+            current = (current + 1) % phrases.length;
+            typeCurrent();
+          }, 250);
+        }
+      }, DELETE_SPEED);
+    };
+
+    typeCurrent();
 
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (caretIntervalRef.current) clearInterval(caretIntervalRef.current);
+      if (typingTimer) clearInterval(typingTimer);
+      if (deletingTimer) clearInterval(deletingTimer);
+      if (pauseTimeout) clearTimeout(pauseTimeout);
+      stopCaret();
     };
-    // run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -71,12 +103,12 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: 'easeOut' }}
             className="text-white text-glow drop-shadow-lg leading-tight md:leading-snug"
-            style={{ fontWeight: 550, fontSize: "clamp(2rem, 3.5vw, 2.5rem)", lineHeight: 0.9 }}
+            style={{ fontWeight: 500, fontSize: "clamp(2rem, 3.5vw, 2.5rem)", lineHeight: 0.9 }}
           >
             {/* Render the typed text but keep the original exact content as the source */}
             <span aria-live="polite">
               <span ref={typedEl} />
-              <span aria-hidden className="ml-1" ref={caretEl}>{'▌'}</span>
+              <span aria-hidden className="ml-1" ref={caretEl} style={{ fontSize: '0.72em', lineHeight: 1 }}>{'▌'}</span>
             </span>
             {/* Provide screen-reader text with the full content so semantics remain unchanged */}
             <span className="sr-only">PhotoGen for Photo Enthusiasts</span>

@@ -18,7 +18,7 @@ export default function Carousel({
   items,
   className = "",
   initialIndex = 0,
-  autoPlay = true,
+  autoPlay = false,
   intervalMs = 4000,
   showDots = true,
   showThumbs = true,
@@ -78,7 +78,7 @@ export default function Carousel({
   if (!len) {
     return (
       <div className={`w-full ${className}`}>
-  <div className="w-full aspect-[9/16] sm:h-[520px] md:h-[520px] rounded-lg bg-slate-800 animate-pulse" />
+  <div className="w-full aspect-[9/16] max-h-[720px] sm:max-h-none sm:h-[520px] md:h-[520px] rounded-lg bg-slate-800 animate-pulse" />
       </div>
     );
   }
@@ -96,7 +96,7 @@ export default function Carousel({
     >
       {/* Stage */}
       <div
-        className="relative w-full max-w-3xl aspect-[9/16] sm:h-[520px] md:h-[520px] rounded-xl overflow-hidden bg-slate-900"
+        className="relative w-full max-w-3xl aspect-[9/16] max-h-[720px] sm:max-h-none sm:h-[520px] md:h-[520px] rounded-xl overflow-hidden bg-slate-900"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >

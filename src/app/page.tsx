@@ -6,7 +6,7 @@ import FeatureCards from "../components/FeatureCards";
 export default function Home() {
   return (
     <PageContainer>
-      <FullBleed className="-mt-4">{/* cancel page padding so hero is full-bleed and lift behind nav */}
+  <FullBleed className="-mt-4">{/* cancel page padding so hero is full-bleed and lift behind nav */}
         <Hero />
       </FullBleed>
 

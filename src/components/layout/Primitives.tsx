@@ -6,7 +6,7 @@ import React from "react";
 // PageContainer: global page padding and min-height shell
 export function PageContainer({ className, children }: { className?: string; children?: React.ReactNode }) {
   return (
-    <div className={cn("font-sans min-h-screen px-6 pb-0 sm:px-8", className)}>
+  <div className={cn("font-sans min-h-screen px-6 pb-0 sm:px-8", className)}>
       {children}
     </div>
   );

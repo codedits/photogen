@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     const q = (searchParams.get('q') || '').trim();
   const cacheKey = `presets:q=${q}`;
   const cached = getCache<{ ok: boolean; presets: unknown[] }>(cacheKey);
-  if (cached) return NextResponse.json(cached, { headers: { 'cache-control': 'no-store' } });
+  if (cached) return NextResponse.json(cached, { headers: { 'cache-control': q ? 'no-store' : 'public, max-age=30, s-maxage=60, stale-while-revalidate=120' } });
     const db = await getDatabase();
     await ensurePresetIndexes(db.databaseName);
     const coll = db.collection("presets");
@@ -99,7 +99,7 @@ export async function GET(req: Request) {
   const resp = { ok: true, presets: out };
   // cache short-lived to improve repeated search latency
   setCache(cacheKey, resp, 10);
-  return NextResponse.json(resp, { headers: { 'cache-control': 'no-store' } });
+  return NextResponse.json(resp, { headers: { 'cache-control': q ? 'no-store' : 'public, max-age=30, s-maxage=60, stale-while-revalidate=120' } });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

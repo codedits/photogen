@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import PresetCard from "./PresetCard";
+import Link from "next/link";
 
 type PresetShape = {
   id: string;
@@ -81,9 +82,9 @@ export default function LiveSearchPresets({ initial = [] }: { initial?: PresetSh
         {results.map((p) => {
           const firstImage = p.images?.[0]?.url || p.image || undefined;
           return (
-            <a key={p.id} href={`/presets/${p.id}`} className="group inline-block rounded-2xl">
+            <Link key={p.id} href={`/presets/${p.id}`} prefetch className="group inline-block rounded-2xl">
               <PresetCard preset={{ id: p.id, name: p.name, description: p.description, prompt: p.prompt, image: firstImage, tags: p.tags, images: p.images }} />
-            </a>
+            </Link>
           );
         })}
       </div>

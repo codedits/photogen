@@ -12,6 +12,9 @@ export default function ImageWithLqip({
   fill,
   className,
   transformOpts,
+  priority,
+  sizes,
+  loading,
 }: {
   src: string;
   alt?: string;
@@ -19,10 +22,13 @@ export default function ImageWithLqip({
   height?: number;
   fill?: boolean;
   className?: string;
-  transformOpts?: { w?: number; h?: number; fit?: 'cover' | 'crop' | 'fill' | 'scale' | 'contain' };
+  transformOpts?: { w?: number; h?: number; fit?: 'cover' | 'crop' | 'fill' | 'scale' | 'contain'; q?: string | number; f?: 'auto' | string; dpr?: number | 'auto' };
+  priority?: boolean;
+  sizes?: string;
+  loading?: 'eager' | 'lazy';
 }) {
-  const blur = useBlurDataUrl(src, { w: transformOpts?.w || 8, h: transformOpts?.h || 8, fit: transformOpts?.fit || 'cover' });
-  const url = thumbUrl(src, { w: transformOpts?.w || width || 400, h: transformOpts?.h || height || 300, fit: transformOpts?.fit || 'cover', q: 'auto', f: 'auto' });
+  const blur = useBlurDataUrl(src, { w: Math.min(transformOpts?.w || width || 400, 24), h: Math.min(transformOpts?.h || height || 300, 24), fit: transformOpts?.fit || 'cover' });
+  const url = thumbUrl(src, { w: transformOpts?.w || width || 400, h: transformOpts?.h || height || 300, fit: transformOpts?.fit || 'cover', q: transformOpts?.q ?? 'auto', f: transformOpts?.f ?? 'auto', dpr: transformOpts?.dpr });
   const placeholder = blur ? 'blur' as const : undefined;
 
   // Determine objectFit from className if present, fall back to cover for thumbs and contain for fills
@@ -32,8 +38,8 @@ export default function ImageWithLqip({
 
   if (fill) {
     // When using `fill`, pass objectFit via style to Next/Image to prevent stretching
-    return <Image src={url} alt={alt || ''} fill style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={blur} />;
+    return <Image src={url} alt={alt || ''} fill style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={blur} priority={priority} sizes={sizes} loading={loading} />;
   }
 
-  return <Image src={url} alt={alt || ''} width={width} height={height} style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={blur} />;
+  return <Image src={url} alt={alt || ''} width={width} height={height} style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={blur} priority={priority} sizes={sizes} loading={loading} />;
 }

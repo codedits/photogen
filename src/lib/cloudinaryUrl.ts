@@ -3,10 +3,10 @@
  * It inserts a transform string after the `/upload/` segment in Cloudinary delivery URLs.
  * If the input is not a full URL (e.g., a public_id), it will return the source unchanged.
  */
-export type ThumbOpts = { w?: number; h?: number; fit?: 'cover' | 'crop' | 'fill' | 'scale' | 'contain'; q?: 'auto' | number; f?: 'auto' | string };
+export type ThumbOpts = { w?: number; h?: number; fit?: 'cover' | 'crop' | 'fill' | 'scale' | 'contain'; q?: string | number; f?: 'auto' | string; dpr?: number | 'auto' };
 
 export function thumbUrl(source: string, opts: ThumbOpts = {}) {
-  const { w = 400, h = 300, fit = 'cover', q = 'auto', f = 'auto' } = opts;
+  const { w = 400, h = 300, fit = 'cover', q = 'auto', f = 'auto', dpr } = opts;
   if (!source) return source;
   // Only operate on full URLs that include /upload/
   if (!source.startsWith('http')) return source;
@@ -17,7 +17,8 @@ export function thumbUrl(source: string, opts: ThumbOpts = {}) {
     // Map our fit -> cloudinary crop
   const cropMap: Record<string, string> = { cover: 'fill', crop: 'crop', fill: 'fill', scale: 'scale', contain: 'fit' };
     const c = cropMap[fit] || 'fill';
-    const t = `c_${c},w_${Math.round(w)},h_${Math.round(h)},q_${q},f_${f}`;
+  const dp = typeof dpr !== 'undefined' ? `,dpr_${dpr}` : '';
+  const t = `c_${c},w_${Math.round(w)},h_${Math.round(h)},q_${q},f_${f}${dp}`;
     const newPath = parts[0] + '/upload/' + t + '/' + parts[1].replace(/^\//, '');
     return `${u.protocol}//${u.host}${newPath}`;
   } catch {

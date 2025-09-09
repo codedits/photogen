@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Nav from "../components/Nav";
-import ChatWidget from "../components/ChatWidget";
+import LazyChatWidget from "../components/LazyChatWidget";
 import Footer from "../components/Footer";
 import { ensurePresetIndexes } from "../lib/mongodb";
 
@@ -37,14 +37,14 @@ export default async function RootLayout({
       <head>
         <link rel="icon" href="/gen.svg" />
   {/* Preconnect to Cloudinary to improve image fetch latency */}
-  <link rel="preconnect" href="https://res.cloudinary.com" />
+  <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
   <Nav />
   {children}
-  <ChatWidget />
+  <LazyChatWidget />
   <Footer />
       </body>
     </html>

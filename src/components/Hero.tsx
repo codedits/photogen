@@ -1,9 +1,10 @@
 "use client";
 
 import { Wand2, Image } from "lucide-react";
-import DarkVeil from "./DarkVeil";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+const DarkVeil = dynamic(() => import("./DarkVeil"), { ssr: false, loading: () => null });
 import { useEffect, useRef } from "react";
-import { motion } from "framer-motion";
 
 export default function Hero() {
   // Dynamic typing: cycle through three phrases, type, wait 3s, delete, then next
@@ -98,10 +99,7 @@ export default function Hero() {
       />
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-full max-w-[420px] mx-auto px-4 text-center">
-          <motion.h1
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: 'easeOut' }}
+          <h1
             className="text-white text-glow drop-shadow-lg leading-tight md:leading-snug"
             style={{ fontWeight: 500, fontSize: "clamp(2rem, 3.5vw, 2.5rem)", lineHeight: 0.9 }}
           >
@@ -112,33 +110,22 @@ export default function Hero() {
             </span>
             {/* Provide screen-reader text with the full content so semantics remain unchanged */}
             <span className="sr-only">PhotoGen for Photo Enthusiasts</span>
-          </motion.h1>
+          </h1>
 
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.25 }}
-            className="mt-8 flex flex-row items-center justify-center gap-3 sm:gap-4 pointer-events-auto"
-          >
-            <motion.a
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              href="/studio"
-              className="inline-flex items-center justify-center w-auto bg-white text-black rounded-full px-4 sm:px-6 py-1.5 sm:py-2 text-sm font-medium shadow-lg hover:brightness-95 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 text-center btn-violet"
-            >
-              <Wand2 size={16} className="mr-2 text-white" />
-              AI Studio
-            </motion.a>
-            <motion.a
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              href="/presets"
-              className="inline-flex items-center justify-center w-auto bg-white/10 text-white rounded-full px-4 sm:px-6 py-1.5 sm:py-2 text-sm font-medium shadow hover:brightness-95 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 text-center "
-            >
-              <Image size={16} className="mr-2 text-white" />
-              Lightroom Presets
-            </motion.a>
-          </motion.div>
+          <div className="mt-8 flex flex-row items-center justify-center gap-3 sm:gap-4 pointer-events-auto">
+            <div className="inline-flex items-center justify-center w-auto">
+              <Link href="/studio" prefetch className="inline-flex items-center justify-center w-auto bg-white text-black rounded-full px-4 sm:px-6 py-1.5 sm:py-2 text-sm font-medium shadow-lg hover:brightness-95 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 text-center btn-violet">
+                <Wand2 size={16} className="mr-2 text-white" />
+                AI Studio
+              </Link>
+            </div>
+            <div className="inline-flex items-center justify-center w-auto">
+              <Link href="/presets" prefetch className="inline-flex items-center justify-center w-auto bg-white/10 text-white rounded-full px-4 sm:px-6 py-1.5 sm:py-2 text-sm font-medium shadow hover:brightness-95 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 text-center ">
+                <Image size={16} className="mr-2 text-white" />
+                Lightroom Presets
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

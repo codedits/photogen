@@ -40,7 +40,9 @@ export default function PresetCard({ preset, className = "" }: PresetCardProps) 
             alt={preset.name}
             fill
             className="object-cover"
-            transformOpts={{ w: 1200, h: 1200, fit: 'cover' }}
+            transformOpts={{ w: 900, h: 900, fit: 'cover', q: 'auto:good', dpr: 'auto' }}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            loading="lazy"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-slate-200">{preset.name}</div>

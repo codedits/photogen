@@ -1,7 +1,6 @@
 "use client";
 import React from 'react';
 import ImageWithLqip from './ImageWithLqip';
-import useBlurDataUrl from '../lib/useBlurDataUrl';
 
 type Item = { url: string; alt?: string };
 
@@ -79,31 +78,14 @@ export default function Carousel({
   if (!len) {
     return (
       <div className={`w-full ${className}`}>
-  <div className="w-full h-[420px] sm:h-[520px] md:h-[520px] rounded-lg bg-slate-800 animate-pulse" />
+  <div className="w-full aspect-[9/16] sm:h-[520px] md:h-[520px] rounded-lg bg-slate-800 animate-pulse" />
       </div>
     );
   }
 
   const current = items[index];
 
-  function BlurredBackdrop({ src }: { src?: string }) {
-    const b = useBlurDataUrl(src, { w: 48, h: 48, fit: 'scale' });
-    if (!b) return null;
-    return (
-      <div
-        aria-hidden
-        className="absolute inset-0 z-0 rounded-xl overflow-hidden"
-        style={{
-          // dark gradient on top of tiny image to increase contrast / darkness
-          backgroundImage: `linear-gradient(rgba(0,0,0,0.48), rgba(0,0,0,0.62)), url(${b})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          filter: 'blur(16px) saturate(0.85) brightness(0.45)',
-          transform: 'scale(1.04)'
-        }}
-      />
-    );
-  }
+  // Blurred backdrop removed to avoid background LQIP and reduce visual complexity.
 
   return (
     <div className={`group ${className}`} ref={containerRef}
@@ -114,19 +96,21 @@ export default function Carousel({
     >
       {/* Stage */}
       <div
-        className="relative w-full max-w-3xl h-[420px] sm:h-[520px] md:h-[520px] rounded-xl overflow-hidden bg-slate-900"
+        className="relative w-full max-w-3xl aspect-[9/16] sm:h-[520px] md:h-[520px] rounded-xl overflow-hidden bg-slate-900"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
   {/* blurred backdrop to avoid empty letterbox when image is object-contain */}
-        <BlurredBackdrop src={current?.url} />
-        <div className="relative z-10 w-full h-full flex items-center justify-center">
+  <div className="relative z-10 w-full h-full flex items-center justify-center">
           <ImageWithLqip
             src={current.url}
             alt={current.alt || `Slide ${index + 1}`}
             fill
             className="object-contain bg-transparent"
-            transformOpts={{ w: 1600, h: 900, fit: 'contain' }}
+            transformOpts={{ w: 1280, h: 720, fit: 'contain', q: 'auto:good', dpr: 'auto' }}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 960px"
+            priority={index === 0}
+            loading={index === 0 ? 'eager' : 'lazy'}
           />
         </div>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
@@ -169,7 +153,7 @@ export default function Carousel({
               aria-label={`Slide ${i + 1}`}
               aria-current={i === index}
             >
-              <ImageWithLqip src={item.url} alt={`thumb-${i + 1}`} fill className="object-cover" transformOpts={{ w: 220, h: 150, fit: 'cover' }} />
+              <ImageWithLqip src={item.url} alt={`thumb-${i + 1}`} fill className="object-cover" transformOpts={{ w: 220, h: 150, fit: 'cover', q: 'auto:eco', dpr: 1 }} sizes="100px" loading="lazy" />
             </button>
           ))}
         </div>

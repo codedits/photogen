@@ -79,7 +79,7 @@ export default function Carousel({
   if (!len) {
     return (
       <div className={`w-full ${className}`}>
-        <div className="w-full aspect-[4/5] sm:aspect-[4/3] md:aspect-video rounded-lg bg-slate-800 animate-pulse" />
+  <div className="w-full h-[420px] sm:h-[520px] md:h-[520px] rounded-lg bg-slate-800 animate-pulse" />
       </div>
     );
   }
@@ -114,7 +114,7 @@ export default function Carousel({
     >
       {/* Stage */}
       <div
-        className="relative w-full max-w-4xl aspect-[4/5] sm:aspect-[4/3] md:aspect-video rounded-xl overflow-hidden bg-slate-900"
+        className="relative w-full max-w-3xl h-[420px] sm:h-[520px] md:h-[520px] rounded-xl overflow-hidden bg-slate-900"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -126,7 +126,7 @@ export default function Carousel({
             alt={current.alt || `Slide ${index + 1}`}
             fill
             className="object-contain bg-transparent"
-            transformOpts={{ w: 1600, h: 900, fit: 'scale' }}
+            transformOpts={{ w: 1600, h: 900, fit: 'contain' }}
           />
         </div>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />

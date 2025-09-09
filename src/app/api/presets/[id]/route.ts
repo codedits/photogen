@@ -40,7 +40,7 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
     let tags: string[] = Array.isArray(existing.tags) ? existing.tags : [];
     let images: { url: string; public_id: string }[] = Array.isArray(existing.images) ? existing.images : [];
   let removePublicIds: string[] = [];
-  let newDng: File | null = null;
+  let newDngUrl: string | null = null;
     let toUpload: string[] = [];
 
     if (contentType.includes('multipart/form-data')) {
@@ -55,9 +55,9 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
       removePublicIds = (form.getAll('removePublicIds').filter(v=>typeof v==='string') as string[]);
       const urlList = form.getAll('imageUrls').filter((v) => typeof v === 'string') as string[];
       toUpload.push(...urlList);
-  // Optional: allow replacing DNG
-  const maybeDng = form.get('dng');
-  if (maybeDng instanceof File) newDng = maybeDng;
+  // Optional: allow replacing DNG via provided dngUrl field
+  const maybeDngUrl = form.get('dngUrl') || form.get('dngurl') || form.get('dng_url');
+  if (maybeDngUrl && typeof maybeDngUrl === 'string') newDngUrl = String(maybeDngUrl).trim();
   const files = form.getAll('images') as File[];
   for (const file of files.slice(0, 8)) {
         const buf = Buffer.from(await file.arrayBuffer());
@@ -72,6 +72,7 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
       if (Array.isArray(body.tags)) tags = body.tags; else if (typeof body.tags === 'string') tags = body.tags.split(',').map((s:string)=>s.trim()).filter(Boolean);
       if (Array.isArray(body.removePublicIds)) removePublicIds = body.removePublicIds;
       if (Array.isArray(body.images)) toUpload = body.images;
+    if (typeof body.dngUrl === 'string') newDngUrl = body.dngUrl.trim();
     }
 
   // Remove requested images both from Cloudinary and local array
@@ -88,17 +89,15 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
       images.push(...uploaded.map(u => ({ url: u.url, public_id: u.public_id })));
     }
 
-    // Replace DNG if provided
-    if (newDng) {
+    // Replace DNG if a new URL was provided
+    if (newDngUrl) {
+      // Do not upload; simply store the provided URL. Optionally clear previous Cloudinary entry if present.
       try {
-        const buf = Buffer.from(await newDng.arrayBuffer());
-        const uploadOpts: UploadApiOptions = { resource_type: 'auto', folder: 'photogen/presets/dngs', filename_override: newDng.name, unique_filename: true, overwrite: false };
-        const up: UploadApiResponse = await cloudinary.uploader.upload(`data:application/octet-stream;base64,${buf.toString('base64')}`, uploadOpts);
-        // delete old
+        // If there was a previous public_id, attempt to remove it (best-effort)
         if (existing.dng?.public_id) {
           try { await cloudinary.uploader.destroy(existing.dng.public_id, { resource_type: 'raw' }); } catch {}
         }
-        await coll.updateOne({ _id }, { $set: { dng: { url: up.secure_url, public_id: up.public_id, format: up.format }, images } });
+        await coll.updateOne({ _id }, { $set: { dng: { url: newDngUrl, public_id: existing.dng?.public_id || '' }, images } });
         return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
       } catch {}
     }

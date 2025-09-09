@@ -9,6 +9,7 @@ type PresetRow = {
   prompt?: string;
   tags?: string[];
   images?: { url: string; public_id: string }[];
+  dng?: { url?: string; public_id?: string; format?: string } | null;
 };
 
 export default function AdminPage() {
@@ -20,8 +21,8 @@ export default function AdminPage() {
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
   const [uploadItems, setUploadItems] = useState<Array<{ id: string; preview: string; file?: File; progress: number; status: 'idle'|'uploading'|'done'|'error'|'cancelled'; public_id?: string; url?: string; xhr?: XMLHttpRequest | null }>>([]);
-  const [dngFile, setDngFile] = useState<File | null>(null);
-  const [dngName, setDngName] = useState<string | null>(null);
+  
+  const [dngUrl, setDngUrl] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [list, setList] = useState<PresetRow[]>([]);
@@ -68,16 +69,7 @@ export default function AdminPage() {
     });
   };
 
-  const handleDng = (files?: FileList | null) => {
-    if (!files || !files.length) {
-      setDngFile(null);
-      setDngName(null);
-      return;
-    }
-    const f = files[0];
-    setDngFile(f);
-    setDngName(f.name);
-  };
+  
 
   const startUpload = (item: { id: string; preview: string; file?: File }) => {
     if (!item.file) return;
@@ -127,13 +119,13 @@ export default function AdminPage() {
     setMessage(null);
     setUploadProgress(0);
     try {
-      if (!dngFile) {
-        setMessage('Error: DNG file is required');
+      if (!dngUrl || !dngUrl.trim()) {
+        setMessage('Error: DNG download URL is required');
         setLoading(false);
         return;
       }
       const form = new FormData();
-      form.set('dng', dngFile, dngFile.name);
+      form.set('dngUrl', dngUrl.trim());
       form.set('name', name);
       form.set('description', description);
       form.set('tags', tags);
@@ -169,7 +161,8 @@ export default function AdminPage() {
           images: doneItems.map((d) => ({ url: d.url || '', public_id: d.public_id || '' })),
         };
         setList((prev) => [newPreset, ...prev]);
-        setName(''); setDescription(''); setTags(''); setDngFile(null); setDngName(null);
+  setName(''); setDescription(''); setTags('');
+  setDngUrl('');
         setShowCreate(false);
         setUploadItems([]);
       } else {
@@ -271,9 +264,8 @@ export default function AdminPage() {
               <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className="p-2 rounded bg-white/5" />
               <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="tags (comma separated)" className="p-2 rounded bg-white/5" />
 
-              <label className="text-sm text-slate-300">DNG (required, single)</label>
-              <input type="file" accept=".dng,image/x-adobe-dng" onChange={(e) => handleDng(e.target.files)} className="p-2 rounded bg-white/5" required />
-              {dngName && <div className="text-xs text-slate-300">Selected: {dngName}</div>}
+              <label className="text-sm text-slate-300">DNG download URL (required)</label>
+              <input type="url" value={dngUrl} onChange={(e) => setDngUrl(e.target.value)} placeholder="https://example.com/preset.dng" className="p-2 rounded bg-white/5" required />
 
               <label className="text-sm text-slate-300 mt-3">Images (max 8)</label>
               <input type="file" accept="image/*" multiple onChange={(e) => handleFiles(e.target.files)} className="p-2 rounded bg-white/5" />
@@ -352,6 +344,7 @@ function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row:
   const [tags, setTags] = useState((row.tags || []).join(', '));
   const [addUrls, setAddUrls] = useState('');
   const [addFiles, setAddFiles] = useState<FileList | null>(null);
+  const [dngUrl, setDngUrl] = useState<string>((row.dng?.url) || '');
   const [imagesLocal, setImagesLocal] = useState(row.images || [] as { url: string; public_id: string }[]);
   const [deleting, setDeleting] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -377,6 +370,7 @@ function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row:
         tags: tags.split(',').map(s => s.trim()).filter(Boolean),
         addUrls: addUrls.split(',').map(s => s.trim()).filter(Boolean).slice(0,8),
         addFiles,
+        ...(dngUrl !== undefined ? { dngUrl: dngUrl.trim() } : {}),
       } as Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null };
 
   await onUpdate(row, changes);
@@ -458,6 +452,8 @@ function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row:
             <label className="block text-sm mt-3">Add Image Files (max 8)</label>
             <input type="file" multiple accept="image/*" onChange={(e)=>setAddFiles(e.target.files)} className="w-full p-2 rounded bg-white/5" />
             <div className="text-xs text-slate-400">Click the red X on an image to delete it immediately.</div>
+            <label className="block text-sm mt-3">DNG download URL</label>
+            <input type="url" className="w-full p-2 rounded bg-white/5" value={dngUrl} onChange={(e)=>setDngUrl(e.target.value)} placeholder="https://.../preset.dng" />
           </div>
           <div>
             <div className="grid grid-cols-3 gap-2">

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { thumbUrl } from './cloudinaryUrl';
 
-type Opts = { w?: number; h?: number; fit?: 'cover' | 'crop' | 'fill' | 'scale' };
+type Opts = { w?: number; h?: number; fit?: 'cover' | 'crop' | 'fill' | 'scale' | 'contain' };
 
 /**
  * Fetch a tiny transformed image and return a base64 data URL for use as blurDataURL.

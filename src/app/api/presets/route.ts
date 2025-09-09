@@ -137,15 +137,14 @@ export async function POST(req: Request) {
         try { return JSON.parse(s) as ImageRef; } catch { return s as ImageRef; }
       });
       imagesRaw.push(...parsed);
-      // DNG is required (single file). Look for form field 'dng'
-      const dngField = form.get('dng');
-      if (!dngField) {
-        return NextResponse.json({ ok: false, error: 'Missing required DNG file (field name: dng)' }, { status: 400 });
+      // DNG download URL is required (field name: dngUrl)
+      const dngUrlField = form.get('dngUrl') || form.get('dngurl') || form.get('dng_url');
+      if (!dngUrlField || typeof dngUrlField !== 'string' || !dngUrlField.trim()) {
+        return NextResponse.json({ ok: false, error: 'Missing required DNG download URL (field name: dngUrl)' }, { status: 400 });
       }
-  const dngFile = dngField as File;
-      const dngBuf = Buffer.from(await dngFile.arrayBuffer());
-  // Upload DNG via Cloudinary as a file
-  uploadedDng = await uploadFile(dngBuf, dngFile.name, 'photogen/presets/dngs');
+      const dngUrl = String(dngUrlField).trim();
+      // We no longer upload DNGs to Cloudinary; store the provided URL as the dng entry
+      uploadedDng = { url: dngUrl, public_id: '', width: undefined, height: undefined, format: undefined } as unknown as CloudinaryUploaded;
   // store as a separate field later
         const files = form.getAll('images') as File[];
         for (const file of files.slice(0, 8)) {
@@ -161,6 +160,7 @@ export async function POST(req: Request) {
         tags?: string | string[];
         images?: Array<string | { public_id?: string; url?: string }>;
         image?: string;
+        dngUrl?: string;
       };
       name = body?.name || '';
       description = body?.description || '';
@@ -171,6 +171,10 @@ export async function POST(req: Request) {
           ? body.tags.split(',').map((s) => s.trim()).filter(Boolean)
           : [];
   if (Array.isArray(body?.images)) imagesRaw = body.images as ImageRef[]; else if (body?.image) imagesRaw = [body.image as ImageRef];
+  // accept dngUrl in JSON body as well
+  if (typeof body?.dngUrl === 'string' && body.dngUrl.trim()) {
+    uploadedDng = { url: body.dngUrl.trim(), public_id: '', width: undefined, height: undefined, format: undefined } as unknown as CloudinaryUploaded;
+  }
     }
 
     if (!name.trim()) return NextResponse.json({ ok: false, error: 'Missing name' }, { status: 400 });
@@ -196,10 +200,10 @@ export async function POST(req: Request) {
     }
   if (alreadyUploaded.length) uploaded.unshift(...alreadyUploaded);
 
-    // uploadedDng may be set when multipart/form-data upload happened
-    let dngInfo: { url: string; public_id: string; format?: string } | undefined = undefined;
+    // dngInfo is built from provided dngUrl (no upload)
+    let dngInfo: { url: string; public_id?: string; format?: string } | undefined = undefined;
     if (typeof uploadedDng !== 'undefined' && uploadedDng) {
-      dngInfo = { url: uploadedDng.url, public_id: uploadedDng.public_id, format: uploadedDng.format };
+      dngInfo = { url: uploadedDng.url, public_id: uploadedDng.public_id || undefined, format: uploadedDng.format };
     }
 
     const db = await getDatabase();

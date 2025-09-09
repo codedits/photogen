@@ -12,6 +12,10 @@ type PresetRow = {
 };
 
 export default function AdminPage() {
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  const [pwd, setPwd] = useState('');
+  const [authMsg, setAuthMsg] = useState<string | null>(null);
+  const [remember, setRemember] = useState(true);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
@@ -26,8 +30,28 @@ export default function AdminPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
-    // initial load
+    // check session
+    fetch('/api/admin/session', { cache: 'no-store' })
+      .then(r => r.json()).then(d => setAuthed(!!d?.ok)).catch(()=>setAuthed(false));
   }, []);
+
+  const doLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthMsg(null);
+    try {
+  const res = await fetch('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: pwd, remember }) });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.ok) {
+        setAuthed(true);
+        // load data after successful login
+        loadList();
+      } else {
+        setAuthMsg(data?.error || 'Login failed');
+      }
+    } catch (err: unknown) {
+      setAuthMsg(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   const handleFiles = (files?: FileList | null) => {
     if (!files || !files.length) return;
@@ -170,7 +194,7 @@ export default function AdminPage() {
     }
   };
 
-  useEffect(() => { loadList(); }, []);
+  useEffect(() => { if (authed) loadList(); }, [authed]);
 
   const updatePreset = async (row: PresetRow, changes: Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null; removePublicIds?: string[] }) => {
   const form = new FormData();
@@ -208,9 +232,36 @@ export default function AdminPage() {
     }
   };
 
+  if (authed === false) {
+    return (
+      <div className="min-h-screen px-6 pt-24 pb-8 flex items-start justify-center">
+        <form onSubmit={doLogin} className="w-full max-w-sm bg-black/30 border border-white/10 rounded-xl p-4">
+          <h2 className="text-xl font-semibold mb-3">Admin Login</h2>
+          <input type="password" value={pwd} onChange={(e)=>setPwd(e.target.value)} placeholder="Password" className="w-full p-2 rounded bg-white/5" required />
+          <label className="mt-2 inline-flex items-center gap-2 text-sm text-slate-300">
+            <input type="checkbox" checked={remember} onChange={(e)=>setRemember(e.target.checked)} />
+            Keep me logged in
+          </label>
+          {authMsg && <div className="text-sm text-red-400 mt-2">{authMsg}</div>}
+          <button className="mt-3 px-3 py-2 rounded bg-indigo-600 text-white w-full">Sign in</button>
+        </form>
+      </div>
+    );
+  }
+
+  if (authed === null) {
+    return (<div className="min-h-screen px-6 pt-24 pb-8">Checking session…</div>);
+  }
+
   return (
     <div className="min-h-screen px-6 pt-24 pb-8">
-      <h2 className="text-2xl font-semibold mb-4">Admin</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-semibold">Admin</h2>
+        <button
+          onClick={async ()=>{ await fetch('/api/admin/logout', { method: 'POST' }); setAuthed(false); }}
+          className="px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-sm"
+        >Logout</button>
+      </div>
       <div className={`grid grid-cols-1 ${showCreate ? 'lg:grid-cols-2' : ''} gap-6`}>
         {showCreate && (
           <div className="rounded-lg border border-white/8 p-4 bg-black/30">
@@ -328,7 +379,7 @@ function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row:
         addFiles,
       } as Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null };
 
-      const res = await onUpdate(row, changes);
+  await onUpdate(row, changes);
       setAddUrls(''); setAddFiles(null);
       // on success, try to sync local images from server data if returned
       // Some servers may not return content; we still keep optimistic UI

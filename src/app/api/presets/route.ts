@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAdminRequest } from "../../../lib/auth";
 import getDatabase, { ensurePresetIndexes } from "../../../lib/mongodb";
 import { uploadImages, uploadFile } from "../../../lib/cloudinary";
 import { ObjectId, Document } from 'mongodb';
@@ -31,13 +32,55 @@ export async function GET(req: Request) {
   const createdSort = { createdAt: -1 } as const;
   let projection: Record<string, 0 | 1 | { $meta: string }> = { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1 };
     if (q) {
-      // Prefer text search when available to leverage text index and relevance score
-  filter = { $text: { $search: q } } as Filter<Document>;
-  projection = { ...projection, score: { $meta: "textScore" } } as Record<string, 0 | 1 | { $meta: string }>;
+      // First try MongoDB text search (uses the text index created in ensurePresetIndexes)
+      // This handles relevance ranking for multi-word queries.
+      filter = { $text: { $search: q } } as Filter<Document>;
+      projection = { ...projection, score: { $meta: "textScore" } } as Record<string, 0 | 1 | { $meta: string }>;
+      const textDocs = await coll
+        .find(filter, { projection })
+        .sort({ score: { $meta: 'textScore' } } as unknown as Document)
+        .limit(100)
+        .toArray();
+      if (textDocs.length) {
+        // If text search returned results, use them (most relevant)
+        const out = textDocs.map((d) => {
+          const doc = d as PresetDoc & { score?: number };
+          return {
+            id: doc._id.toString(),
+            name: doc.name,
+            description: doc.description,
+            prompt: doc.prompt,
+            tags: doc.tags || [],
+            image: doc.image || null,
+            images: Array.isArray(doc.images) ? doc.images : undefined,
+            createdAt: doc.createdAt,
+          };
+        });
+        const resp = { ok: true, presets: out };
+        setCache(cacheKey, resp, 10);
+        return NextResponse.json(resp, { headers: { 'cache-control': 'no-store' } });
+      }
+
+      // If no text results, fall back to a more permissive name/tags search using
+      // case-insensitive regex matching. This handles partial matches and tag queries
+      // that may not be tokenized by text search. Regex queries are less index-friendly
+      // but are a reasonable fallback for interactive search.
+      // Build a safe regex from user input.
+      const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&");
+      const qEsc = escapeRegex(q);
+      const tokens = q.split(/\s+/).map((t) => t.trim()).filter(Boolean);
+      const tagRegexes = tokens.map((t) => new RegExp(escapeRegex(t), 'i'));
+      filter = {
+        $or: [
+          { name: { $regex: qEsc, $options: 'i' } },
+          // match any tag that contains one of the tokens (case-insensitive)
+          ...(tagRegexes.length ? tagRegexes.map((r) => ({ tags: { $elemMatch: r } })) : []),
+        ],
+      } as Filter<Document>;
     }
     const docs = await coll
       .find(filter, { projection })
-      .sort(q ? ({ score: { $meta: 'textScore' } } as { score: { $meta: 'textScore' } }) : createdSort)
+      .sort(q ? createdSort : createdSort)
       .limit(100)
       .toArray();
     const out = docs.map((d) => {
@@ -65,6 +108,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+  // require admin
+  if (!isAdminRequest(req)) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  }
   // Ensure indexes before inserting
   const dbForIdx = await getDatabase();
   await ensurePresetIndexes(dbForIdx.databaseName);

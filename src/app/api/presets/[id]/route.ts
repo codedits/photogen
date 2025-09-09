@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAdminRequest } from "../../../../lib/auth";
 import getDatabase, { ensurePresetIndexes } from "../../../../lib/mongodb";
 import { uploadImages } from "../../../../lib/cloudinary";
 import cloudinary from "../../../../lib/cloudinary";
@@ -18,6 +19,9 @@ type PresetDoc = {
 
 export async function PATCH(req: Request, { params }: { params?: { id: string } | Promise<{ id: string }> }) {
   try {
+    if (!isAdminRequest(req)) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
     const p = (await (params as Promise<{ id: string }> | { id: string } | undefined)) || { id: '' };
     const { id } = p;
     if (!id) return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
@@ -112,6 +116,9 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
 
 export async function DELETE(req: Request, { params }: { params?: { id: string } | Promise<{ id: string }> }) {
   try {
+    if (!isAdminRequest(req)) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+    }
     const p = (await (params as Promise<{ id: string }> | { id: string } | undefined)) || { id: '' };
     const { id } = p;
     if (!id) return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });

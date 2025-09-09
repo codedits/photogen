@@ -1,6 +1,6 @@
 "use client";
 
-import { Wand2 } from "lucide-react";
+import { Wand2, Image } from "lucide-react";
 import DarkVeil from "./DarkVeil";
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
@@ -14,7 +14,7 @@ export default function Hero() {
   const phrases = [
     "PhotoGen Created by _visualsbytalha",
     "Next-Level visuals.",
-    "Rizzup Boys and Girls.",
+    "Level up your Edits",
   ];
 
   useEffect(() => {
@@ -128,6 +128,15 @@ export default function Hero() {
             >
               <Wand2 size={16} className="mr-2 text-white" />
               AI Studio
+            </motion.a>
+            <motion.a
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              href="/presets"
+              className="inline-flex items-center justify-center w-auto bg-white/10 text-white rounded-full px-4 sm:px-6 py-1.5 sm:py-2 text-sm font-medium shadow hover:brightness-95 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 text-center "
+            >
+              <Image size={16} className="mr-2 text-white" />
+              Lightroom Presets
             </motion.a>
           </motion.div>
         </div>

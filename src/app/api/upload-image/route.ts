@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
+import { isAdminRequest } from '../../../lib/auth';
 import cloudinary from '../../../lib/cloudinary';
 
 export async function POST(req: Request) {
   try {
+  if (!isAdminRequest(req)) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     const contentType = req.headers.get('content-type') || '';
     if (!contentType.includes('multipart/form-data')) {
       return NextResponse.json({ ok: false, error: 'Content-Type must be multipart/form-data' }, { status: 400 });
@@ -34,6 +36,7 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+  if (!isAdminRequest(req)) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
     const public_id = body?.public_id;
     const resource_type = body?.resource_type;

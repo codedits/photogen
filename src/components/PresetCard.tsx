@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import ImageWithLqip from './ImageWithLqip';
 
 export type Preset = {
@@ -18,31 +18,92 @@ interface PresetCardProps {
 }
 
 export default function PresetCard({ preset, className = "" }: PresetCardProps) {
+  const [isMd, setIsMd] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const m = window.matchMedia('(min-width: 768px)');
+    const update = (ev: MediaQueryListEvent | MediaQueryList) => setIsMd(('matches' in ev) ? ev.matches : m.matches);
+    setIsMd(m.matches);
+    try { m.addEventListener('change', update); } catch { m.addListener(update); }
+    return () => { try { m.removeEventListener('change', update); } catch { m.removeListener(update); } };
+  }, []);
   const thumbnails = (preset.images && preset.images.length) ? preset.images.slice(0, 3).map(i => i.url) : (preset.image ? [preset.image] : []);
 
   return (
-    // card is not focusable itself; parent anchor should have `group` class
-  <article className={`w-full max-w-xs sm:max-w-sm aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-neutral-900/60 to-neutral-800/40 border border-white/5 shadow-xl relative ${className}`}>
-      {/* subtle inner glow */}
-      <div className="absolute inset-0 pointer-events-none rounded-2xl -z-10 blur-sm opacity-60 bg-gradient-to-br from-purple-700/5 via-transparent to-purple-500/3" />
+  <article className={`w-full max-w-xs sm:max-w-sm rounded-2xl overflow-hidden bg-gradient-to-br from-neutral-900/40 to-neutral-800/20 border border-white/6 shadow-lg hover:shadow-2xl transition transform-gpu hover:-translate-y-1 duration-200 mx-auto ${className}`}>
 
-      <div className="relative w-full h-full bg-neutral-900/20 backdrop-blur-sm">
-        {/* focus ring overlay: appears when parent has .group and is focused (mouse or keyboard) */}
-        <div className="pointer-events-none absolute inset-0 rounded-2xl z-30 bg-transparent ring-0 ring-transparent group-focus:ring-2 group-focus:ring-purple-400 group-focus:ring-inset group-focus-visible:ring-2 group-focus-visible:ring-purple-500 group-focus-visible:ring-inset transition-colors duration-150" />
-
+      {/* HERO */}
+      <div className="relative w-full h-48 sm:h-64 md:h-72 bg-neutral-900">
         {thumbnails.length ? (
-          <ImageWithLqip src={thumbnails[0]!} alt={preset.name} fill className="object-cover" transformOpts={{ w: 520, h: 520, fit: 'cover' }} />
+          <ImageWithLqip
+            src={thumbnails[0]!}
+            alt={preset.name}
+            fill
+            className="object-cover"
+            transformOpts={{ w: 1200, h: 1200, fit: 'cover' }}
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-slate-200">{preset.name}</div>
         )}
 
-  {/* bottom gradient overlay: consistent panel with slight glass effect for square layout */}
-  <div className="absolute inset-x-0 bottom-0 h-20 sm:h-24 z-20 bg-gradient-to-t from-black/70 via-black/30 to-transparent rounded-b-2xl backdrop-blur-sm flex items-end p-4">
-          <div className="w-full">
-            <h3 className="text-lg sm:text-xl font-semibold text-white leading-tight truncate drop-shadow-md">{preset.name}</h3>
+        {/* dark gradient and title badge */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+        <div className="absolute left-3 bottom-3 right-3 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-sm text-center md:text-left md:text-base font-semibold text-white leading-tight truncate">{preset.name}</h3>
+            {preset.description && isMd && (
+              <p
+                className="mt-1 text-xs text-left text-slate-200/80 line-clamp-2 overflow-hidden break-words"
+                style={{
+                  display: '-webkit-box',
+                  WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: 2,
+                }}
+              >
+                {preset.description}
+              </p>
+            )}
+          </div>
+
+          <div className="flex-shrink-0">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/40 text-white text-[11px] sm:text-xs border border-white/6">
+              <span className="font-medium">{thumbnails.length}</span>
+              <span className="text-slate-300">image{thumbnails.length !== 1 ? 's' : ''}</span>
+            </span>
           </div>
         </div>
+      </div>
+
+      {/* DETAILS */}
+  <div className="px-3 py-2 sm:px-4 sm:py-3 bg-neutral-950/30">
+        {/* description: visible on small screens as full text, hidden on sm+ because overlay shows it */}
+        {preset.description ? (
+          !isMd ? (
+            <p
+              className="text-sm text-slate-300 leading-relaxed line-clamp-3 text-center md:text-left overflow-hidden break-words"
+              style={{
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: 3,
+              }}
+            >
+              {preset.description}
+            </p>
+          ) : null
+        ) : (
+          !isMd ? <p className="text-sm text-slate-400 text-center md:text-left">No description provided.</p> : null
+        )}
+
+        {/* tags */}
+        {preset.tags && preset.tags.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2 justify-center sm:justify-start">
+            {preset.tags.slice(0, 6).map((t) => (
+              <span key={t} className="text-[11px] sm:text-xs bg-white/6 text-slate-200 px-2 py-1 rounded-full">{t}</span>
+            ))}
+          </div>
+        )}
       </div>
     </article>
   );
 }
+

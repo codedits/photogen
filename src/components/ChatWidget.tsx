@@ -163,9 +163,9 @@ export default function ChatWidget() {
 
       const bot: Msg = { id: uid(), role: "assistant", text: String(botText) };
       setMessages((s) => [...s, bot]);
-    } catch (err) {
-      console.error("Chat send error:", err);
-      setMessages((s) => [...s, { id: uid(), role: "assistant", text: `Error: ${String(err)}` }]);
+    } catch (_err) {
+      console.error("Chat send error:", _err);
+      setMessages((s) => [...s, { id: uid(), role: "assistant", text: `Error: ${String(_err)}` }]);
     } finally {
       setLoading(false);
     }

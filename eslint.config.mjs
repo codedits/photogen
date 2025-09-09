@@ -19,6 +19,10 @@ const eslintConfig = [
       "build/**",
       "next-env.d.ts",
     ],
+    rules: {
+      // Allow using native <img> tags; we manage optimization ourselves
+      "@next/next/no-img-element": "off",
+    },
   },
 ];
 

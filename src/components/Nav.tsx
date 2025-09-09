@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { motion } from "framer-motion";
-import { Home, Search, Image as ImageIcon, Wand2 } from "lucide-react";
+import Image from 'next/image';
+import { Home, Image as ImageIcon, Wand2 } from "lucide-react";
 
 export default function Nav() {
   return (
@@ -21,13 +21,13 @@ export default function Nav() {
       >
         {/* Brand (left) */}
         <Link href="/" className="flex items-center gap-3 leading-none">
-          <motion.div
+            <motion.div
             initial={{ scale: 0.96, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.4 }}
             className="flex items-center gap-2"
           >
-            <Image src="/gen.svg" alt="PhotoGen logo" width={10} height={10} priority className="sm:w-6 sm:h-6 w-5 h-5" />
+            <Image src="/gen.svg" alt="PhotoGen logo" width={24} height={24} className="sm:w-6 sm:h-6 w-5 h-5" />
             <span className="font-semibold text-white text-glow" style={{ fontSize: "clamp(0.95rem, 1.3vw, 1.15rem)" }}>PhotoGen</span>
           </motion.div>
         </Link>
@@ -47,27 +47,18 @@ export default function Nav() {
             </motion.div>
           </Link>
 
-      <Link href="/gallery" className="flex items-center">
+  <Link href="/presets" className="flex items-center">
             <motion.div
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
         className="flex items-center gap-3 sm:gap-4 h-8 px-3 sm:px-4 rounded-full hover:bg-white/10 transition-colors text-white"
             >
               <ImageIcon size={16} />
-              <span className="hidden sm:inline font-medium">Gallery</span>
+      <span className="hidden sm:inline font-medium">Presets</span>
             </motion.div>
           </Link>
 
-      <Link href="/search" className="flex items-center">
-            <motion.div
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.96 }}
-        className="flex items-center gap-3 sm:gap-4 h-8 px-3 sm:px-4 rounded-full hover:bg-white/10 transition-colors text-white"
-            >
-              <Search size={16} />
-              <span className="hidden sm:inline font-medium">Search</span>
-            </motion.div>
-          </Link>
+          
 
       <Link href="/studio" className="flex items-center">
             <motion.div

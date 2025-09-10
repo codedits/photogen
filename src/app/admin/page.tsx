@@ -410,20 +410,25 @@ function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row:
   return (
     <details ref={detailsRef} className="rounded-lg border border-white/10 overflow-hidden">
       <summary className="cursor-pointer flex items-center justify-between p-3 bg-black/10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <span className={`inline-flex items-center justify-center w-6 h-6 text-slate-300 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} aria-hidden>
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
           </span>
-          <div className="w-12 h-12 rounded overflow-hidden bg-slate-800 flex items-center justify-center">
+          {/* make thumbnail larger and non-shrinking so it's visible on narrow screens */}
+          <div className="flex-shrink-0 w-14 h-14 rounded overflow-hidden bg-slate-800 flex items-center justify-center">
               {imagesLocal && imagesLocal[0] ? (
-              <ImageWithLqip src={imagesLocal[0].url} alt="thumb" width={48} height={48} className="object-cover" transformOpts={{ w: 80, h: 80, fit: 'cover' }} />
+              <ImageWithLqip src={imagesLocal[0].url} alt="thumb" width={56} height={56} className="object-cover w-full h-full" transformOpts={{ w: 160, h: 160, fit: 'cover' }} />
             ) : (
               <div className="text-sm">{row.name.charAt(0)}</div>
             )}
           </div>
-          <div>
-            <div className="font-medium">{row.name}</div>
-            <div className="text-xs text-slate-400">{(row.tags||[]).join(', ')}</div>
+          <div className="min-w-0">
+            <div className="font-medium truncate">{row.name}</div>
+            <div className="text-xs text-slate-400 truncate">{(row.tags||[]).join(', ')}</div>
+            {/* show a short truncated description in the summary to avoid long rows */}
+            {row.description ? (
+              <div className="text-xs text-slate-300 mt-1 truncate max-w-[40ch]">{row.description}</div>
+            ) : null}
           </div>
         </div>
         <div className="flex items-center gap-2">

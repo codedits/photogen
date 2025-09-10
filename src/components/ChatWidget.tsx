@@ -15,6 +15,8 @@ export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  // Always show online status (green dot)
+  const online = true;
   const [messages, setMessages] = useState<Msg[]>([]);
   const listRef = useRef<HTMLDivElement | null>(null);
 
@@ -200,7 +202,11 @@ export default function ChatWidget() {
         <div className="md:hidden fixed inset-x-0 bottom-16 flex justify-center px-4 pointer-events-auto">
           <div className="w-full max-w-[420px] bg-black/65 backdrop-blur-md border border-white/10 rounded-xl p-4 flex flex-col box-border max-h-[85vh] min-h-[340px]">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold">PhotoGen Chat</h3>
+                <h3 className="text-sm font-semibold">PhotoGen Chat</h3>
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <span className={`inline-block w-2 h-2 rounded-full ${online ? 'bg-emerald-400' : 'bg-gray-500'} ${online ? 'animate-pulse' : ''}`} aria-hidden />
+                  <span>{online ? 'Online' : 'Offline'}</span>
+                </div>
               <button aria-label="Close" onClick={() => setOpen(false)} className="p-1 rounded hover:bg-white/5">
                 <X size={18} />
               </button>
@@ -214,6 +220,18 @@ export default function ChatWidget() {
                   </div>
                 </div>
               ))}
+              {/* typing indicator when assistant is generating a reply */}
+              {loading && (
+                <div className="text-left">
+                  <div className="inline-block px-3 py-2 rounded-lg bg-white/6 text-white">
+                    <div className="flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-white/60" style={{ animationDelay: '0s' }} />
+                      <span className="inline-block w-2 h-2 rounded-full bg-white/60 animate-pulse" style={{ animationDelay: '0.12s' }} />
+                      <span className="inline-block w-2 h-2 rounded-full bg-white/60 animate-pulse" style={{ animationDelay: '0.24s' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <form
@@ -237,9 +255,15 @@ export default function ChatWidget() {
           <div className="hidden md:flex w-[360px] max-w-[92vw] flex-col bg-black/60 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-xl text-sm text-white max-h-[85vh] box-border">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium">PhotoGen Chat</h3>
-              <button aria-label="Close" onClick={() => setOpen(false)} className="p-1 rounded hover:bg-white/5">
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 text-xs text-slate-300">
+                  <span className={`inline-block w-2 h-2 rounded-full ${online ? 'bg-emerald-400' : 'bg-gray-500'} ${online ? 'animate-pulse' : ''}`} aria-hidden />
+                  <span>{online ? 'Online' : 'Offline'}</span>
+                </div>
+                <button aria-label="Close" onClick={() => setOpen(false)} className="p-1 rounded hover:bg-white/5">
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             <div ref={listRef} className="flex-1 overflow-y-auto space-y-2 pr-4 pb-4 scrollbar-thin scrollbar-thumb-violet-500/60">
@@ -269,6 +293,8 @@ export default function ChatWidget() {
 
   <button aria-label="Open chat" onClick={() => setOpen((v) => !v)} className="h-14 w-14 rounded-full chat-widget-button text-white flex items-center justify-center shadow-lg">
           <MessageSquare size={20} />
+          {/* online badge on the button */}
+          <span className={`absolute -top-1 -right-1 inline-block w-3 h-3 rounded-full ${online ? 'bg-emerald-400 animate-pulse ring-2 ring-black' : 'bg-gray-600 ring-2 ring-black'}`} aria-hidden />
         </button>
       </div>
     </div>

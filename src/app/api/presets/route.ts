@@ -22,15 +22,25 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get('q') || '').trim();
-  const cacheKey = `presets:q=${q}`;
-  const cached = getCache<{ ok: boolean; presets: unknown[] }>(cacheKey);
-  if (cached) return NextResponse.json(cached, { headers: { 'cache-control': q ? 'no-store' : 'public, max-age=30, s-maxage=60, stale-while-revalidate=120' } });
+    // Pagination (page is 1-based). We support simple skip/limit for now; for very large
+    // collections a cursor approach (_id based) could replace this without much surface change.
+    const page = Math.max(parseInt(searchParams.get('page') || '1', 10) || 1, 1);
+  const limitRaw = parseInt(searchParams.get('limit') || '20', 10);
+  // enforce a maximum of 20 items per page to keep card grids consistent
+  const limit = Math.min(Math.max(limitRaw || 20, 1), 20); // cap at 20
+    const limitPlusOne = limit + 1; // fetch one extra to compute hasMore cheaply
+    const cachingEligible = !q && page === 1; // only cache the first unfiltered page
+    const cacheKey = `presets:q=${q}:page=${page}:limit=${limit}`;
+    if (cachingEligible) {
+      const cached = getCache<{ ok: boolean; presets: unknown[]; hasMore: boolean; page: number; limit: number }>(cacheKey);
+      if (cached) return NextResponse.json(cached, { headers: { 'cache-control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=120' } });
+    }
     const db = await getDatabase();
     await ensurePresetIndexes(db.databaseName);
     const coll = db.collection("presets");
-  let filter: Filter<Document> = {};
-  const createdSort = { createdAt: -1 } as const;
-  let projection: Record<string, 0 | 1 | { $meta: string }> = { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1 };
+    let filter: Filter<Document> = {};
+    const createdSort = { createdAt: -1 } as const;
+    let projection: Record<string, 0 | 1 | { $meta: string }> = { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1 };
     if (q) {
       // First try MongoDB text search (uses the text index created in ensurePresetIndexes)
       // This handles relevance ranking for multi-word queries.
@@ -39,7 +49,8 @@ export async function GET(req: Request) {
       const textDocs = await coll
         .find(filter, { projection })
         .sort({ score: { $meta: 'textScore' } } as unknown as Document)
-        .limit(100)
+        .skip((page - 1) * limit)
+        .limit(limitPlusOne)
         .toArray();
       if (textDocs.length) {
         // If text search returned results, use them (most relevant)
@@ -56,8 +67,10 @@ export async function GET(req: Request) {
             createdAt: doc.createdAt,
           };
         });
-        const resp = { ok: true, presets: out };
-        setCache(cacheKey, resp, 10);
+        const hasMore = out.length > limit;
+        const sliced = hasMore ? out.slice(0, limit) : out;
+        const resp = { ok: true, presets: sliced, hasMore, page, limit };
+        // For search queries we don't long-cache; short no-store so clients controlled by SWR-like layer.
         return NextResponse.json(resp, { headers: { 'cache-control': 'no-store' } });
       }
 
@@ -81,7 +94,8 @@ export async function GET(req: Request) {
     const docs = await coll
       .find(filter, { projection })
       .sort(q ? createdSort : createdSort)
-      .limit(100)
+      .skip((page - 1) * limit)
+      .limit(limitPlusOne)
       .toArray();
     const out = docs.map((d) => {
       const doc = d as PresetDoc;
@@ -96,10 +110,15 @@ export async function GET(req: Request) {
         createdAt: doc.createdAt,
       };
     });
-  const resp = { ok: true, presets: out };
-  // cache short-lived to improve repeated search latency
-  setCache(cacheKey, resp, 10);
-  return NextResponse.json(resp, { headers: { 'cache-control': q ? 'no-store' : 'public, max-age=30, s-maxage=60, stale-while-revalidate=120' } });
+    const hasMore = out.length > limit;
+    const sliced = hasMore ? out.slice(0, limit) : out;
+    const resp = { ok: true, presets: sliced, hasMore, page, limit };
+    if (cachingEligible) {
+      // cache short-lived to improve repeated load latency
+      setCache(cacheKey, resp, 10);
+      return NextResponse.json(resp, { headers: { 'cache-control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=120' } });
+    }
+    return NextResponse.json(resp, { headers: { 'cache-control': q ? 'no-store' : 'no-store' } });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

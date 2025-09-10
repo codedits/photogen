@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import ImageWithLqip from '../../components/ImageWithLqip';
+import { usePresets } from '../../lib/usePresets';
 
 type PresetRow = {
   id: string;
@@ -25,8 +26,8 @@ export default function AdminPage() {
   const [dngUrl, setDngUrl] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [list, setList] = useState<PresetRow[]>([]);
-  const [listLoading, setListLoading] = useState(false);
+  // list state now managed via SWR-like hook
+  const { items: list, loading: listLoading, hasMore, loadMore, refresh } = usePresets({ limit: 20, staleMs: 20000, enabled: authed === true });
   const [showCreate, setShowCreate] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -43,9 +44,7 @@ export default function AdminPage() {
   const res = await fetch('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: pwd, remember }) });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.ok) {
-        setAuthed(true);
-        // load data after successful login
-        loadList();
+  setAuthed(true);
       } else {
         setAuthMsg(data?.error || 'Login failed');
       }
@@ -151,16 +150,8 @@ export default function AdminPage() {
       });
       if (result?.ok) {
         setMessage('Preset created: ' + result.id);
-        // Optimistically add the new preset to the local list so UI is responsive
-        const doneItems = uploadItems.filter((u) => u.status === 'done').slice(0, 8);
-        const newPreset: PresetRow = {
-          id: result.id || String(Date.now()),
-          name,
-          description,
-          tags: tags.split(',').map(s=>s.trim()).filter(Boolean),
-          images: doneItems.map((d) => ({ url: d.url || '', public_id: d.public_id || '' })),
-        };
-        setList((prev) => [newPreset, ...prev]);
+        // trigger refresh to include newly created preset
+        refresh();
   setName(''); setDescription(''); setTags('');
   setDngUrl('');
         setShowCreate(false);
@@ -176,20 +167,10 @@ export default function AdminPage() {
     setLoading(false);
   };
 
-  const loadList = async () => {
-    setListLoading(true);
-    try {
-      const res = await fetch('/api/presets', { cache: 'no-store' });
-      const data = await res.json();
-      if (data?.ok) setList(data.presets || []);
-    } finally {
-      setListLoading(false);
-    }
-  };
+  // refresh when authed toggles true
+  useEffect(() => { if (authed) { refresh(); } }, [authed, refresh]);
 
-  useEffect(() => { if (authed) loadList(); }, [authed]);
-
-  const updatePreset = async (row: PresetRow, changes: Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null; removePublicIds?: string[]; orderPublicIds?: string[] }) => {
+  const updatePreset = useCallback(async (row: PresetRow, changes: Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null; removePublicIds?: string[]; orderPublicIds?: string[] }) => {
   const form = new FormData();
     if (changes.name !== undefined) form.set('name', changes.name);
     if (changes.description !== undefined) form.set('description', changes.description || '');
@@ -203,28 +184,25 @@ export default function AdminPage() {
       for (let i = 0; i < list.length; i++) form.append('images', list[i]);
     }
     // Optimistically update local list to reflect changes immediately
-    const prevList = list;
-    setList((lst) => lst.map((r) => r.id === row.id ? { ...r, ...(changes as Partial<PresetRow>) } : r));
+  // Optimistic local reflection (best-effort: mutate cached hook state)
+  // Direct mutation of hook cache not exposed; we can fallback to refresh after success
     const res = await fetch(`/api/presets/${row.id}`, { method: 'PATCH', body: form });
     const data = await res.json();
     if (!data?.ok) {
-      // revert
-      setList(prevList);
       throw new Error(data?.error || 'Update failed');
     }
-  };
+  // After successful update, background refresh (doesn't block UI)
+  refresh();
+  }, [refresh]);
 
-  const deletePreset = async (row: PresetRow) => {
-    // Optimistic removal
-    const prevList = list;
-    setList((lst) => lst.filter((r) => r.id !== row.id));
+  const deletePreset = useCallback(async (row: PresetRow) => {
     const res = await fetch(`/api/presets/${row.id}`, { method: 'DELETE' });
     const data = await res.json();
     if (!data?.ok) {
-      setList(prevList);
       throw new Error(data?.error || 'Delete failed');
     }
-  };
+    refresh();
+  }, [refresh]);
 
   if (authed === false) {
     return (
@@ -325,9 +303,23 @@ export default function AdminPage() {
             <div className="text-sm text-slate-300">Loading…</div>
           ) : (
             <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-              {list.map((row) => (
-                <AdminRow key={row.id} row={row} onUpdate={updatePreset} onDelete={async (r) => { await deletePreset(r); await loadList(); }} />
-              ))}
+              {list.map((item) => {
+                const adapted: PresetRow = {
+                  id: item.id,
+                  name: item.name ?? 'Untitled',
+                  description: item.description ?? '',
+                  prompt: item.prompt,
+                  tags: item.tags ?? [],
+                  images: item.images ?? [],
+                  dng: item.dng ?? null,
+                };
+                return <AdminRow key={adapted.id} row={adapted} onUpdate={updatePreset} onDelete={async () => { await deletePreset(adapted); }} />;
+              })}
+              {hasMore && (
+                <div className="pt-2">
+                  <button type="button" onClick={() => loadMore()} className="w-full text-center py-2 text-sm rounded bg-white/10 hover:bg-white/15">Load more…</button>
+                </div>
+              )}
               {!list.length && (
                 <div className="text-sm text-slate-400">No presets yet.</div>
               )}
@@ -339,7 +331,7 @@ export default function AdminPage() {
   );
 }
 
-function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row: PresetRow, changes: Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null; removePublicIds?: string[]; orderPublicIds?: string[] }) => Promise<void>; onDelete: (row: PresetRow) => Promise<void> }) {
+const AdminRow = memo(function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row: PresetRow, changes: Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null; removePublicIds?: string[]; orderPublicIds?: string[] }) => Promise<void>; onDelete: (row: PresetRow) => Promise<void> }) {
   const [name, setName] = useState(row.name);
   const [description, setDescription] = useState(row.description || '');
   const [tags, setTags] = useState((row.tags || []).join(', '));
@@ -356,12 +348,36 @@ function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row:
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [uploadItems, setUploadItems] = useState<Array<{ id: string; preview: string; file?: File; progress: number; status: 'idle'|'uploading'|'done'|'error'|'cancelled'; public_id?: string; url?: string; xhr?: XMLHttpRequest | null }>>([]);
+  // Close on escape when open
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
+
+  // Sync initial state only when row id changes (avoid overwriting unsaved edits)
+  const lastRowId = useRef(row.id);
+  useEffect(() => {
+    if (lastRowId.current !== row.id) {
+      lastRowId.current = row.id;
+      setName(row.name);
+      setDescription(row.description || '');
+      setTags((row.tags || []).join(', '));
+      setDngUrl((row.dng?.url) || '');
+      setImagesLocal(row.images || []);
+      setAddUrls('');
+      setAddFiles(null);
+      setSuccessMsg(null);
+    }
+  }, [row]);
+
+  // Abort outstanding uploads on unmount to prevent leaks
+  useEffect(() => {
+    return () => {
+      uploadItems.forEach(u => { if (u.xhr && u.status === 'uploading') { try { u.xhr.abort(); } catch {} } });
+    };
+  }, [uploadItems]);
 
   const submit = async () => {
     setBusy(true);
@@ -658,4 +674,6 @@ function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row:
       )}
     </div>
   );
-}
+});
+
+export { AdminRow };

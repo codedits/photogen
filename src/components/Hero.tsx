@@ -95,7 +95,10 @@ export default function Hero() {
         scanlineIntensity={0.05}
         speed={1.5}
         warpAmount={0.03}
-        resolutionScale={typeof window !== "undefined" ? Math.min(1, window.devicePixelRatio || 1) : 1}
+  // Use a reduced resolution scale so the veil renders at lower
+  // internal resolution (reduces GPU usage) but still fills the
+  // hero container via CSS sizing inside the component.
+  resolutionScale={0.3}
       />
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-full max-w-[420px] mx-auto px-4 text-center">

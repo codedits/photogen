@@ -99,7 +99,7 @@ export default function DarkVeil({
   speed = 0.5,
   scanlineFrequency = 0,
   warpAmount = 0,
-  resolutionScale = 1
+  resolutionScale = 0.6
 }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -109,8 +109,15 @@ export default function DarkVeil({
     const canvas = ref.current as HTMLCanvasElement;
     const parent = canvas.parentElement as HTMLElement;
 
+    // Compute a reduced device pixel ratio to lower GPU cost while
+    // keeping the canvas sized to the parent element (so it visually
+    // fills the hero). We clamp to a sensible minimum to avoid
+    // degenerate tiny buffers.
+    const cssW = parent.clientWidth, cssH = parent.clientHeight;
+    const effectiveDpr = Math.max(0.25, (window.devicePixelRatio || 1) * resolutionScale);
+
     const renderer = new Renderer({
-      dpr: Math.min(window.devicePixelRatio, 2),
+      dpr: effectiveDpr,
       canvas
     });
 
@@ -138,14 +145,18 @@ export default function DarkVeil({
     const resize = () => {
       const w = parent.clientWidth,
         h = parent.clientHeight;
-      // To emulate object-cover, we set the renderer size to match the
-      // parent element, but we also compute the drawing buffer resolution
-      // in device pixels so the shader can decide how to crop via the
-      // max(uResolution.x, uResolution.y) logic used above.
-      renderer.setSize(w * resolutionScale, h * resolutionScale);
+      // Keep the canvas styled to fill the parent (CSS width/height)
+      // while using a reduced drawing-buffer resolution via the
+      // renderer's DPR. This reduces GPU work while keeping the visual
+      // coverage identical to a full-resolution canvas.
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      renderer.setSize(w, h);
       const pixelW = gl.drawingBufferWidth;
       const pixelH = gl.drawingBufferHeight;
       program.uniforms.uResolution.value.set(pixelW, pixelH);
+      // Ensure GL viewport matches the drawing buffer
+      gl.viewport(0, 0, pixelW, pixelH);
     };
 
     window.addEventListener('resize', resize);

@@ -11,7 +11,17 @@ export default function StudioPage() {
   return (
     <div className="relative min-h-screen font-sans">
       <div className="absolute inset-0 -z-10">
-        <DarkVeil hueShift={10} noiseIntensity={0.01} scanlineIntensity={0.05} speed={1.8} warpAmount={0.03} resolutionScale={resolutionScale} />
+ <DarkVeil
+        hueShift={10}
+        noiseIntensity={0.01}
+        scanlineIntensity={0.05}
+        speed={1.5}
+        warpAmount={0.03}
+  // Use a reduced resolution scale so the veil renders at lower
+  // internal resolution (reduces GPU usage) but still fills the
+  // hero container via CSS sizing inside the component.
+  resolutionScale={0.3}
+      />
         <div className="absolute inset-0 bg-black/40" />
       </div>
 

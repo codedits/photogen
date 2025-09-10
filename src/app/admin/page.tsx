@@ -189,7 +189,7 @@ export default function AdminPage() {
 
   useEffect(() => { if (authed) loadList(); }, [authed]);
 
-  const updatePreset = async (row: PresetRow, changes: Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null; removePublicIds?: string[] }) => {
+  const updatePreset = async (row: PresetRow, changes: Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null; removePublicIds?: string[]; orderPublicIds?: string[] }) => {
   const form = new FormData();
     if (changes.name !== undefined) form.set('name', changes.name);
     if (changes.description !== undefined) form.set('description', changes.description || '');
@@ -197,6 +197,7 @@ export default function AdminPage() {
     if (changes.tags !== undefined) form.set('tags', (changes.tags || []).join(', '));
     (changes.removePublicIds || []).forEach((pid) => form.append('removePublicIds', pid));
     (changes.addUrls || []).slice(0,8).forEach((u) => form.append('imageUrls', u));
+  (changes.orderPublicIds || []).forEach((pid) => form.append('orderPublicIds', pid));
     if (changes.addFiles && changes.addFiles.length) {
       const list = Array.from(changes.addFiles).slice(0, 8);
       for (let i = 0; i < list.length; i++) form.append('images', list[i]);
@@ -338,7 +339,7 @@ export default function AdminPage() {
   );
 }
 
-function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row: PresetRow, changes: Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null; removePublicIds?: string[] }) => Promise<void>; onDelete: (row: PresetRow) => Promise<void> }) {
+function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row: PresetRow, changes: Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null; removePublicIds?: string[]; orderPublicIds?: string[] }) => Promise<void>; onDelete: (row: PresetRow) => Promise<void> }) {
   const [name, setName] = useState(row.name);
   const [description, setDescription] = useState(row.description || '');
   const [tags, setTags] = useState((row.tags || []).join(', '));
@@ -348,18 +349,19 @@ function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row:
   const [imagesLocal, setImagesLocal] = useState(row.images || [] as { url: string; public_id: string }[]);
   const [deleting, setDeleting] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const detailsRef = useRef<HTMLDetailsElement | null>(null);
+  const dragFrom = useRef<string | null>(null);
+  const dragOver = useRef<string | null>(null);
+  const touchFrom = useRef<string | null>(null);
+  const touchOver = useRef<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
-
+  const [uploadItems, setUploadItems] = useState<Array<{ id: string; preview: string; file?: File; progress: number; status: 'idle'|'uploading'|'done'|'error'|'cancelled'; public_id?: string; url?: string; xhr?: XMLHttpRequest | null }>>([]);
   useEffect(() => {
-    const el = detailsRef.current;
-    if (!el) return;
-    const onToggle = () => setOpen(!!el.open);
-    // initialize state
-    setOpen(!!el.open);
-    el.addEventListener('toggle', onToggle);
-    return () => el.removeEventListener('toggle', onToggle);
-  }, []);
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
 
   const submit = async () => {
     setBusy(true);
@@ -370,6 +372,7 @@ function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row:
         tags: tags.split(',').map(s => s.trim()).filter(Boolean),
         addUrls: addUrls.split(',').map(s => s.trim()).filter(Boolean).slice(0,8),
         addFiles,
+        orderPublicIds: imagesLocal.map(i => i.public_id).filter(Boolean),
         ...(dngUrl !== undefined ? { dngUrl: dngUrl.trim() } : {}),
       } as Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null };
 
@@ -407,9 +410,82 @@ function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row:
     }
   };
 
+  const handleCancel = () => {
+    // revert to initial row values
+    setName(row.name);
+    setDescription(row.description || '');
+    setTags((row.tags || []).join(', '));
+    setAddUrls('');
+    setAddFiles(null);
+    setDngUrl((row.dng?.url) || '');
+    setImagesLocal(row.images || [] as { url: string; public_id: string }[]);
+    setSuccessMsg(null);
+  };
+
+  const handleAddFiles = (files?: FileList | null) => {
+    if (!files || !files.length) return;
+    const list = Array.from(files).slice(0, 8);
+    const readers = list.map((f) => new Promise<{ preview: string; file: File }>((resolve) => {
+      const r = new FileReader();
+      r.onload = () => resolve({ preview: String(r.result), file: f });
+      r.readAsDataURL(f);
+    }));
+    Promise.all(readers).then((arr) => {
+      const items = arr.map((a, i) => ({ id: `${Date.now()}_${i}`, preview: a.preview, file: a.file, progress: 0, status: 'idle' as const, xhr: null }));
+      setUploadItems((prev) => [...prev, ...items]);
+      items.forEach((it, idx) => setTimeout(() => startUpload(it), idx * 120));
+    });
+  };
+
+  const startUpload = (item: { id: string; preview: string; file?: File }) => {
+    if (!item.file) return;
+    const form = new FormData();
+    form.append('image', item.file, item.file.name);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/upload-image');
+    xhr.upload.onprogress = (ev) => {
+      if (!ev.lengthComputable) return;
+      const pct = Math.round((ev.loaded / ev.total) * 100);
+      setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, progress: pct } : p));
+    };
+    xhr.onload = () => {
+      try {
+        const data = JSON.parse(xhr.responseText || '{}');
+        if (xhr.status >= 200 && xhr.status < 300 && data?.ok) {
+          setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'done', progress: 100, public_id: data.public_id, url: data.url, xhr: null } : p));
+          // add to imagesLocal so it appears with existing pictures
+          setImagesLocal((prev) => [{ url: data.url, public_id: data.public_id }, ...prev]);
+          // remove the upload item after a short delay so UI shows completion briefly
+          setTimeout(() => setUploadItems((prev) => prev.filter((p) => p.id !== item.id)), 500);
+        } else {
+          setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
+        }
+      } catch {
+        setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
+      }
+    };
+    xhr.onerror = () => {
+      setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
+    };
+    setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'uploading', xhr } : p));
+    xhr.send(form);
+  };
+
+  const cancelUpload = async (id: string) => {
+    const it = uploadItems.find((u) => u.id === id);
+    if (!it) return;
+    if (it.xhr) try { it.xhr.abort(); } catch {}
+    if (it.public_id) {
+      try {
+        await fetch('/api/upload-image', { method: 'DELETE', body: JSON.stringify({ public_id: it.public_id }), headers: { 'content-type': 'application/json' } });
+      } catch {}
+    }
+    setUploadItems((prev) => prev.filter((p) => p.id !== id));
+  };
+
   return (
-    <details ref={detailsRef} className="rounded-lg border border-white/10 overflow-hidden">
-      <summary className="cursor-pointer flex items-center justify-between p-3 bg-black/10">
+    <div className="rounded-lg border border-white/10 overflow-hidden">
+      <div className="cursor-pointer flex items-center justify-between p-3 bg-black/10" onClick={() => setOpen(true)}>
         <div className="flex items-center gap-3 min-w-0">
           <span className={`inline-flex items-center justify-center w-6 h-6 text-slate-300 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} aria-hidden>
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -432,66 +508,154 @@ function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row:
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button title="Edit" onClick={(e)=>{ e.preventDefault(); }} className="p-1 rounded hover:bg-white/5">
+          <button title="Edit" onClick={(e)=>{ e.stopPropagation(); setOpen(true); }} className="p-1 rounded hover:bg-white/5">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17h2m-1-1v1m5-11l2 2m-4-1l-1 1M4 20h4l10-10-4-4L4 16v4z"/></svg>
           </button>
-          <button title="Delete" onClick={(e)=>{ e.preventDefault(); if (confirm(`Delete preset "${row.name}"? This cannot be undone.`)) { onDelete(row).then(()=>{ alert('Successfully deleted'); }).catch(err=>{ alert(err?.message || 'Delete failed'); }); } }} className="p-1 rounded hover:bg-white/5 text-red-400">
+          <button title="Delete" onClick={(e)=>{ e.stopPropagation(); if (confirm(`Delete preset "${row.name}"? This cannot be undone.`)) { onDelete(row).then(()=>{ alert('Successfully deleted'); }).catch(err=>{ alert(err?.message || 'Delete failed'); }); } }} className="p-1 rounded hover:bg-white/5 text-red-400">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
         </div>
-      </summary>
+      </div>
 
-      <div className="p-4 bg-black/5">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <label className="block text-sm">Name</label>
-            <input className="w-full p-2 rounded bg-white/5" value={name} onChange={(e)=>setName(e.target.value)} />
-            <label className="block text-sm mt-3">Description</label>
-            <input className="w-full p-2 rounded bg-white/5" value={description} onChange={(e)=>setDescription(e.target.value)} />
-            <label className="block text-sm mt-3">Tags</label>
-            <input className="w-full p-2 rounded bg-white/5" value={tags} onChange={(e)=>setTags(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <label className="block text-sm">Add Image URLs (comma separated)</label>
-            <input className="w-full p-2 rounded bg-white/5" value={addUrls} onChange={(e)=>setAddUrls(e.target.value)} />
-            <label className="block text-sm mt-3">Add Image Files (max 8)</label>
-            <input type="file" multiple accept="image/*" onChange={(e)=>setAddFiles(e.target.files)} className="w-full p-2 rounded bg-white/5" />
-            <div className="text-xs text-slate-400">Click the red X on an image to delete it immediately.</div>
-            <label className="block text-sm mt-3">DNG download URL</label>
-            <input type="url" className="w-full p-2 rounded bg-white/5" value={dngUrl} onChange={(e)=>setDngUrl(e.target.value)} placeholder="https://.../preset.dng" />
-          </div>
-          <div>
-            <div className="grid grid-cols-3 gap-2">
-              {imagesLocal.map((img) => {
-                const isDeleting = deleting.includes(img.public_id);
-                return (
-                  <div key={img.public_id} className="relative h-20 rounded overflow-hidden border border-white/10">
-                    <ImageWithLqip src={img.url} alt="img" fill className="object-cover" transformOpts={{ w: 320, h: 240, fit: 'cover' }} />
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(img.public_id)}
-                      disabled={isDeleting}
-                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow"
-                      aria-label={isDeleting ? 'Deleting' : 'Delete image'}
-                    >
-                      {isDeleting ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4" /></svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                    </button>
+      {/* Modal dialog */}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
+          <div className="relative z-10 w-full h-full sm:h-auto max-w-4xl bg-neutral-900 border border-white/10 p-4 sm:p-6 rounded-none sm:rounded-lg overflow-auto max-h-[92vh]">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Edit preset — {row.name}</h3>
+              <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-white/5">Close</button>
+            </div>
+            <div className="p-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm">Name</label>
+                  <input className="w-full p-2 rounded bg-white/5" value={name} onChange={(e)=>setName(e.target.value)} />
+                  <label className="block text-sm mt-3">Description</label>
+                  <input className="w-full p-2 rounded bg-white/5" value={description} onChange={(e)=>setDescription(e.target.value)} />
+                  <label className="block text-sm mt-3">Tags</label>
+                  <input className="w-full p-2 rounded bg-white/5" value={tags} onChange={(e)=>setTags(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm">Add Image URLs (comma separated)</label>
+                  <input className="w-full p-2 rounded bg-white/5" value={addUrls} onChange={(e)=>setAddUrls(e.target.value)} />
+                  <label className="block text-sm mt-3">Add Image Files (max 8)</label>
+                  <input type="file" multiple accept="image/*" onChange={(e)=>{ setAddFiles(e.target.files); handleAddFiles(e.target.files); }} className="w-full p-2 rounded bg-white/5" />
+                  <div className="text-xs text-slate-400">Click the red X on an image to delete it immediately.</div>
+                  <label className="block text-sm mt-3">DNG download URL</label>
+                  <input type="url" className="w-full p-2 rounded bg-white/5" value={dngUrl} onChange={(e)=>setDngUrl(e.target.value)} placeholder="https://.../preset.dng" />
+                </div>
+                <div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {uploadItems.map((it) => (
+                      <div key={it.id} className="relative h-24 rounded overflow-hidden border border-white/10 bg-slate-800">
+                        <img src={it.preview} alt="upload-preview" className="object-cover w-full h-full" />
+                        <div className="absolute left-1 right-1 bottom-1">
+                          <div className="w-full bg-white/5 rounded h-2 overflow-hidden">
+                            <div className="bg-indigo-600 h-2" style={{ width: `${it.progress}%` }} />
+                          </div>
+                          <div className="flex justify-between text-xs text-slate-300 mt-1">
+                            <div>{it.status}</div>
+                            <div>
+                              {it.status !== 'done' && (
+                                <button type="button" onClick={() => cancelUpload(it.id)} className="text-xs text-red-400">Cancel</button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {imagesLocal.map((img) => {
+                      const isDeleting = deleting.includes(img.public_id);
+                      return (
+                        <div
+                          key={img.public_id}
+                          data-public-id={img.public_id}
+                          draggable
+                          onDragStart={() => { dragFrom.current = img.public_id; }}
+                          onDragEnter={(e) => { e.preventDefault(); dragOver.current = img.public_id; }}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDragEnd={() => {
+                            const from = dragFrom.current; const to = dragOver.current;
+                            if (from && to && from !== to) {
+                              setImagesLocal(prev => {
+                                const arr = [...prev];
+                                const fromIdx = arr.findIndex(i => i.public_id === from);
+                                const toIdx = arr.findIndex(i => i.public_id === to);
+                                if (fromIdx >= 0 && toIdx >= 0) {
+                                  const [moved] = arr.splice(fromIdx, 1);
+                                  arr.splice(toIdx, 0, moved);
+                                }
+                                return arr;
+                              });
+                            }
+                            dragFrom.current = dragOver.current = null;
+                          }}
+                          onTouchStart={(e) => { touchFrom.current = img.public_id; touchOver.current = img.public_id; }}
+                          onTouchMove={(e) => {
+                            const t = e.touches && e.touches[0];
+                            if (!t) return;
+                            const el = document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null;
+                            if (!el) return;
+                            const tile = el.closest('[data-public-id]') as HTMLElement | null;
+                            if (tile) {
+                              const id = tile.getAttribute('data-public-id');
+                              if (id) touchOver.current = id;
+                            }
+                            // prevent scrolling while dragging
+                            e.preventDefault();
+                          }}
+                          onTouchEnd={() => {
+                            const from = touchFrom.current; const to = touchOver.current;
+                            if (from && to && from !== to) {
+                              setImagesLocal(prev => {
+                                const arr = [...prev];
+                                const fromIdx = arr.findIndex(i => i.public_id === from);
+                                const toIdx = arr.findIndex(i => i.public_id === to);
+                                if (fromIdx >= 0 && toIdx >= 0) {
+                                  const [moved] = arr.splice(fromIdx, 1);
+                                  arr.splice(toIdx, 0, moved);
+                                }
+                                return arr;
+                              });
+                            }
+                            touchFrom.current = touchOver.current = null;
+                          }}
+                          className="relative h-24 rounded overflow-hidden border border-white/10 cursor-move"
+                          title="Drag to reorder"
+                        >
+                          <ImageWithLqip src={img.url} alt="img" fill className="object-cover" transformOpts={{ w: 320, h: 240, fit: 'cover' }} />
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(img.public_id)}
+                            disabled={isDeleting}
+                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow"
+                            aria-label={isDeleting ? 'Deleting' : 'Delete image'}
+                          >
+                            {isDeleting ? (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4" /></svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 mt-4">
+                <button disabled={busy} onClick={async () => { await submit(); setOpen(false); }} className="px-3 py-2 rounded bg-indigo-600 text-white">{busy ? 'Saving…' : 'Save'}</button>
+                <button disabled={busy} onClick={() => { handleCancel(); setOpen(false); }} className="px-3 py-2 rounded bg-white/6 text-sm">Cancel</button>
+                {successMsg && <div className="text-sm text-emerald-400 ml-2">{successMsg}</div>}
+              </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3 mt-4">
-          <button disabled={busy} onClick={submit} className="px-3 py-2 rounded bg-indigo-600 text-white">{busy ? 'Saving…' : 'Save'}</button>
-        </div>
-      </div>
-    </details>
+      )}
+    </div>
   );
 }

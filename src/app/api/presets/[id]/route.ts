@@ -42,6 +42,8 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
   let removePublicIds: string[] = [];
   let newDngUrl: string | null = null;
     let toUpload: string[] = [];
+  // Capture orderPublicIds for multipart so we can apply after potential removals/uploads
+  let orderPublicIdsMultipart: string[] = [];
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData();
@@ -53,6 +55,8 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
         if (typeof raw === 'string') tags = raw.split(',').map(s=>s.trim()).filter(Boolean);
       }
       removePublicIds = (form.getAll('removePublicIds').filter(v=>typeof v==='string') as string[]);
+  const orderPublicIds = (form.getAll('orderPublicIds').filter(v=>typeof v==='string') as string[]);
+      if (orderPublicIds.length) orderPublicIdsMultipart = orderPublicIds;
       const urlList = form.getAll('imageUrls').filter((v) => typeof v === 'string') as string[];
       toUpload.push(...urlList);
   // Optional: allow replacing DNG via provided dngUrl field
@@ -73,6 +77,18 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
       if (Array.isArray(body.removePublicIds)) removePublicIds = body.removePublicIds;
       if (Array.isArray(body.images)) toUpload = body.images;
     if (typeof body.dngUrl === 'string') newDngUrl = body.dngUrl.trim();
+    const orderPublicIds = Array.isArray(body.orderPublicIds) ? body.orderPublicIds.filter((x:string)=>typeof x==='string') : [];
+      // Re-order existing images if orderPublicIds provided (non-destructive)
+      if (orderPublicIds.length && images.length) {
+        const map = new Map(images.map(img => [img.public_id, img] as const));
+        const picked: { url: string; public_id: string }[] = [];
+        for (const pid of orderPublicIds) {
+          if (map.has(pid)) { picked.push(map.get(pid)!); map.delete(pid); }
+        }
+        // append any remaining in prior order
+        const remaining = images.filter(img => map.has(img.public_id));
+        images = [...picked, ...remaining];
+      }
     }
 
   // Remove requested images both from Cloudinary and local array
@@ -82,6 +98,17 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
       }
       images = images.filter(img => !removePublicIds.includes(img.public_id));
     }
+
+  // Reapply ordering if orderPublicIds came from multipart path (handled earlier for JSON)
+  if (orderPublicIdsMultipart.length && images.length) {
+    const map = new Map(images.map(img => [img.public_id, img] as const));
+    const picked: { url: string; public_id: string }[] = [];
+    for (const pid of orderPublicIdsMultipart) {
+      if (map.has(pid)) { picked.push(map.get(pid)!); map.delete(pid); }
+    }
+    const remaining = images.filter(img => map.has(img.public_id));
+    images = [...picked, ...remaining];
+  }
 
   // Upload any new images
     if (toUpload.length) {

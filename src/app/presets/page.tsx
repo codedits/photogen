@@ -29,9 +29,10 @@ async function getPresetsFiltered(q: string): Promise<PresetShape[]> {
     images?: { url: string; public_id: string }[];
   };
 
-  // Ensure text index exists before attempting $text queries
-  const clientDb = await getDatabase();
-  await ensurePresetIndexes(clientDb.databaseName);
+  // Kick off index creation if needed but don't await here to avoid blocking SSR.
+  // The root layout already starts index creation in the background; this is a soft
+  // guard to start it if not already running.
+  ensurePresetIndexes(db.databaseName).catch(() => {});
 
   let docs: RawDoc[];
   const cacheKey = `ssr:presets:q=${q}`;
@@ -40,11 +41,12 @@ async function getPresetsFiltered(q: string): Promise<PresetShape[]> {
     docs = cached;
   } else {
     if (!q) {
-      docs = await coll.find({}, { projection: { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1 } }).sort({ createdAt: -1 }).limit(100).toArray() as RawDoc[];
+      // Limit SSR payload to a reasonable page size to reduce latency and match client defaults.
+      docs = await coll.find({}, { projection: { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1 } }).sort({ createdAt: -1 }).limit(20).toArray() as RawDoc[];
     } else {
       // Try a text search first; if text index isn't suitable, fall back to regex OR queries.
       try {
-        docs = await coll.find({ $text: { $search: q } }, { projection: { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1, score: { $meta: 'textScore' } } }).sort({ score: { $meta: 'textScore' } as unknown as 1 }).limit(100).toArray() as RawDoc[];
+  docs = await coll.find({ $text: { $search: q } }, { projection: { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1, score: { $meta: 'textScore' } } }).sort({ score: { $meta: 'textScore' } as unknown as 1 }).limit(20).toArray() as RawDoc[];
   } catch {
         // Fallback to regex search across fields
         const filter: Record<string, unknown> = {
@@ -57,7 +59,8 @@ async function getPresetsFiltered(q: string): Promise<PresetShape[]> {
         docs = await coll.find(filter, { projection: { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1 } }).sort({ createdAt: -1 }).limit(100).toArray() as RawDoc[];
       }
     }
-    setCache(cacheKey, docs, 10);
+  // Cache SSR results for a short period to speed repeated visits.
+  setCache(cacheKey, docs, 60);
   }
   return docs.map((doc) => ({
     id: typeof doc._id === 'string' ? doc._id : String((doc._id as { toString(): string }).toString()),

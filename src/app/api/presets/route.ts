@@ -115,7 +115,8 @@ export async function GET(req: Request) {
     const resp = { ok: true, presets: sliced, hasMore, page, limit };
     if (cachingEligible) {
       // cache short-lived to improve repeated load latency
-      setCache(cacheKey, resp, 10);
+      // increased to 60s to reduce load during rapid navigation/testing.
+      setCache(cacheKey, resp, 60);
       return NextResponse.json(resp, { headers: { 'cache-control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=120' } });
     }
     return NextResponse.json(resp, { headers: { 'cache-control': q ? 'no-store' : 'no-store' } });

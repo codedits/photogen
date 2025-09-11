@@ -26,7 +26,7 @@ export interface UsePresetsOptions {
 }
 
 export function usePresets(opts: UsePresetsOptions = {}) {
-  const { q = '', limit = 20, initialPage = 1, staleMs = 15_000, enabled = true } = opts;
+  const { q = '', limit = 20, initialPage = 1, staleMs = 60_000, enabled = true } = opts;
   const [page, setPage] = useState(initialPage);
   const [items, setItems] = useState<Preset[]>([]);
   const [loading, setLoading] = useState(false);

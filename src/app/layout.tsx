@@ -4,7 +4,9 @@ import "./globals.css";
 import Nav from "../components/Nav";
 import LazyChatWidget from "../components/LazyChatWidget";
 import Footer from "../components/Footer";
+import VercelAnalytics from "../components/VercelAnalytics";
 import { ensurePresetIndexes } from "../lib/mongodb";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +48,7 @@ export default async function RootLayout({
   {children}
   <LazyChatWidget />
   <Footer />
+  <VercelAnalytics />
       </body>
     </html>
   );

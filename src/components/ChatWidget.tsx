@@ -5,8 +5,6 @@ import { MessageSquare, X } from "lucide-react";
 
 type Msg = { id: string; role: "user" | "assistant"; text: string };
 
-const API_BASE = "https://api.paxsenix.biz.id/v1/gpt-4o/chat";
-
 function uid() {
   return Math.random().toString(36).slice(2, 9);
 }
@@ -121,47 +119,30 @@ export default function ChatWidget() {
       const composed = buildComposed([...initialParts]);
 
       // Use the composed string (guaranteed <= MAX_API_CHARS by buildComposed)
-      const url = `${API_BASE}?text=${encodeURIComponent(composed)}`;
-      const res = await fetch(url, { method: "GET" });
-
-      let botText = "";
-
-      if (!res.ok) {
-        const respText = await res.text().catch(() => "");
-        console.warn("Chat API GET returned non-OK:", res.status, respText);
-
-        // POST fallback (still send the composed, trimmed payload)
-        try {
-          const postRes = await fetch(API_BASE, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          // POST to our server-side proxy to avoid CORS and keep client simple
+          const proxyRes = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: composed }),
           });
 
-          if (!postRes.ok) {
-            const postBody = await postRes.text().catch(() => "");
-            throw new Error(`GET ${res.status}: ${respText || res.statusText}; POST ${postRes.status}: ${postBody || postRes.statusText}`);
+          let botText = '';
+          if (!proxyRes.ok) {
+            const bodyText = await proxyRes.text().catch(() => '');
+            throw new Error(`Proxy error ${proxyRes.status}: ${bodyText || proxyRes.statusText}`);
           }
 
-          const pCt = postRes.headers.get("content-type") || "";
-          if (pCt.includes("application/json")) {
-            const json = await postRes.json();
-            botText = json?.reply || json?.response || json?.message || JSON.stringify(json);
+          const pCt = proxyRes.headers.get('content-type') || '';
+          if (pCt.includes('application/json')) {
+            const json = (await proxyRes.json().catch(() => null)) as Record<string, unknown> | null;
+            if (json) {
+              botText = typeof json['reply'] === 'string' ? json['reply'] : typeof json['response'] === 'string' ? json['response'] : typeof json['message'] === 'string' ? json['message'] : JSON.stringify(json);
+            } else {
+              botText = '';
+            }
           } else {
-            botText = await postRes.text();
+            botText = await proxyRes.text().catch(() => '');
           }
-        } catch (postErr) {
-          throw new Error(`GET ${res.status}: ${respText || res.statusText}; POST fallback error: ${String(postErr)}`);
-        }
-      } else {
-        const ct = res.headers.get("content-type") || "";
-        if (ct.includes("application/json")) {
-          const json = await res.json();
-          botText = json?.reply || json?.response || json?.message || JSON.stringify(json);
-        } else {
-          botText = await res.text();
-        }
-      }
 
       const bot: Msg = { id: uid(), role: "assistant", text: String(botText) };
       setMessages((s) => [...s, bot]);

@@ -107,8 +107,8 @@ export default function Carousel({
             alt={current.alt || `Slide ${index + 1}`}
             fill
             className="object-contain bg-transparent"
-            transformOpts={{ w: 1280, h: 720, fit: 'contain', q: 'auto:good', dpr: 'auto' }}
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 960px"
+            transformOpts={{ w: 1920, h: 1080, fit: 'contain', q: 'auto:best', dpr: 'auto' }}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 1920px"
             priority={index === 0}
             loading={index === 0 ? 'eager' : 'lazy'}
           />
@@ -153,7 +153,7 @@ export default function Carousel({
               aria-label={`Slide ${i + 1}`}
               aria-current={i === index}
             >
-              <ImageWithLqip src={item.url} alt={`thumb-${i + 1}`} fill className="object-cover" transformOpts={{ w: 220, h: 150, fit: 'cover', q: 'auto:eco', dpr: 1 }} sizes="100px" loading="lazy" />
+              <ImageWithLqip src={item.url} alt={`thumb-${i + 1}`} fill className="object-cover" transformOpts={{ w: 440, h: 300, fit: 'cover', q: 'auto:good', dpr: 1 }} sizes="100px" loading="lazy" />
             </button>
           ))}
         </div>

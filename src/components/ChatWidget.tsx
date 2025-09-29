@@ -120,10 +120,11 @@ export default function ChatWidget() {
 
       // Use the composed string (guaranteed <= MAX_API_CHARS by buildComposed)
           // POST to our server-side proxy to avoid CORS and keep client simple
+          const rolePrompt = 'You are PhotoGen, an AI assistant for photographers. Answer concisely.';
           const proxyRes = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: composed }),
+            body: JSON.stringify({ text: composed, role: rolePrompt }),
           });
 
           let botText = '';
@@ -134,12 +135,44 @@ export default function ChatWidget() {
 
           const pCt = proxyRes.headers.get('content-type') || '';
           if (pCt.includes('application/json')) {
-            const json = (await proxyRes.json().catch(() => null)) as Record<string, unknown> | null;
-            if (json) {
-              botText = typeof json['reply'] === 'string' ? json['reply'] : typeof json['response'] === 'string' ? json['response'] : typeof json['message'] === 'string' ? json['message'] : JSON.stringify(json);
-            } else {
-              botText = '';
-            }
+                const json = (await proxyRes.json().catch(() => null)) as Record<string, unknown> | null;
+                if (json) {
+                  // Prefer BK9 field (bk9) used by the BK9 API, then common reply fields.
+                  const candidates = [
+                    'BK9',
+                    'bk9',
+                    'reply',
+                    'response',
+                    'message',
+                    'result',
+                    'text',
+                  ];
+                  let found: string | undefined;
+                  for (const k of candidates) {
+                    const v = json[k];
+                    if (typeof v === 'string' && v.trim()) {
+                      found = v;
+                      break;
+                    }
+                    // sometimes the reply could be nested like { data: { reply: '...' } }
+                    if (typeof v === 'object' && v !== null) {
+                      try {
+                        const nested = v as Record<string, unknown>;
+                        for (const nk of ['reply', 'message', 'text', 'result']) {
+                          if (typeof nested[nk] === 'string' && nested[nk].trim()) {
+                            found = nested[nk] as string;
+                            break;
+                          }
+                        }
+                        if (found) break;
+                      } catch {}
+                    }
+                  }
+
+                  botText = found ?? JSON.stringify(json);
+                } else {
+                  botText = '';
+                }
           } else {
             botText = await proxyRes.text().catch(() => '');
           }

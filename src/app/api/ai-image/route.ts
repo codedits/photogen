@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const upstream = `https://api.paxsenix.dpdns.org/ai-image/midjourney?text=${encodeURIComponent(
+  const upstream = `https://api.paxsenix.org/ai-image/midjourney?text=${encodeURIComponent(
     text
   )}&style=${encodeURIComponent(style)}`;
 

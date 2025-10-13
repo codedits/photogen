@@ -4,7 +4,6 @@ import { NextRequest } from "next/server";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const text = searchParams.get("text") || "";
-  const style = searchParams.get("style") || "cinematic";
   const taskUrlParam = searchParams.get("task_url") || searchParams.get("taskUrl") || "";
 
   if (!text.trim()) {
@@ -14,9 +13,8 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const upstream = `https://api.paxsenix.org/ai-image/midjourney?text=${encodeURIComponent(
-    text
-  )}&style=${encodeURIComponent(style)}`;
+  // Upstream no longer requires `style` in the query; just forward the `text` prompt.
+  const upstream = `https://api.paxsenix.org/ai-image/midjourney?text=${encodeURIComponent(text)}`;
 
   try {
     // If caller passed a task_url, fetch it directly (useful for status polling or collect)
@@ -58,26 +56,33 @@ export async function GET(req: NextRequest) {
         });
       }
 
-    // Handle possible JSON success payloads (URL or base64), otherwise pass binary through
+    // Handle possible JSON success payloads (single url, multiple urls, base64, or job/task reference)
     if (contentType.includes("application/json")) {
-       const data = await res.json().catch(() => null) as unknown;
+      const data = await res.json().catch(() => null) as unknown;
 
-      // If upstream returned a job/task reference, attempt to poll the task until completion (short timeout)
-        // Normalize parsed JSON before property access
-        let taskUrl: string | undefined;
-        let jobId: unknown;
-        let hasUrl = false;
-        if (typeof data === "object" && data !== null) {
-          const d = data as Record<string, unknown>;
-          if (typeof d["task_url"] === "string") taskUrl = d["task_url"] as string;
-          else if (typeof d["taskUrl"] === "string") taskUrl = d["taskUrl"] as string;
-          else if (typeof d["task"] === "string") taskUrl = d["task"] as string;
-          else if (typeof d["url"] === "string" && (d["url"] as string).startsWith("https://api.paxsenix.dpdns.org/task/")) taskUrl = d["url"] as string;
-          jobId = d["jobId"];
-          hasUrl = typeof d["url"] === "string";
+      // Normalize parsed JSON before property access
+      if (typeof data === "object" && data !== null) {
+        const d = data as Record<string, unknown>;
+
+        // If upstream already returned an array of urls, forward them as JSON to the client
+        if (Array.isArray(d["urls"]) && (d["urls"] as unknown[]).every((v) => typeof v === "string")) {
+          return new Response(JSON.stringify({ ok: true, urls: d["urls"] }), { status: 200, headers: { "content-type": "application/json" } });
         }
 
-        if (taskUrl && !hasUrl) {
+        // If upstream returned 'images' or similar arrays, try common alternatives
+        if (Array.isArray(d["images"]) && (d["images"] as unknown[]).every((v) => typeof v === "string")) {
+          return new Response(JSON.stringify({ ok: true, urls: d["images"] }), { status: 200, headers: { "content-type": "application/json" } });
+        }
+
+  // If upstream returned a task/job reference, attempt to poll the task until completion (short timeout)
+  let taskUrl: string | undefined;
+  const jobId = d["jobId"];
+        if (typeof d["task_url"] === "string") taskUrl = d["task_url"] as string;
+        else if (typeof d["taskUrl"] === "string") taskUrl = d["taskUrl"] as string;
+        else if (typeof d["task"] === "string") taskUrl = d["task"] as string;
+        else if (typeof d["url"] === "string" && (d["url"] as string).startsWith("https://api.paxsenix.dpdns.org/task/")) taskUrl = d["url"] as string;
+
+        if (taskUrl) {
           // Poll task endpoint (server-side) for up to ~25 seconds
           const maxAttempts = 25;
           const intervalMs = 1000;
@@ -87,28 +92,24 @@ export async function GET(req: NextRequest) {
             const tRes = await fetch(taskUrl, { cache: "no-store" });
             const tct = tRes.headers.get("content-type") || "";
             if (tct.includes("application/json")) {
-             const tdata = await tRes.json().catch(() => null) as unknown;
-             if (typeof tdata === "object" && tdata !== null) {
-               const td = tdata as Record<string, unknown>;
-               if (typeof td["status"] === "string" && td["status"] === "done" && typeof td["url"] === "string") {
-                 const imgUrl = td["url"] as string;
-                 const imgRes = await fetch(imgUrl, { cache: "no-store" });
-                 if (!imgRes.ok) {
-                   return new Response(JSON.stringify({ error: `Failed to fetch image URL (${imgRes.status})` }), {
-                     status: 502,
-                     headers: { "content-type": "application/json" },
-                   });
-                 }
-                 const imgCT = imgRes.headers.get("content-type") || "image/png";
-                 const buf = await imgRes.arrayBuffer();
-                 return new Response(buf, { status: 200, headers: { "content-type": imgCT, "cache-control": "no-store" } });
-               }
-               if (typeof td["status"] === "string" && td["status"] === "failed") {
-                 return new Response(JSON.stringify({ error: "Upstream task failed" }), { status: 502, headers: { "content-type": "application/json" } });
-               }
-             }
+              const tdata = await tRes.json().catch(() => null) as unknown;
+              if (typeof tdata === "object" && tdata !== null) {
+                const td = tdata as Record<string, unknown>;
+                // If task result contains multiple urls, return them
+                if (Array.isArray(td["urls"]) && (td["urls"] as unknown[]).every((v) => typeof v === "string")) {
+                  return new Response(JSON.stringify({ ok: true, urls: td["urls"] }), { status: 200, headers: { "content-type": "application/json" } });
+                }
+                // If task result contains a single url, normalize into urls array
+                if (typeof td["url"] === "string") {
+                  return new Response(JSON.stringify({ ok: true, urls: [td["url"]] }), { status: 200, headers: { "content-type": "application/json" } });
+                }
+                if (typeof td["status"] === "string" && td["status"] === "failed") {
+                  return new Response(JSON.stringify({ error: "Upstream task failed" }), { status: 502, headers: { "content-type": "application/json" } });
+                }
+              }
             }
             // wait before next attempt
+            // eslint-disable-next-line no-await-in-loop
             await new Promise((r) => setTimeout(r, intervalMs));
           }
 
@@ -116,51 +117,30 @@ export async function GET(req: NextRequest) {
           return new Response(JSON.stringify({ ok: false, message: "Task queued", jobId, task_url: taskUrl }), { status: 202, headers: { "content-type": "application/json" } });
         }
 
-        // Try common shapes for immediate image URL/base64
-        let url: string | undefined;
-        let b64: string | undefined;
-        if (typeof data === "object" && data !== null) {
-          const d = data as Record<string, unknown>;
-          if (typeof d["url"] === "string") url = d["url"] as string;
-          else if (typeof d["image_url"] === "string") url = d["image_url"] as string;
-          else if (typeof d["image"] === "string") url = d["image"] as string;
-          else if (typeof d["result"] === "string") url = d["result"] as string;
-
-          if (typeof d["image_base64"] === "string") b64 = d["image_base64"] as string;
-          else if (typeof d["base64"] === "string") b64 = d["base64"] as string;
-          else if (typeof d["data"] === "string") b64 = d["data"] as string;
+        // Try common shapes for immediate image URL/base64 and normalize into JSON
+        // Prefer returning JSON with urls array so frontend can handle multiple images uniformly
+        if (typeof d["url"] === "string") {
+          return new Response(JSON.stringify({ ok: true, urls: [d["url"]] }), { status: 200, headers: { "content-type": "application/json" } });
+        }
+        if (typeof d["image_url"] === "string") {
+          return new Response(JSON.stringify({ ok: true, urls: [d["image_url"]] }), { status: 200, headers: { "content-type": "application/json" } });
+        }
+        if (typeof d["image"] === "string") {
+          return new Response(JSON.stringify({ ok: true, urls: [d["image"]] }), { status: 200, headers: { "content-type": "application/json" } });
+        }
+        if (typeof d["result"] === "string") {
+          return new Response(JSON.stringify({ ok: true, urls: [d["result"]] }), { status: 200, headers: { "content-type": "application/json" } });
         }
 
-        if (typeof url === "string" && /^https?:\/\//i.test(url)) {
-        const imgRes = await fetch(url, { cache: "no-store" });
-        if (!imgRes.ok) {
-          return new Response(JSON.stringify({ error: `Failed to fetch image URL (${imgRes.status})` }), {
-            status: 502,
-            headers: { "content-type": "application/json" },
-          });
+        // If base64 image payload is present, return it in JSON so frontend can construct a data URL
+        if (typeof d["image_base64"] === "string") {
+          return new Response(JSON.stringify({ ok: true, b64: d["image_base64"] }), { status: 200, headers: { "content-type": "application/json" } });
         }
-        const imgCT = imgRes.headers.get("content-type") || "image/png";
-        const buf = await imgRes.arrayBuffer();
-        return new Response(buf, {
-          status: 200,
-          headers: { "content-type": imgCT, "cache-control": "no-store" },
-        });
-      }
-
-      if (typeof b64 === "string") {
-        // Strip data URL prefix if present
-        const cleaned = b64.replace(/^data:[^;]+;base64,/, "");
-        try {
-          const bytes = Buffer.from(cleaned, "base64");
-          return new Response(bytes, {
-            status: 200,
-            headers: { "content-type": "image/png", "cache-control": "no-store" },
-          });
-        } catch {
-          return new Response(JSON.stringify({ error: "Invalid base64 image data" }), {
-            status: 502,
-            headers: { "content-type": "application/json" },
-          });
+        if (typeof d["base64"] === "string") {
+          return new Response(JSON.stringify({ ok: true, b64: d["base64"] }), { status: 200, headers: { "content-type": "application/json" } });
+        }
+        if (typeof d["data"] === "string") {
+          return new Response(JSON.stringify({ ok: true, b64: d["data"] }), { status: 200, headers: { "content-type": "application/json" } });
         }
       }
 

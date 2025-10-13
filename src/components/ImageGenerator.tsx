@@ -3,28 +3,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type StyleOption = {
-  label: string;
-  value: string;
-};
-
-const STYLE_OPTIONS: StyleOption[] = [
-  { label: "Single Portrait", value: "single-portrait" },
-  { label: "Anime", value: "anime" },
-  { label: "Watercolor", value: "watercolor" },
-  { label: "Photo-Realistic", value: "photo-realistic" },
-  { label: "Logo", value: "logo" },
-  { label: "Fantasy", value: "fantasy" },
-  { label: "Minimalist", value: "minimalist" },
-  { label: "Cinematic", value: "cinematic" },
-  { label: "Isometric", value: "isometric" },
-  { label: "Group Portrait", value: "group-portrait" },
-];
+// Style selection removed — backend accepts text-only prompts and returns multiple images
 
 export default function ImageGenerator() {
   const [prompt, setPrompt] = useState("");
-  const [style, setStyle] = useState<string>(STYLE_OPTIONS[0].value);
+  // style state removed
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [urls, setUrls] = useState<string[] | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastObjectUrlRef = useRef<string | null>(null);
@@ -81,10 +67,10 @@ export default function ImageGenerator() {
     }, 700);
 
     try {
-      const res = await fetch(`/api/ai-image?text=${encodeURIComponent(prompt)}&style=${encodeURIComponent(style)}`);
+      const res = await fetch(`/api/ai-image?text=${encodeURIComponent(prompt)}`);
       const contentType = res.headers.get("content-type") || "";
 
-      if (res.status === 202) {
+  if (res.status === 202) {
         // queued: backend returns job/task info
         const data = await res.json().catch(() => null);
         const taskUrl = data?.task_url || data?.taskUrl || data?.task;
@@ -160,15 +146,36 @@ export default function ImageGenerator() {
         throw new Error(message);
       }
 
-  const blob = await res.blob();
-  const objUrl = URL.createObjectURL(blob);
-  if (lastObjectUrlRef.current) URL.revokeObjectURL(lastObjectUrlRef.current);
-  lastObjectUrlRef.current = objUrl;
-  setProgress(100);
-  if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
-  if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
-  await new Promise((r) => setTimeout(r, 200));
-  setImageUrl(objUrl);
+      if (contentType.includes("application/json")) {
+        const data = await res.json().catch(() => null) as any;
+        // API now returns { ok: true, url, urls: [...] }
+        const urls: string[] = Array.isArray(data?.urls) ? data.urls : (typeof data?.url === 'string' ? [data.url] : []);
+        if (urls.length === 0) throw new Error('No image URLs returned from API');
+
+        // Clear timers
+        if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
+        if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
+        setProgress(100);
+        await new Promise((r) => setTimeout(r, 200));
+        // Show the first image as main; store the array in state via imageUrl (reuse as first) and a new urls state
+        if (lastObjectUrlRef.current) URL.revokeObjectURL(lastObjectUrlRef.current);
+        setImageUrl(urls[0]);
+        // Save extra URLs into a new local state via setUrls
+        setUrls(urls);
+        setLoading(false);
+        return;
+      }
+
+      // Fallback: treat body as image bytes
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      if (lastObjectUrlRef.current) URL.revokeObjectURL(lastObjectUrlRef.current);
+      lastObjectUrlRef.current = objUrl;
+      setProgress(100);
+      if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
+      await new Promise((r) => setTimeout(r, 200));
+      setImageUrl(objUrl);
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
       setImageUrl(null);
@@ -195,7 +202,7 @@ export default function ImageGenerator() {
             PhotoGen Ai Studio
           </h1>
           <p className="mt-2 text-zinc-300" style={{ fontSize: "clamp(0.95rem, 2vw, 1.05rem)" }}>
-            Generate images from text prompts. Pick a style, create, and download.
+            Generate images from text prompts. Create multiple variations and download.
           </p>
         </div>
 
@@ -207,18 +214,14 @@ export default function ImageGenerator() {
               <div className="flex flex-col sm:flex-row gap-3 items-stretch">
                 <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe your image (e.g., a vintage car parked under neon lights)" className="w-full sm:flex-1 rounded-xl px-3 py-2 sm:px-4 sm:py-3 bg-black/30 border border-white/10 text-white placeholder:text-zinc-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400" />
 
-                <select value={style} onChange={(e) => setStyle(e.target.value)} className="w-full sm:w-auto rounded-xl px-3 py-2 sm:px-4 sm:py-3 bg-black/30 border border-white/10 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400" aria-label="Select style">
-                  {STYLE_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                {/* style selection removed (backend uses text-only prompts) */}
 
                 <button type="submit" disabled={!canGenerate} className={`w-full sm:w-auto rounded-xl px-4 py-2 sm:px-5 sm:py-3 font-medium shadow ${!canGenerate ? 'opacity-50 cursor-not-allowed' : 'btn-violet glow-violet'}`}>
                   {loading ? "Generating…" : "Generate"}
                 </button>
               </div>
 
-              <div className="mt-2 text-sm text-zinc-300">{error ? <span className="text-red-300">{error}</span> : loading ? <span>Queued / generating…</span> : <span>Tip: try &quot;cinematic&quot; or &quot;photo-realistic&quot; styles.</span>}</div>
+              <div className="mt-2 text-sm text-zinc-300">{error ? <span className="text-red-300">{error}</span> : loading ? <span>Queued / generating…</span> : <span>Tip: try &quot;cinematic&quot; or &quot;photo-realistic&quot; prompts.</span>}</div>
             </form>
 
             {/* Secondary actions when an image exists */}
@@ -237,8 +240,8 @@ export default function ImageGenerator() {
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6">
               {imageUrl ? (
                 <div className="w-full overflow-hidden rounded-lg bg-black/40 flex items-center justify-center">
-                  <a href={imageUrl!} target="_blank" rel="noopener noreferrer" className="w-full">
-                    <img src={imageUrl} alt="Generated" className="w-full h-auto max-h-[70vh] object-contain" />
+                  <a href={urls?.[selectedIndex] || imageUrl!} target="_blank" rel="noopener noreferrer" className="w-full">
+                    <img src={urls?.[selectedIndex] || imageUrl} alt="Generated" className="w-full h-auto max-h-[70vh] object-contain" />
                   </a>
                 </div>
               ) : (
@@ -263,6 +266,16 @@ export default function ImageGenerator() {
                 </div>
               )}
             </div>
+            {/* Thumbnails */}
+            {urls && urls.length > 1 && (
+              <div className="mt-3 flex gap-2 overflow-x-auto">
+                {urls.map((u, i) => (
+                  <button key={u} onClick={() => setSelectedIndex(i)} className={`h-16 w-24 flex-shrink-0 rounded-md overflow-hidden border ${i === selectedIndex ? 'border-white/80' : 'border-white/10 hover:border-white/30'}`}>
+                    <img src={u} alt={`thumb-${i+1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

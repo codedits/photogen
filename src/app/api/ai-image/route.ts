@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
         if (typeof d["task_url"] === "string") taskUrl = d["task_url"] as string;
         else if (typeof d["taskUrl"] === "string") taskUrl = d["taskUrl"] as string;
         else if (typeof d["task"] === "string") taskUrl = d["task"] as string;
-        else if (typeof d["url"] === "string" && (d["url"] as string).startsWith("https://api.paxsenix.dpdns.org/task/")) taskUrl = d["url"] as string;
+        else if (typeof d["url"] === "string" && (d["url"] as string).startsWith("https://api.paxsenix.org/task/")) taskUrl = d["url"] as string;
 
         if (taskUrl) {
           // Poll task endpoint (server-side) for up to ~25 seconds

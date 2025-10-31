@@ -5,6 +5,42 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const text = searchParams.get("text") || "";
   const taskUrlParam = searchParams.get("task_url") || searchParams.get("taskUrl") || "";
+  const ratioRaw = searchParams.get("ratio") || ""; // e.g., "1:1", "16:9", "9:16"
+  const imageUrlParam = searchParams.get("image_url") || searchParams.get("imageUrl") || "";
+  const filenameParam = searchParams.get("filename") || "";
+
+  // Direct image download proxy (for cross-origin safe downloads)
+  if (imageUrlParam) {
+    try {
+      const u = new URL(imageUrlParam);
+      if (u.protocol !== "https:") {
+        return new Response(JSON.stringify({ error: "Only https URLs are allowed" }), { status: 400, headers: { "content-type": "application/json" } });
+      }
+      const upstreamRes = await fetch(u.toString(), { cache: "no-store" });
+      if (!upstreamRes.ok) {
+        return new Response(JSON.stringify({ error: `Failed to fetch image (${upstreamRes.status})` }), { status: 502, headers: { "content-type": "application/json" } });
+      }
+      const ct = upstreamRes.headers.get("content-type") || "application/octet-stream";
+      const buf = await upstreamRes.arrayBuffer();
+      const safeName = (filenameParam || "photogen-image").replace(/[^A-Za-z0-9._-]+/g, "_");
+      // best-effort extension inference
+      const ext = ct.includes("/") ? ct.split("/")[1].split(";")[0] : "bin";
+      const fname = safeName.includes(".") ? safeName : `${safeName}.${ext}`;
+      return new Response(buf, {
+        status: 200,
+        headers: {
+          "content-type": ct,
+          "cache-control": "no-store",
+          "content-disposition": `attachment; filename="${fname}"`,
+        },
+      });
+    } catch (e: unknown) {
+      return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Invalid image_url" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    }
+  }
 
   if (!text.trim()) {
     return new Response(JSON.stringify({ error: "Missing 'text' query param" }), {
@@ -13,8 +49,12 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Upstream no longer requires `style` in the query; just forward the `text` prompt.
-  const upstream = `https://api.paxsenix.org/ai-image/midjourney?text=${encodeURIComponent(text)}`;
+  // Build upstream URL with prompt and optional ratio
+  const url = new URL("https://api.paxsenix.org/ai-image/midjourney");
+  url.searchParams.set("text", text);
+  const ratio = ratioRaw.trim();
+  if (ratio) url.searchParams.set("ratio", ratio);
+  const upstream = url.toString();
 
   try {
     // If caller passed a task_url, fetch it directly (useful for status polling or collect)

@@ -1,6 +1,4 @@
 import ImageGenerator from "../../components/ImageGenerator";
-import DarkVeil from "../../components/DarkVeil";
-import Hero from "@/components/Hero";
 
 export const metadata = {
   title: "PhotoGen AI Studio",
@@ -8,7 +6,6 @@ export const metadata = {
 };
 
 export default function StudioPage() {
-  const resolutionScale = typeof window !== 'undefined' ? Math.min(1, window.devicePixelRatio || 1) : 1;
   return (
     <div className="relative min-h-screen font-sans">
       <div className="absolute inset-0 -z-10">

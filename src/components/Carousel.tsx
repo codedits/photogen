@@ -75,15 +75,7 @@ export default function Carousel({
     if (btn && typeof btn.scrollIntoView === 'function') {
       btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     }
-  }, [index]);
-
-  if (!len) {
-    return (
-      <div className={`w-full ${className}`}>
-  <div className="w-full aspect-[9/16] max-h-[720px] sm:max-h-none sm:h-[520px] md:h-[520px] rounded-lg bg-slate-800 animate-pulse" />
-      </div>
-    );
-  }
+  }, [index, isFocus]);
 
   const current = items[index];
 
@@ -107,6 +99,14 @@ export default function Carousel({
       imgs.forEach((i) => { try { i.src = ''; } catch {} });
     };
   }, [index, items]);
+
+  if (!len) {
+    return (
+      <div className={`w-full ${className}`}>
+  <div className="w-full aspect-[9/16] max-h-[720px] sm:max-h-none sm:h-[520px] md:h-[520px] rounded-lg bg-slate-800 animate-pulse" />
+      </div>
+    );
+  }
 
   // Blurred backdrop removed to avoid background LQIP and reduce visual complexity.
 

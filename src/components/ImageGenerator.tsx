@@ -53,7 +53,8 @@ export default function ImageGenerator() {
     return () => {
       if (lastObjectUrlRef.current) URL.revokeObjectURL(lastObjectUrlRef.current);
       // cleanup all blob URLs
-      allObjectUrlsRef.current.forEach((url) => {
+      const urls = Array.from(allObjectUrlsRef.current);
+      urls.forEach((url) => {
         try { URL.revokeObjectURL(url); } catch {}
       });
       allObjectUrlsRef.current.clear();
@@ -160,7 +161,7 @@ export default function ImageGenerator() {
 
         // Persist the task so it survives backgrounding / reloads
         const deadline = Date.now() + 25_000; // 25s wall-clock max
-        localStorage.setItem("pg_task", JSON.stringify({ taskUrl, jobId, deadline }));
+        localStorage.setItem("pg_task", JSON.stringify({ taskUrl, jobId, deadline, prompt, ratio }));
         setPendingTaskUrl(taskUrl);
         setPendingJobId(jobId);
         pollDeadlineRef.current = deadline;
@@ -331,7 +332,8 @@ export default function ImageGenerator() {
     setError(null);
     setLoading(true);
     const newDeadline = Date.now() + 25_000;
-    localStorage.setItem("pg_task", JSON.stringify({ taskUrl: pendingTaskUrl, jobId: pendingJobId, deadline: newDeadline }));
+    const saved = JSON.parse(localStorage.getItem("pg_task") || "null");
+    localStorage.setItem("pg_task", JSON.stringify({ taskUrl: pendingTaskUrl, jobId: pendingJobId, deadline: newDeadline, prompt: saved?.prompt || prompt, ratio: saved?.ratio || ratio }));
     pollDeadlineRef.current = newDeadline;
     // kick off immediate check
     startOrResumePolling(0, true);
@@ -409,6 +411,9 @@ export default function ImageGenerator() {
       setPendingTaskUrl(saved.taskUrl);
       setPendingJobId(saved.jobId ?? null);
       pollDeadlineRef.current = saved.deadline ?? (Date.now() + 25_000);
+      // Restore the prompt and ratio from saved state
+      if (saved.prompt) setPrompt(saved.prompt);
+      if (saved.ratio) setRatio(saved.ratio);
       // restart UI loaders if not running
       if (!messageTimerRef.current) {
         messageTimerRef.current = window.setInterval(() => {

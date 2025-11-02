@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 
 // Simple in-memory cache for recent image generations (expires after 5 minutes)
-const generationCache = new Map<string, { data: any; expires: number }>();
+const generationCache = new Map<string, { data: Record<string, unknown>; expires: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-function getCached(key: string): any | null {
+function getCached(key: string): Record<string, unknown> | null {
   const entry = generationCache.get(key);
   if (!entry) return null;
   if (Date.now() > entry.expires) {
@@ -14,7 +14,7 @@ function getCached(key: string): any | null {
   return entry.data;
 }
 
-function setCache(key: string, data: any): void {
+function setCache(key: string, data: Record<string, unknown>): void {
   // Limit cache size to prevent memory issues
   if (generationCache.size > 100) {
     const firstKey = generationCache.keys().next().value;
@@ -41,9 +41,6 @@ export async function GET(req: NextRequest) {
       }
       const upstreamRes = await fetch(u.toString(), { 
         cache: "no-store",
-        // Add priority hint for faster downloads
-        // @ts-ignore - priority is a valid fetch option
-        priority: 'high'
       });
       if (!upstreamRes.ok) {
         return new Response(JSON.stringify({ error: `Failed to fetch image (${upstreamRes.status})` }), { status: 502, headers: { "content-type": "application/json" } });
@@ -102,8 +99,6 @@ export async function GET(req: NextRequest) {
     if (taskUrlParam) {
       const taskRes = await fetch(taskUrlParam, { 
         cache: "no-store",
-        // @ts-ignore
-        priority: 'high'
       });
       const taskCt = taskRes.headers.get("content-type") || "";
        if (taskCt.includes("application/json")) {
@@ -116,8 +111,6 @@ export async function GET(req: NextRequest) {
 
     const res = await fetch(upstream, { 
       cache: "no-store",
-      // @ts-ignore - priority is a valid fetch option
-      priority: 'high'
     });
 
     // If upstream returns JSON error, forward as JSON
@@ -184,8 +177,6 @@ export async function GET(req: NextRequest) {
             attempt++;
             const tRes = await fetch(taskUrl, { 
               cache: "no-store",
-              // @ts-ignore
-              priority: 'high'
             });
             const tct = tRes.headers.get("content-type") || "";
             if (tct.includes("application/json")) {
@@ -210,7 +201,6 @@ export async function GET(req: NextRequest) {
               }
             }
             // wait before next attempt
-            // eslint-disable-next-line no-await-in-loop
             await new Promise((r) => setTimeout(r, intervalMs));
           }
 

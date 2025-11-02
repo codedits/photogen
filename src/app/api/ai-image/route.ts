@@ -124,7 +124,7 @@ export async function GET(req: NextRequest) {
 
         if (taskUrl) {
           // Poll task endpoint (server-side) for up to ~25 seconds
-          const maxAttempts = 25;
+          const maxAttempts = 40;
           const intervalMs = 1000;
           let attempt = 0;
           while (attempt < maxAttempts) {

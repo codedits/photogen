@@ -492,21 +492,16 @@ export default function ImageGenerator() {
               <div className="flex flex-col sm:flex-row gap-3 items-stretch">
                 <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe your image (e.g., a vintage car parked under neon lights)" className="w-full sm:flex-1 rounded-xl px-3 py-2 sm:px-4 sm:py-3 bg-black/30 border border-white/10 text-white placeholder:text-zinc-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400" />
 
-                {/* Aspect ratio selection */}
+                {/* Aspect ratio selection (restricted to supported ratios) */}
                 <select
                   value={ratio}
                   onChange={(e) => setRatio(e.target.value)}
                   className="rounded-xl px-3 py-2 sm:px-4 sm:py-3 border border-white/10 bg-black/30 text-white sm:w-40"
                   title="Aspect Ratio"
                 >
-                  <option value="1:1">1:1 · Square</option>
                   <option value="16:9">16:9 · Landscape</option>
+                  <option value="1:1">1:1 · Square</option>
                   <option value="9:16">9:16 · Portrait</option>
-                  <option value="4:3">4:3</option>
-                  <option value="3:4">3:4</option>
-                  <option value="4:5">4:5</option>
-                  <option value="3:2">3:2</option>
-                  <option value="2:3">2:3</option>
                 </select>
 
                 <button type="submit" disabled={!canGenerate} className={`w-full sm:w-auto rounded-xl px-4 py-2 sm:px-5 sm:py-3 font-medium shadow ${!canGenerate ? 'opacity-50 cursor-not-allowed' : 'btn-violet glow-violet'}`}>

@@ -504,6 +504,7 @@ export default function ImageGenerator() {
                   <option value="9:16">9:16 · Portrait</option>
                   <option value="4:3">4:3</option>
                   <option value="3:4">3:4</option>
+                  <option value="4:5">4:5</option>
                   <option value="3:2">3:2</option>
                   <option value="2:3">2:3</option>
                 </select>

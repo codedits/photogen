@@ -15,6 +15,10 @@ export default function ImageGenerator() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastObjectUrlRef = useRef<string | null>(null);
+  const [pendingTaskUrl, setPendingTaskUrl] = useState<string | null>(null);
+  const [pendingJobId, setPendingJobId] = useState<string | number | null>(null);
+  const pollTimerRef = useRef<number | null>(null);
+  const pollDeadlineRef = useRef<number | null>(null);
 
   // loading helpers
   const LOADING_MESSAGES = [
@@ -118,71 +122,23 @@ export default function ImageGenerator() {
       const res = await fetch(`/api/ai-image?${q.toString()}`);
       const contentType = res.headers.get("content-type") || "";
 
-  if (res.status === 202) {
+      if (res.status === 202) {
         // queued: backend returns job/task info
         const data = await res.json().catch(() => null);
         const taskUrl = data?.task_url || data?.taskUrl || data?.task;
-        if (!taskUrl) {
-          throw new Error("Task queued but no task_url returned");
-        }
+        const jobId = data?.jobId ?? data?.job_id ?? null;
+        if (!taskUrl) throw new Error("Task queued but no task_url returned");
 
-        // Poll the server-side proxy for task completion
-        const pollMax = 30; // ~30s
-        const pollInterval = 1000;
-        let attempt = 0;
-        while (attempt < pollMax) {
-          attempt++;
-          setPollAttempts(attempt);
-          // update progress based on attempts (visual only)
-          setProgress(Math.min(92, 10 + Math.round((attempt / pollMax) * 80)));
-          const statusRes = await fetch(`/api/ai-image?task_url=${encodeURIComponent(taskUrl)}`);
-          const sc = statusRes.status;
-          const sct = statusRes.headers.get("content-type") || "";
-          if (sc === 200 && !sct.includes("application/json")) {
-            // final image bytes
-            const blob = await statusRes.blob();
-            const objUrl = URL.createObjectURL(blob);
-            if (lastObjectUrlRef.current) URL.revokeObjectURL(lastObjectUrlRef.current);
-            lastObjectUrlRef.current = objUrl;
-            setProgress(100);
-            setLoadingMessage("Finalizing...");
-            // clear timers and allow the progress fill to show briefly
-            if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
-            if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
-            await new Promise((r) => setTimeout(r, 300));
-            setImageUrl(objUrl);
-            setLoading(false);
-            return;
-          }
+        // Persist the task so it survives backgrounding / reloads
+        const deadline = Date.now() + 25_000; // 25s wall-clock max
+        localStorage.setItem("pg_task", JSON.stringify({ taskUrl, jobId, deadline }));
+        setPendingTaskUrl(taskUrl);
+        setPendingJobId(jobId);
+        pollDeadlineRef.current = deadline;
 
-          if (sct.includes("application/json")) {
-            const data = await statusRes.json().catch(() => null);
-            if (data?.status === "done" && data?.url) {
-              // fetch image
-              const imgRes = await fetch(data.url);
-              if (!imgRes.ok) throw new Error(`Failed to fetch image: ${imgRes.status}`);
-              const blob = await imgRes.blob();
-              const objUrl = URL.createObjectURL(blob);
-              if (lastObjectUrlRef.current) URL.revokeObjectURL(lastObjectUrlRef.current);
-              lastObjectUrlRef.current = objUrl;
-              setProgress(100);
-              setLoadingMessage("Finalizing...");
-              if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
-              if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
-              await new Promise((r) => setTimeout(r, 300));
-              setImageUrl(objUrl);
-              setLoading(false);
-              return;
-            }
-            if (data?.ok === false && data?.message) {
-              throw new Error(data.message || "Task queued");
-            }
-          }
-
-          await new Promise((r) => setTimeout(r, pollInterval));
-        }
-
-        throw new Error("Timed out waiting for image generation (server-side)");
+        // kick off polling (non-blocking), and rely on visibility resume too
+        startOrResumePolling(0, true);
+        return; // exit handler; UI stays in loading state
       }
 
       if (!res.ok) {
@@ -235,6 +191,167 @@ export default function ImageGenerator() {
     }
   }
 
+  // Poll once helper; returns true if done
+  async function pollOnce(taskUrl: string): Promise<boolean> {
+    try {
+      const statusRes = await fetch(`/api/ai-image?task_url=${encodeURIComponent(taskUrl)}`, { cache: "no-store" });
+      const sc = statusRes.status;
+      const sct = statusRes.headers.get("content-type") || "";
+
+      if (sc === 200 && !sct.includes("application/json")) {
+        // binary image response
+        const blob = await statusRes.blob();
+        const objUrl = URL.createObjectURL(blob);
+        if (lastObjectUrlRef.current) URL.revokeObjectURL(lastObjectUrlRef.current);
+        lastObjectUrlRef.current = objUrl;
+        setProgress(100);
+        setLoadingMessage("Finalizing...");
+        clearLoadTimers();
+        await new Promise((r) => setTimeout(r, 200));
+        setImageUrl(objUrl);
+        setLoading(false);
+        clearPendingTask();
+        return true;
+      }
+
+      if (sct.includes("application/json")) {
+        const data = await statusRes.json().catch(() => null) as any;
+        if (data?.ok && Array.isArray(data?.urls) && data.urls.length > 0) {
+          clearLoadTimers();
+          setProgress(100);
+          await new Promise((r) => setTimeout(r, 200));
+          setImageUrl(data.urls[0]);
+          setUrls(data.urls);
+          setLoading(false);
+          clearPendingTask();
+          return true;
+        }
+        if (data?.ok && typeof data?.b64 === "string") {
+          clearLoadTimers();
+          setProgress(100);
+          await new Promise((r) => setTimeout(r, 200));
+          const dataUrl = `data:image/png;base64,${data.b64}`;
+          setImageUrl(dataUrl);
+          setUrls([dataUrl]);
+          setLoading(false);
+          clearPendingTask();
+          return true;
+        }
+        if (data?.ok === false && data?.error) {
+          // still queued or failed; if failed, surface it
+          if (String(data.error || "").toLowerCase().includes("failed")) {
+            setError(data.error);
+            setLoading(false);
+            clearPendingTask();
+            return true;
+          }
+        }
+      }
+    } catch (e) {
+      // Swallow transient errors (e.g., background throttling) — we'll retry or resume on visibility
+    }
+    return false;
+  }
+
+  function clearLoadTimers() {
+    if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
+    if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
+  }
+
+  function clearPendingTask() {
+    localStorage.removeItem("pg_task");
+    setPendingTaskUrl(null);
+    setPendingJobId(null);
+    pollDeadlineRef.current = null;
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current as any);
+    pollTimerRef.current = null;
+  }
+
+  // Retry a timed-out task: extend deadline and restart polling
+  function retryPendingTask() {
+    if (!pendingTaskUrl) return;
+    setError(null);
+    setLoading(true);
+    const newDeadline = Date.now() + 25_000;
+    localStorage.setItem("pg_task", JSON.stringify({ taskUrl: pendingTaskUrl, jobId: pendingJobId, deadline: newDeadline }));
+    pollDeadlineRef.current = newDeadline;
+    // kick off immediate check
+    startOrResumePolling(0, true);
+  }
+
+  async function startOrResumePolling(prevAttempts = 0, immediate = false) {
+    const taskUrl = pendingTaskUrl || JSON.parse(localStorage.getItem("pg_task") || "null")?.taskUrl;
+    if (!taskUrl) return;
+
+    const deadline = pollDeadlineRef.current ?? JSON.parse(localStorage.getItem("pg_task") || "null")?.deadline ?? (Date.now() + 25_000);
+    pollDeadlineRef.current = deadline;
+
+    const attemptOnce = async () => {
+      const attempts = prevAttempts + 1;
+      setPollAttempts(attempts);
+      setProgress((p) => Math.min(95, Math.max(p, 10 + Math.round((attempts / 25) * 80))));
+      const done = await pollOnce(taskUrl);
+      if (done) return true;
+      if (Date.now() >= (pollDeadlineRef.current || 0)) {
+        setError("Timed out waiting for image generation");
+        setLoading(false);
+        return true;
+      }
+      return false;
+    };
+
+    if (immediate) {
+      const stop = await attemptOnce();
+      if (stop) return;
+    }
+
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current as any);
+    const schedule = async (attempts: number) => {
+      const stop = await attemptOnce();
+      if (stop) return;
+      pollTimerRef.current = window.setTimeout(() => schedule(attempts + 1), 1000);
+    };
+    schedule(prevAttempts);
+  }
+
+  // Resume any pending task on mount and on visibility change
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem("pg_task") || "null");
+    if (saved?.taskUrl) {
+      setLoading(true);
+      setPendingTaskUrl(saved.taskUrl);
+      setPendingJobId(saved.jobId ?? null);
+      pollDeadlineRef.current = saved.deadline ?? (Date.now() + 25_000);
+      // restart UI loaders if not running
+      if (!messageTimerRef.current) {
+        messageTimerRef.current = window.setInterval(() => {
+          const next = LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)];
+          setLoadingMessage(next);
+        }, 1500);
+      }
+      if (!progressTimerRef.current) {
+        progressTimerRef.current = window.setInterval(() => {
+          setProgress((p) => Math.min(94, Math.round(p + Math.random() * 6 + 2)));
+        }, 700);
+      }
+      startOrResumePolling(pollAttempts, true);
+    }
+
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        const s = JSON.parse(localStorage.getItem("pg_task") || "null");
+        if (s?.taskUrl && (!pollDeadlineRef.current || Date.now() < pollDeadlineRef.current)) {
+          setPendingTaskUrl(s.taskUrl);
+          setPendingJobId(s.jobId ?? null);
+          startOrResumePolling(pollAttempts, true); // immediate check on return to foreground
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleClear() {
     setPrompt("");
     setImageUrl(null);
@@ -286,7 +403,22 @@ export default function ImageGenerator() {
                 </button>
               </div>
 
-              <div className="mt-2 text-sm text-zinc-300">{error ? <span className="text-red-300">{error}</span> : loading ? <span>Queued / generating…</span> : <span>Tip: pick a ratio (e.g., 9:16 for phone wallpapers) and try cinematic prompts.</span>}</div>
+              <div className="mt-2 text-sm text-zinc-300">
+                {error ? (
+                  <span className="text-red-300">{error}</span>
+                ) : loading ? (
+                  <span>Queued / generating…</span>
+                ) : (
+                  <span>Tip: pick a ratio (e.g., 9:16 for phone wallpapers) and try cinematic prompts.</span>
+                )}
+                {pendingTaskUrl && error && (
+                  <div className="mt-2">
+                    <button type="button" onClick={retryPendingTask} className="inline-flex items-center justify-center rounded-xl px-3 py-1.5 bg-white/5 border border-white/10 text-white hover:bg-white/6">
+                      Retry
+                    </button>
+                  </div>
+                )}
+              </div>
             </form>
 
             {/* Secondary actions when an image exists */}

@@ -14,11 +14,20 @@ export default function ImageGenerator() {
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false); // track when main image finishes loading
   const lastObjectUrlRef = useRef<string | null>(null);
+  const allObjectUrlsRef = useRef<Set<string>>(new Set()); // track all blob URLs for cleanup
+  const inflightRequestRef = useRef<AbortController | null>(null); // prevent duplicate requests
   const [pendingTaskUrl, setPendingTaskUrl] = useState<string | null>(null);
   const [pendingJobId, setPendingJobId] = useState<string | number | null>(null);
   const pollTimerRef = useRef<number | null>(null);
   const pollDeadlineRef = useRef<number | null>(null);
+  // controller for in-flight poll requests so we can cancel them when page is hidden
+  const pollAbortRef = useRef<AbortController | null>(null);
+  // track whether the page is currently hidden (visibility API)
+  const isHiddenRef = useRef<boolean>(typeof document !== 'undefined' ? document.visibilityState === 'hidden' : false);
+  // ensure we don't start multiple concurrent polling schedules
+  const pollingRunningRef = useRef<boolean>(false);
 
   // loading helpers
   const LOADING_MESSAGES = [
@@ -43,9 +52,18 @@ export default function ImageGenerator() {
   useEffect(() => {
     return () => {
       if (lastObjectUrlRef.current) URL.revokeObjectURL(lastObjectUrlRef.current);
+      // cleanup all blob URLs
+      allObjectUrlsRef.current.forEach((url) => {
+        try { URL.revokeObjectURL(url); } catch {}
+      });
+      allObjectUrlsRef.current.clear();
       // cleanup any running timers when component unmounts
       if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
       if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
+      // abort any in-flight generate request
+      if (inflightRequestRef.current) {
+        try { inflightRequestRef.current.abort(); } catch {}
+      }
     };
   }, []);
 
@@ -99,9 +117,17 @@ export default function ImageGenerator() {
   async function handleGenerate(e?: React.FormEvent) {
     e?.preventDefault();
     if (!canGenerate) return;
+    
+    // Abort any previous in-flight request to avoid duplicate fetches
+    if (inflightRequestRef.current) {
+      try { inflightRequestRef.current.abort(); } catch {}
+    }
+    inflightRequestRef.current = new AbortController();
+    
     setLoading(true);
     setError(null);
     setImageUrl(null);
+    setImageLoaded(false);
     setProgress(6);
     setPollAttempts(0);
     // start rotating messages every 1.5s
@@ -119,7 +145,10 @@ export default function ImageGenerator() {
     try {
       const q = new URLSearchParams({ text: prompt });
       if (ratio) q.set("ratio", ratio);
-      const res = await fetch(`/api/ai-image?${q.toString()}`);
+      const res = await fetch(`/api/ai-image?${q.toString()}`, { 
+        signal: inflightRequestRef.current?.signal,
+        cache: 'no-store' // prevent browser cache for real-time generation
+      });
       const contentType = res.headers.get("content-type") || "";
 
       if (res.status === 202) {
@@ -167,6 +196,12 @@ export default function ImageGenerator() {
         // Save extra URLs into a new local state via setUrls
         setUrls(urls);
         setLoading(false);
+        setImageLoaded(false); // will be set to true when Next/Image onLoad fires
+        // Preload all returned images for faster switching
+        urls.forEach((u) => {
+          const img = new Image();
+          img.src = u;
+        });
         return;
       }
 
@@ -175,26 +210,31 @@ export default function ImageGenerator() {
       const objUrl = URL.createObjectURL(blob);
       if (lastObjectUrlRef.current) URL.revokeObjectURL(lastObjectUrlRef.current);
       lastObjectUrlRef.current = objUrl;
+      allObjectUrlsRef.current.add(objUrl);
       setProgress(100);
       if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
       if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
       await new Promise((r) => setTimeout(r, 200));
       setImageUrl(objUrl);
+      setImageLoaded(false);
     } catch (err: any) {
+      // Don't show error if request was aborted (user started a new generation)
+      if (err?.name === 'AbortError') return;
       setError(err?.message || "Something went wrong");
       setImageUrl(null);
     } finally {
   // ensure timers are cleared on finish or error
   if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
   if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
+  inflightRequestRef.current = null;
   setTimeout(() => setLoading(false), 0);
     }
   }
 
   // Poll once helper; returns true if done
-  async function pollOnce(taskUrl: string): Promise<boolean> {
+  async function pollOnce(taskUrl: string, signal?: AbortSignal): Promise<boolean> {
     try {
-      const statusRes = await fetch(`/api/ai-image?task_url=${encodeURIComponent(taskUrl)}`, { cache: "no-store" });
+      const statusRes = await fetch(`/api/ai-image?task_url=${encodeURIComponent(taskUrl)}`, { cache: "no-store", signal });
       const sc = statusRes.status;
       const sct = statusRes.headers.get("content-type") || "";
 
@@ -204,11 +244,13 @@ export default function ImageGenerator() {
         const objUrl = URL.createObjectURL(blob);
         if (lastObjectUrlRef.current) URL.revokeObjectURL(lastObjectUrlRef.current);
         lastObjectUrlRef.current = objUrl;
+        allObjectUrlsRef.current.add(objUrl);
         setProgress(100);
         setLoadingMessage("Finalizing...");
         clearLoadTimers();
         await new Promise((r) => setTimeout(r, 200));
         setImageUrl(objUrl);
+        setImageLoaded(false);
         setLoading(false);
         clearPendingTask();
         return true;
@@ -222,7 +264,13 @@ export default function ImageGenerator() {
           await new Promise((r) => setTimeout(r, 200));
           setImageUrl(data.urls[0]);
           setUrls(data.urls);
+          setImageLoaded(false);
           setLoading(false);
+          // Preload all images
+          data.urls.forEach((u: string) => {
+            const img = new Image();
+            img.src = u;
+          });
           clearPendingTask();
           return true;
         }
@@ -233,6 +281,7 @@ export default function ImageGenerator() {
           const dataUrl = `data:image/png;base64,${data.b64}`;
           setImageUrl(dataUrl);
           setUrls([dataUrl]);
+          setImageLoaded(false);
           setLoading(false);
           clearPendingTask();
           return true;
@@ -248,7 +297,10 @@ export default function ImageGenerator() {
         }
       }
     } catch (e) {
+      // If the fetch was aborted because the page was hidden, don't surface an error.
       // Swallow transient errors (e.g., background throttling) — we'll retry or resume on visibility
+      // If it's an AbortError, simply return false so polling can be restarted later.
+      if ((e as any)?.name === 'AbortError') return false;
     }
     return false;
   }
@@ -265,6 +317,12 @@ export default function ImageGenerator() {
     pollDeadlineRef.current = null;
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current as any);
     pollTimerRef.current = null;
+    // abort any in-flight poll
+    if (pollAbortRef.current) {
+      try { pollAbortRef.current.abort(); } catch {}
+      pollAbortRef.current = null;
+    }
+    pollingRunningRef.current = false;
   }
 
   // Retry a timed-out task: extend deadline and restart polling
@@ -283,18 +341,42 @@ export default function ImageGenerator() {
     const taskUrl = pendingTaskUrl || JSON.parse(localStorage.getItem("pg_task") || "null")?.taskUrl;
     if (!taskUrl) return;
 
+    // Don't start polling while the page is hidden — wait until visible to avoid throttled timers
+    if (isHiddenRef.current) return;
+
     const deadline = pollDeadlineRef.current ?? JSON.parse(localStorage.getItem("pg_task") || "null")?.deadline ?? (Date.now() + 25_000);
     pollDeadlineRef.current = deadline;
 
+    // Prevent overlapping schedules
+    if (pollingRunningRef.current) return;
+    pollingRunningRef.current = true;
+
     const attemptOnce = async () => {
+      // create a fresh abort controller for this attempt and store it so we can cancel on hide
+      if (pollAbortRef.current) {
+        try { pollAbortRef.current.abort(); } catch {}
+      }
+      pollAbortRef.current = new AbortController();
+      const signal = pollAbortRef.current.signal;
+
       const attempts = prevAttempts + 1;
       setPollAttempts(attempts);
       setProgress((p) => Math.min(95, Math.max(p, 10 + Math.round((attempts / 25) * 80))));
-      const done = await pollOnce(taskUrl);
-      if (done) return true;
+      const done = await pollOnce(taskUrl, signal);
+      // clear controller only when this attempt finishes
+      if (pollAbortRef.current === null) {
+        // nothing
+      } else {
+        pollAbortRef.current = null;
+      }
+      if (done) {
+        pollingRunningRef.current = false;
+        return true;
+      }
       if (Date.now() >= (pollDeadlineRef.current || 0)) {
         setError("Timed out waiting for image generation");
         setLoading(false);
+        pollingRunningRef.current = false;
         return true;
       }
       return false;
@@ -307,6 +389,11 @@ export default function ImageGenerator() {
 
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current as any);
     const schedule = async (attempts: number) => {
+      // stop scheduling if page hidden
+      if (isHiddenRef.current) {
+        pollingRunningRef.current = false;
+        return;
+      }
       const stop = await attemptOnce();
       if (stop) return;
       pollTimerRef.current = window.setTimeout(() => schedule(attempts + 1), 1000);
@@ -338,13 +425,31 @@ export default function ImageGenerator() {
     }
 
     const onVis = () => {
-      if (document.visibilityState === "visible") {
+      const state = document.visibilityState;
+      isHiddenRef.current = state !== 'visible';
+      if (state === "visible") {
         const s = JSON.parse(localStorage.getItem("pg_task") || "null");
         if (s?.taskUrl && (!pollDeadlineRef.current || Date.now() < pollDeadlineRef.current)) {
           setPendingTaskUrl(s.taskUrl);
           setPendingJobId(s.jobId ?? null);
+          // abort any stale in-flight poll and start an immediate check
+          if (pollAbortRef.current) {
+            try { pollAbortRef.current.abort(); } catch {}
+            pollAbortRef.current = null;
+          }
           startOrResumePolling(pollAttempts, true); // immediate check on return to foreground
         }
+      } else {
+        // when the page becomes hidden, cancel timers and abort any in-flight fetch
+        if (pollTimerRef.current) {
+          clearTimeout(pollTimerRef.current as any);
+          pollTimerRef.current = null;
+        }
+        if (pollAbortRef.current) {
+          try { pollAbortRef.current.abort(); } catch {}
+          pollAbortRef.current = null;
+        }
+        pollingRunningRef.current = false;
       }
     };
     document.addEventListener("visibilitychange", onVis);
@@ -437,8 +542,21 @@ export default function ImageGenerator() {
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6">
               {imageUrl ? (
                 <div className="w-full overflow-hidden rounded-lg bg-black/40 flex items-center justify-center relative">
+                  {/* Show skeleton while image is loading */}
+                  {!imageLoaded && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                      <div className="w-full h-full max-h-[70vh] bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 animate-pulse" />
+                    </div>
+                  )}
                   <a href={urls?.[selectedIndex] || imageUrl!} target="_blank" rel="noopener noreferrer" className="w-full">
-                    <img src={urls?.[selectedIndex] || imageUrl} alt="Generated" className="w-full h-auto max-h-[70vh] object-contain" />
+                    <img 
+                      src={urls?.[selectedIndex] || imageUrl} 
+                      alt="Generated" 
+                      className={`w-full h-auto max-h-[70vh] object-contain transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                      onLoad={() => setImageLoaded(true)}
+                      loading="eager"
+                      decoding="async"
+                    />
                   </a>
                   {/* Download overlay for main image */}
                   <button
@@ -474,18 +592,32 @@ export default function ImageGenerator() {
                   {error ? (
                     <span className="text-red-300">{error}</span>
                   ) : loading ? (
-                    <div className="pg-loading" aria-live="polite">
-                      <div className="pg-bar-wrap" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
-                        <div className="pg-bar" style={{ width: `${progress}%` }} />
+                    <div className="space-y-4">
+                      {/* Skeleton placeholder for image */}
+                      <div className="aspect-video w-full rounded-lg border border-white/10 bg-gradient-to-br from-zinc-800/40 to-zinc-900/40 animate-pulse flex items-center justify-center">
+                        <svg className="w-20 h-20 text-zinc-700 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
                       </div>
-                      <div className="pg-msg">
-                        <div className="pg-left">{loadingMessage}</div>
-                        <div className="pg-right">{progress}% · {pollAttempts > 0 ? `${pollAttempts} attempt${pollAttempts > 1 ? 's' : ''}` : 'connecting'}</div>
+                      {/* Progress bar */}
+                      <div className="pg-loading" aria-live="polite">
+                        <div className="pg-bar-wrap" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+                          <div className="pg-bar" style={{ width: `${progress}%` }} />
+                        </div>
+                        <div className="pg-msg">
+                          <div className="pg-left">{loadingMessage}</div>
+                          <div className="pg-right">{progress}% · {pollAttempts > 0 ? `${pollAttempts} attempt${pollAttempts > 1 ? 's' : ''}` : 'connecting'}</div>
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="aspect-video w-full rounded-lg border border-white/10 bg-black/30/40 flex items-center justify-center text-zinc-300">
-                      <span>Generated image will appear here.</span>
+                    <div className="aspect-video w-full rounded-lg border border-white/10 bg-gradient-to-br from-black/30 to-zinc-900/20 flex items-center justify-center text-zinc-300">
+                      <div className="text-center px-4">
+                        <svg className="w-16 h-16 mx-auto mb-3 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-sm">Generated image will appear here.</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -497,8 +629,8 @@ export default function ImageGenerator() {
                 {urls.map((u, i) => (
                   <div
                     key={u}
-                    onClick={() => setSelectedIndex(i)}
-                    className={`relative h-16 w-24 flex-shrink-0 rounded-md overflow-hidden border cursor-pointer ${i === selectedIndex ? 'border-white/80' : 'border-white/10 hover:border-white/30'}`}
+                    onClick={() => { setSelectedIndex(i); setImageLoaded(false); }}
+                    className={`relative h-16 w-24 flex-shrink-0 rounded-md overflow-hidden border cursor-pointer transition-all ${i === selectedIndex ? 'border-white/80 ring-1 ring-white/30' : 'border-white/10 hover:border-white/30'}`}
                   >
                     <img src={u} alt={`thumb-${i+1}`} className="w-full h-full object-cover" />
                     {/* subtle hover gradient */}

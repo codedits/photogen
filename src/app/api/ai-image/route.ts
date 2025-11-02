@@ -1,5 +1,28 @@
 import { NextRequest } from "next/server";
 
+// Simple in-memory cache for recent image generations (expires after 5 minutes)
+const generationCache = new Map<string, { data: any; expires: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function getCached(key: string): any | null {
+  const entry = generationCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expires) {
+    generationCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCache(key: string, data: any): void {
+  // Limit cache size to prevent memory issues
+  if (generationCache.size > 100) {
+    const firstKey = generationCache.keys().next().value;
+    if (firstKey) generationCache.delete(firstKey);
+  }
+  generationCache.set(key, { data, expires: Date.now() + CACHE_TTL_MS });
+}
+
 // Simple server-side proxy to avoid CORS and keep the client domain constant
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -16,7 +39,12 @@ export async function GET(req: NextRequest) {
       if (u.protocol !== "https:") {
         return new Response(JSON.stringify({ error: "Only https URLs are allowed" }), { status: 400, headers: { "content-type": "application/json" } });
       }
-      const upstreamRes = await fetch(u.toString(), { cache: "no-store" });
+      const upstreamRes = await fetch(u.toString(), { 
+        cache: "no-store",
+        // Add priority hint for faster downloads
+        // @ts-ignore - priority is a valid fetch option
+        priority: 'high'
+      });
       if (!upstreamRes.ok) {
         return new Response(JSON.stringify({ error: `Failed to fetch image (${upstreamRes.status})` }), { status: 502, headers: { "content-type": "application/json" } });
       }
@@ -30,7 +58,7 @@ export async function GET(req: NextRequest) {
         status: 200,
         headers: {
           "content-type": ct,
-          "cache-control": "no-store",
+          "cache-control": "public, max-age=31536000, immutable", // Cache downloaded images for 1 year
           "content-disposition": `attachment; filename="${fname}"`,
         },
       });
@@ -56,10 +84,27 @@ export async function GET(req: NextRequest) {
   if (ratio) url.searchParams.set("ratio", ratio);
   const upstream = url.toString();
 
+  // Check cache for this exact request
+  const cacheKey = `gen:${text}:${ratio}`;
+  const cached = getCached(cacheKey);
+  if (cached) {
+    return new Response(JSON.stringify(cached), { 
+      status: 200, 
+      headers: { 
+        "content-type": "application/json",
+        "x-cache": "HIT"
+      } 
+    });
+  }
+
   try {
     // If caller passed a task_url, fetch it directly (useful for status polling or collect)
     if (taskUrlParam) {
-      const taskRes = await fetch(taskUrlParam, { cache: "no-store" });
+      const taskRes = await fetch(taskUrlParam, { 
+        cache: "no-store",
+        // @ts-ignore
+        priority: 'high'
+      });
       const taskCt = taskRes.headers.get("content-type") || "";
        if (taskCt.includes("application/json")) {
          const data = await taskRes.json().catch(() => null) as unknown;
@@ -69,7 +114,11 @@ export async function GET(req: NextRequest) {
       return new Response(buf, { status: 200, headers: { "content-type": taskCt || "application/json" } });
     }
 
-    const res = await fetch(upstream, { cache: "no-store" });
+    const res = await fetch(upstream, { 
+      cache: "no-store",
+      // @ts-ignore - priority is a valid fetch option
+      priority: 'high'
+    });
 
     // If upstream returns JSON error, forward as JSON
     const contentType = res.headers.get("content-type") || "";
@@ -106,12 +155,16 @@ export async function GET(req: NextRequest) {
 
         // If upstream already returned an array of urls, forward them as JSON to the client
         if (Array.isArray(d["urls"]) && (d["urls"] as unknown[]).every((v) => typeof v === "string")) {
-          return new Response(JSON.stringify({ ok: true, urls: d["urls"] }), { status: 200, headers: { "content-type": "application/json" } });
+          const response = { ok: true, urls: d["urls"] };
+          setCache(cacheKey, response);
+          return new Response(JSON.stringify(response), { status: 200, headers: { "content-type": "application/json", "x-cache": "MISS" } });
         }
 
         // If upstream returned 'images' or similar arrays, try common alternatives
         if (Array.isArray(d["images"]) && (d["images"] as unknown[]).every((v) => typeof v === "string")) {
-          return new Response(JSON.stringify({ ok: true, urls: d["images"] }), { status: 200, headers: { "content-type": "application/json" } });
+          const response = { ok: true, urls: d["images"] };
+          setCache(cacheKey, response);
+          return new Response(JSON.stringify(response), { status: 200, headers: { "content-type": "application/json", "x-cache": "MISS" } });
         }
 
   // If upstream returned a task/job reference, attempt to poll the task until completion (short timeout)
@@ -129,7 +182,11 @@ export async function GET(req: NextRequest) {
           let attempt = 0;
           while (attempt < maxAttempts) {
             attempt++;
-            const tRes = await fetch(taskUrl, { cache: "no-store" });
+            const tRes = await fetch(taskUrl, { 
+              cache: "no-store",
+              // @ts-ignore
+              priority: 'high'
+            });
             const tct = tRes.headers.get("content-type") || "";
             if (tct.includes("application/json")) {
               const tdata = await tRes.json().catch(() => null) as unknown;
@@ -137,11 +194,15 @@ export async function GET(req: NextRequest) {
                 const td = tdata as Record<string, unknown>;
                 // If task result contains multiple urls, return them
                 if (Array.isArray(td["urls"]) && (td["urls"] as unknown[]).every((v) => typeof v === "string")) {
-                  return new Response(JSON.stringify({ ok: true, urls: td["urls"] }), { status: 200, headers: { "content-type": "application/json" } });
+                  const response = { ok: true, urls: td["urls"] };
+                  setCache(cacheKey, response);
+                  return new Response(JSON.stringify(response), { status: 200, headers: { "content-type": "application/json", "x-cache": "MISS" } });
                 }
                 // If task result contains a single url, normalize into urls array
                 if (typeof td["url"] === "string") {
-                  return new Response(JSON.stringify({ ok: true, urls: [td["url"]] }), { status: 200, headers: { "content-type": "application/json" } });
+                  const response = { ok: true, urls: [td["url"]] };
+                  setCache(cacheKey, response);
+                  return new Response(JSON.stringify(response), { status: 200, headers: { "content-type": "application/json", "x-cache": "MISS" } });
                 }
                 if (typeof td["status"] === "string" && td["status"] === "failed") {
                   return new Response(JSON.stringify({ error: "Upstream task failed" }), { status: 502, headers: { "content-type": "application/json" } });
@@ -198,8 +259,10 @@ export async function GET(req: NextRequest) {
       status: 200,
       headers: {
         "content-type": ct,
-        // allow the browser to download
-        "cache-control": "no-store",
+        // Cache binary images for a reasonable time (1 hour) since they're unique per generation
+        "cache-control": "public, max-age=3600",
+        // Enable compression if supported
+        "content-encoding": res.headers.get("content-encoding") || "",
       },
     });
   } catch (err: unknown) {

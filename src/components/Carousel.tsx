@@ -63,6 +63,8 @@ export default function Carousel({
     const reduce = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce) return;
     if (paused || isFocus) return;
+    // do not autoplay while tab is hidden (browsers throttle timers heavily when backgrounded)
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
     const id = setInterval(() => { next(); }, Math.max(intervalMs, 1500));
     return () => clearInterval(id);
   }, [autoPlay, intervalMs, paused, isFocus, len, next]);
@@ -85,6 +87,27 @@ export default function Carousel({
 
   const current = items[index];
 
+  // Preload adjacent images to speed up transitions
+  React.useEffect(() => {
+    if (!items || items.length < 2) return;
+    const toPreload: string[] = [];
+    const nextIdx = (index + 1) % items.length;
+    const prevIdx = (index - 1 + items.length) % items.length;
+    // preload next and previous images
+    toPreload.push(items[nextIdx].url);
+    toPreload.push(items[prevIdx].url);
+
+    const imgs: HTMLImageElement[] = toPreload.map((u) => {
+      const img = new Image();
+      img.src = u;
+      return img;
+    });
+
+    return () => {
+      imgs.forEach((i) => { try { i.src = ''; } catch {} });
+    };
+  }, [index, items]);
+
   // Blurred backdrop removed to avoid background LQIP and reduce visual complexity.
 
   return (
@@ -106,11 +129,12 @@ export default function Carousel({
             src={current.url}
             alt={current.alt || `Slide ${index + 1}`}
             fill
-            className="object-contain bg-transparent"
+            className="object-contain bg-transparent transition-opacity duration-300"
             transformOpts={{ w: 1920, h: 1080, fit: 'contain', q: 'auto:best', dpr: 'auto' }}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 1920px"
-            priority={index === 0}
-            loading={index === 0 ? 'eager' : 'lazy'}
+            // always eagerly load & prioritize the active slide to reduce perceived delay
+            priority={true}
+            loading={'eager'}
           />
         </div>
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />

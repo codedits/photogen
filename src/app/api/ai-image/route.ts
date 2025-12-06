@@ -81,6 +81,21 @@ export async function GET(req: NextRequest) {
   if (ratio) url.searchParams.set("ratio", ratio);
   const upstream = url.toString();
 
+  // Read API key from environment (server-side). Do not expose this to clients.
+  const PAXSENIX_API_KEY = process.env.PAXSENIX_API_KEY || process.env.NEXT_PUBLIC_PAXSENIX_API_KEY;
+  function paxsenixHeadersFor(u?: string | URL | null) {
+    try {
+      if (!u) return {};
+      const host = typeof u === "string" ? new URL(u).hostname : new URL(u.toString()).hostname;
+      if (host && host.endsWith("paxsenix.org") && PAXSENIX_API_KEY) {
+        return { Authorization: `Bearer ${PAXSENIX_API_KEY}` };
+      }
+    } catch (e) {
+      // ignore
+    }
+    return {};
+  }
+
   // Check cache for this exact request
   const cacheKey = `gen:${text}:${ratio}`;
   const cached = getCached(cacheKey);
@@ -99,6 +114,7 @@ export async function GET(req: NextRequest) {
     if (taskUrlParam) {
       const taskRes = await fetch(taskUrlParam, { 
         cache: "no-store",
+        headers: paxsenixHeadersFor(taskUrlParam),
       });
       const taskCt = taskRes.headers.get("content-type") || "";
        if (taskCt.includes("application/json")) {
@@ -109,8 +125,17 @@ export async function GET(req: NextRequest) {
       return new Response(buf, { status: 200, headers: { "content-type": taskCt || "application/json" } });
     }
 
+    // Ensure API key present for paxsenix upstream requests
+    if (!PAXSENIX_API_KEY) {
+      return new Response(JSON.stringify({ error: "Server missing PAXSENIX_API_KEY environment variable" }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      });
+    }
+
     const res = await fetch(upstream, { 
       cache: "no-store",
+      headers: paxsenixHeadersFor(upstream),
     });
 
     // If upstream returns JSON error, forward as JSON
@@ -177,6 +202,7 @@ export async function GET(req: NextRequest) {
             attempt++;
             const tRes = await fetch(taskUrl, { 
               cache: "no-store",
+              headers: paxsenixHeadersFor(taskUrl),
             });
             const tct = tRes.headers.get("content-type") || "";
             if (tct.includes("application/json")) {

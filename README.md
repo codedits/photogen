@@ -46,3 +46,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Paxsenix API key
+
+The image-generation proxy in `src/app/api/ai-image/route.ts` requires a server-side API key for Paxsenix. Set the environment variable `PAXSENIX_API_KEY` on your server or in local development to enable calls to `https://api.paxsenix.org`.
+
+Local (development) example: create a `.env.local` file at the project root:
+
+```powershell
+# .env.local
+PAXSENIX_API_KEY=sk-your-paxsenix-key-here
+```
+
+When deployed (Vercel, etc.), add `PAXSENIX_API_KEY` to your project's environment variables in the hosting dashboard. The key is read server-side only and is not exposed to browsers.

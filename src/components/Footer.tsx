@@ -32,7 +32,7 @@ export default function Footer() {
           <h5 className="font-semibold mb-3 text-[#ffffff]">Follow</h5>
           <div className="flex flex-col gap-3">
             
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram" className="flex items-center gap-3 text-sm text-[#ffffff] hover:text-white">
+            <a href="https://www.instagram.com/_visualsbytalha/" target="_blank" rel="noreferrer" aria-label="Instagram" className="flex items-center gap-3 text-sm text-[#ffffff] hover:text-white">
               <svg className="w-5 h-5 text-[#ffffff]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
                 <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="1.5" />
                 <path d="M16 11.5a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" strokeWidth="1.5" />
@@ -50,6 +50,13 @@ export default function Footer() {
 
             
           </div>
+        </div>
+      </div>
+
+      {/* Large centered footer logo (uses public/footer.svg) */}
+      <div className="w-full mt-8">
+        <div className="max-w-7xl mx-auto px-6 py-6 flex justify-center items-center">
+          <img src="/footer.svg" alt="PhotoGen" className="w-full max-w-[84%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[55%] opacity-100 object-contain" />
         </div>
       </div>
 

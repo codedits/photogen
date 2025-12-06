@@ -83,17 +83,17 @@ export async function GET(req: NextRequest) {
 
   // Read API key from environment (server-side). Do not expose this to clients.
   const PAXSENIX_API_KEY = process.env.PAXSENIX_API_KEY || process.env.NEXT_PUBLIC_PAXSENIX_API_KEY;
-  function paxsenixHeadersFor(u?: string | URL | null) {
+  function paxsenixHeadersFor(u?: string | URL | null): HeadersInit | undefined {
     try {
-      if (!u) return {};
+      if (!u) return undefined;
       const host = typeof u === "string" ? new URL(u).hostname : new URL(u.toString()).hostname;
       if (host && host.endsWith("paxsenix.org") && PAXSENIX_API_KEY) {
-        return { Authorization: `Bearer ${PAXSENIX_API_KEY}` };
+        return { Authorization: `Bearer ${PAXSENIX_API_KEY}` } as Record<string, string>;
       }
     } catch (e) {
       // ignore
     }
-    return {};
+    return undefined;
   }
 
   // Check cache for this exact request

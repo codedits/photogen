@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Nav from "../components/Nav";
 import LazyChatWidget from "../components/LazyChatWidget";
@@ -8,9 +8,10 @@ import VercelAnalytics from "../components/VercelAnalytics";
 import { ensurePresetIndexes } from "../lib/mongodb";
 
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const dmSans = DM_Sans({
+  variable: "--font-dm-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -59,7 +60,7 @@ export default async function RootLayout({
   <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
+        className={`${dmSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
   <Nav />
   {children}

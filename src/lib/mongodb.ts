@@ -60,3 +60,21 @@ export async function ensurePresetIndexes(dbName = defaultDb) {
   _idxPromises.set(dbName, p);
   return p;
 }
+
+// Ensure gallery collection indexes
+export async function ensureGalleryIndexes(dbName = defaultDb) {
+  if (_idxPromises.has(`${dbName}_gallery`)) return _idxPromises.get(`${dbName}_gallery`)!;
+  const p = (async () => {
+    const db = await getDatabase(dbName);
+    const coll = db.collection('gallery');
+    await Promise.all([
+      coll.createIndex({ uploadDate: -1 }),
+      coll.createIndex({ category: 1 }),
+      coll.createIndex({ featured: -1, uploadDate: -1 }),
+      coll.createIndex({ visibility: 1, uploadDate: -1 }),
+      coll.createIndex({ name: 'text', description: 'text', tags: 'text' }, { name: 'gallery_text_idx' }),
+    ]);
+  })();
+  _idxPromises.set(`${dbName}_gallery`, p);
+  return p;
+}

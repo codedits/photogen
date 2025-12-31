@@ -1,10 +1,10 @@
 import React from "react";
-import { PageContainer, Section } from "../../components/layout/Primitives";
-// PresetCard removed from this page; LiveSearchPresets handles rendering
+// We replace the generic layout components with custom Tailwind wrappers to control the full theme
 import LiveSearchPresets from '../../components/LiveSearchPresets';
 import getDatabase, { ensurePresetIndexes } from "../../lib/mongodb";
 import { getCache, setCache } from '../../lib/simpleCache';
 import { ObjectId } from 'mongodb';
+import { Layers } from "lucide-react"; // Optional: Add an icon if you have lucide-react
 
 type PresetShape = {
   id: string;
@@ -19,6 +19,8 @@ type PresetShape = {
 async function getPresetsFiltered(q: string): Promise<PresetShape[]> {
   const db = await getDatabase();
   const coll = db.collection('presets');
+  
+  // -- Type Definition for Raw DB Doc --
   type RawDoc = {
     _id: { toString(): string } | ObjectId;
     name?: string;
@@ -29,26 +31,24 @@ async function getPresetsFiltered(q: string): Promise<PresetShape[]> {
     images?: { url: string; public_id: string }[];
   };
 
-  // Kick off index creation if needed but don't await here to avoid blocking SSR.
-  // The root layout already starts index creation in the background; this is a soft
-  // guard to start it if not already running.
+  // Background index check (non-blocking)
   ensurePresetIndexes(db.databaseName).catch(() => {});
 
   let docs: RawDoc[];
   const cacheKey = `ssr:presets:q=${q}`;
   const cached = getCache<RawDoc[]>(cacheKey);
+
   if (cached) {
     docs = cached;
   } else {
     if (!q) {
-      // Limit SSR payload to a reasonable page size to reduce latency and match client defaults.
+      // Default load: Limit to 20 recent
       docs = await coll.find({}, { projection: { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1 } }).sort({ createdAt: -1 }).limit(20).toArray() as RawDoc[];
     } else {
-      // Try a text search first; if text index isn't suitable, fall back to regex OR queries.
+      // Search logic
       try {
-  docs = await coll.find({ $text: { $search: q } }, { projection: { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1, score: { $meta: 'textScore' } } }).sort({ score: { $meta: 'textScore' } as unknown as 1 }).limit(20).toArray() as RawDoc[];
-  } catch {
-        // Fallback to regex search across fields
+        docs = await coll.find({ $text: { $search: q } }, { projection: { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1, score: { $meta: 'textScore' } } }).sort({ score: { $meta: 'textScore' } as unknown as 1 }).limit(20).toArray() as RawDoc[];
+      } catch {
         const filter: Record<string, unknown> = {
           $or: [
             { name: { $regex: q, $options: 'i' } },
@@ -59,9 +59,9 @@ async function getPresetsFiltered(q: string): Promise<PresetShape[]> {
         docs = await coll.find(filter, { projection: { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1 } }).sort({ createdAt: -1 }).limit(100).toArray() as RawDoc[];
       }
     }
-  // Cache SSR results for a short period to speed repeated visits.
-  setCache(cacheKey, docs, 60);
+    setCache(cacheKey, docs, 60);
   }
+
   return docs.map((doc) => ({
     id: typeof doc._id === 'string' ? doc._id : String((doc._id as { toString(): string }).toString()),
     name: doc.name || 'Untitled',
@@ -73,19 +73,77 @@ async function getPresetsFiltered(q: string): Promise<PresetShape[]> {
   }));
 }
 
+export async function generateMetadata({ searchParams }: { searchParams?: { q?: string } | Promise<{ q?: string }> }) {
+  const sp = (await (searchParams as Promise<{ q?: string }> | { q?: string } | undefined)) || { q: '' };
+  const q = (sp.q || '').trim();
+  
+  return {
+    title: q ? `Search Results for "${q}" | PhotoGen Presets` : 'Explore Presets | PhotoGen',
+    description: 'Browse our collection of professional photography presets.',
+  };
+}
+
 export default async function PresetsPage({ searchParams }: { searchParams?: { q?: string } | Promise<{ q?: string }> }) {
-  // `searchParams` may be a dynamic API that needs to be awaited in Next.js app router.
   const sp = (await (searchParams as Promise<{ q?: string }> | { q?: string } | undefined)) || { q: '' };
   const q = (sp.q || '').trim();
   const presets = await getPresetsFiltered(q);
 
   return (
-    <PageContainer>
-      <Section className="pt-24 pb-8">
-        <h2 className="text-2xl sm:text-3xl font-semibold mb-6">Presets</h2>
-  {/* Live client-side search component — shows defaults when empty */}
-  <LiveSearchPresets initial={presets} />
-      </Section>
-    </PageContainer>
+    <main className="min-h-screen w-full bg-[#050505] text-[#e1e1e1] selection:bg-white/20 relative overflow-x-hidden">
+      
+      {/* --- BACKGROUND TEXTURE --- */}
+      {/* Noise */}
+      <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay"
+           style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }} />
+      {/* Technical Grid */}
+      <div className="fixed inset-0 z-0 opacity-[0.05] pointer-events-none" 
+        style={{ 
+          backgroundImage: 'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)', 
+          backgroundSize: '40px 40px' 
+        }} 
+      />
+
+      <div className="relative z-10 container mx-auto px-6 pt-32 pb-24">
+        
+        {/* --- HEADER SECTION --- */}
+        <header className="mb-24 border-b border-white/10 pb-12">
+           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+              <div className="space-y-4">
+                 <div className="flex items-center gap-3 text-white/40 mb-2">
+                    <Layers className="w-4 h-4" />
+                    <span className="text-[10px] uppercase tracking-[0.2em]">Library / Index</span>
+                 </div>
+                 
+                 <h1 className="text-[12vw] md:text-[8vw] leading-[0.85] font-bold tracking-tighter text-white/90">
+                    PRESETS
+                 </h1>
+                 
+                 <p className="text-sm md:text-base uppercase tracking-[0.2em] text-white/50 max-w-lg mt-6 border-l border-white/20 pl-4">
+                    Curated grading tools <br/> for intelligent photography.
+                 </p>
+              </div>
+
+              {/* Technical Stats */}
+              <div className="flex flex-row md:flex-col gap-6 md:gap-1 text-right items-start md:items-end">
+                 <div className="flex flex-col items-end">
+                    <span className="text-[10px] uppercase tracking-widest text-white/30">Database</span>
+                    <span className="text-xs font-mono text-white/70">MONGO.V2</span>
+                 </div>
+                 <div className="flex flex-col items-end">
+                    <span className="text-[10px] uppercase tracking-widest text-white/30">Loaded</span>
+                    <span className="text-xs font-mono text-white/70">{presets.length.toString().padStart(2, '0')} ASSETS</span>
+                 </div>
+              </div>
+           </div>
+        </header>
+
+        {/* --- CONTENT AREA --- */}
+        <div className="w-full">
+           {/* Passing presets to the client component */}
+           <LiveSearchPresets initial={presets} />
+        </div>
+
+      </div>
+    </main>
   );
 }

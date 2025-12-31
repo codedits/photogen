@@ -1,136 +1,154 @@
 "use client";
 
-import { Wand2, Image } from "lucide-react";
-import Link from "next/link";
-import dynamic from "next/dynamic";
-const DarkVeil = dynamic(() => import("./DarkVeil"), { ssr: false, loading: () => null });
-import { useEffect, useRef } from "react";
+import React, { useRef } from "react";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { ArrowDownRight, Camera, Aperture, Maximize2 } from "lucide-react";
+
+const HERO_IMAGES = [
+  // Front Image (Portrait)
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop",
+  // Middle Image (Architecture/Abstract)
+  "https://images.unsplash.com/photo-1486325212027-8081e485255e?q=80&w=1000&auto=format&fit=crop",
+  // Back Image (Landscape/Texture)
+  "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=1000&auto=format&fit=crop",
+];
 
 export default function Hero() {
-  // Dynamic typing: cycle through three phrases, type, wait 3s, delete, then next
-  const typedEl = useRef<HTMLSpanElement | null>(null);
-  const caretEl = useRef<HTMLSpanElement | null>(null);
-  const caretIntervalRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const phrases = [
-    "PhotoGen Created by _visualsbytalha",
-    "Next-Level visuals.",
-    "Level up your Edits",
-  ];
+  // 1. Track Mouse Position
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
 
-  useEffect(() => {
-    const TYPE_SPEED = 100; // ms per char when typing
-    const DELETE_SPEED = 60; // ms per char when deleting
-    const PAUSE_AFTER_FULL = 4000; // ms pause when full text shown
+  // 2. Smooth the mouse data (Spring Physics)
+  const mouseX = useSpring(x, { stiffness: 100, damping: 20 });
+  const mouseY = useSpring(y, { stiffness: 100, damping: 20 });
 
-    let current = 0;
-    let charIndex = 0;
-    let typingTimer: number | null = null;
-    let deletingTimer: number | null = null;
-    let pauseTimeout: number | null = null;
+  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (!containerRef.current) return;
+    const { width, height, left, top } = containerRef.current.getBoundingClientRect();
+    // Normalize coordinates from -0.5 to 0.5
+    const currentX = (e.clientX - left) / width - 0.5;
+    const currentY = (e.clientY - top) / height - 0.5;
+    x.set(currentX);
+    y.set(currentY);
+  }
 
-    const startCaret = () => {
-      if (caretIntervalRef.current) return;
-      if (caretEl.current) caretEl.current.textContent = '▌';
-      caretIntervalRef.current = window.setInterval(() => {
-        if (!caretEl.current) return;
-        caretEl.current.textContent = caretEl.current.textContent ? '' : '▌';
-      }, 500);
-    };
+  // --- PARALLAX LAYERS CALCULATIONS ---
+  
+  // Front Image: Moves mostly with mouse
+  const frontX = useTransform(mouseX, [-0.5, 0.5], [40, -40]);
+  const frontY = useTransform(mouseY, [-0.5, 0.5], [40, -40]);
+  const frontRotate = useTransform(mouseX, [-0.5, 0.5], [-5, 5]);
 
-    const stopCaret = () => {
-      if (caretIntervalRef.current) {
-        clearInterval(caretIntervalRef.current);
-        caretIntervalRef.current = null;
-      }
-      if (caretEl.current) caretEl.current.textContent = '';
-    };
+  // Middle Image: Moves opposite (creates separation)
+  const midX = useTransform(mouseX, [-0.5, 0.5], [-60, 60]);
+  const midY = useTransform(mouseY, [-0.5, 0.5], [-20, 20]);
+  const midRotate = useTransform(mouseX, [-0.5, 0.5], [5, -5]);
 
-    const typeCurrent = () => {
-      const text = phrases[current];
-      charIndex = 0;
-      if (typedEl.current) typedEl.current.textContent = '';
-      startCaret();
-      typingTimer = window.setInterval(() => {
-        charIndex++;
-        if (typedEl.current) typedEl.current.textContent = text.slice(0, charIndex);
-        if (charIndex >= text.length) {
-          if (typingTimer) { clearInterval(typingTimer); typingTimer = null; }
-          pauseTimeout = window.setTimeout(() => startDeleting(), PAUSE_AFTER_FULL);
-        }
-      }, TYPE_SPEED);
-    };
-
-    const startDeleting = () => {
-      const text = phrases[current];
-      deletingTimer = window.setInterval(() => {
-        charIndex--;
-        if (typedEl.current) typedEl.current.textContent = text.slice(0, charIndex);
-        if (charIndex <= 0) {
-          if (deletingTimer) { clearInterval(deletingTimer); deletingTimer = null; }
-          pauseTimeout = window.setTimeout(() => {
-            current = (current + 1) % phrases.length;
-            typeCurrent();
-          }, 250);
-        }
-      }, DELETE_SPEED);
-    };
-
-    typeCurrent();
-
-    return () => {
-      if (typingTimer) clearInterval(typingTimer);
-      if (deletingTimer) clearInterval(deletingTimer);
-      if (pauseTimeout) clearTimeout(pauseTimeout);
-      stopCaret();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Back Image: Moves slowest, anchors the scene
+  const backX = useTransform(mouseX, [-0.5, 0.5], [-20, 20]);
+  const backY = useTransform(mouseY, [-0.5, 0.5], [-60, 60]);
+  
+  // Text Parallax
+  const textX = useTransform(mouseX, [-0.5, 0.5], [20, -20]);
 
   return (
-    <div className="w-full relative overflow-hidden z-0 h-screen sm:h-[640px] md:h-[720px] mt-0">
-      <DarkVeil
-        hueShift={10}
-        noiseIntensity={0.01}
-        scanlineIntensity={0.05}
-        speed={1.5}
-        warpAmount={0.03}
-  // Use a reduced resolution scale so the veil renders at lower
-  // internal resolution (reduces GPU usage) but still fills the
-  // hero container via CSS sizing inside the component.
-  resolutionScale={0.3}
+    <section
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      className="relative h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-[#080808] perspective-1000"
+    >
+      {/* Decorative Grid Background */}
+      <div className="absolute inset-0 z-0 opacity-10" 
+        style={{ 
+          backgroundImage: 'linear-gradient(to right, #333 1px, transparent 1px), linear-gradient(to bottom, #333 1px, transparent 1px)', 
+          backgroundSize: '80px 80px' 
+        }} 
       />
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-full max-w-[420px] mx-auto px-4 text-center">
-          <h1
-            className="text-white text-glow drop-shadow-lg leading-tight md:leading-snug"
-            style={{ fontWeight: 500, fontSize: "clamp(2rem, 3.5vw, 2.5rem)", lineHeight: 0.9 }}
-          >
-            {/* Render the typed text but keep the original exact content as the source */}
-            <span aria-live="polite">
-              <span ref={typedEl} />
-              <span aria-hidden className="ml-1" ref={caretEl} style={{ fontSize: '0.72em', lineHeight: 1 }}>{'▌'}</span>
-            </span>
-            {/* Provide screen-reader text with the full content so semantics remain unchanged */}
-            <span className="sr-only">PhotoGen for Photo Enthusiasts</span>
-          </h1>
 
-          <div className="mt-8 flex flex-row items-center justify-center gap-3 sm:gap-4 pointer-events-auto">
-            <div className="inline-flex items-center justify-center w-auto">
-              <Link href="/studio" prefetch className="inline-flex items-center justify-center w-auto bg-white text-black rounded-full px-4 sm:px-6 py-1.5 sm:py-2 text-sm font-medium shadow-lg hover:brightness-95 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 text-center btn-violet">
-                <Wand2 size={16} className="mr-2 text-white" />
-                AI Studio
-              </Link>
-            </div>
-            <div className="inline-flex items-center justify-center w-auto">
-              <Link href="/presets" prefetch className="inline-flex items-center justify-center w-auto bg-white/10 text-white rounded-full px-4 sm:px-6 py-1.5 sm:py-2 text-sm font-medium shadow hover:brightness-95 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 text-center ">
-                <Image size={16} className="mr-2 text-white" />
-                Lightroom Presets
-              </Link>
-            </div>
-          </div>
+      {/* --- CONTENT LAYER --- */}
+      <div className="relative z-20 w-full max-w-7xl mx-auto h-[600px] flex items-center justify-center">
+        
+        {/* BIG TYPOGRAPHY (Behind) */}
+        <motion.div 
+          style={{ x: textX }}
+          className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+        >
+           <h1 className="text-[18vw] font-black tracking-tighter text-[#1a1a1a] leading-none select-none">
+             STUDIO
+           </h1>
+        </motion.div>
+
+        {/* --- IMAGE STACK --- */}
+        <div className="relative w-[300px] h-[400px] md:w-[400px] md:h-[550px] z-30">
+            
+            {/* 3. Back Image */}
+            <motion.div
+              style={{ x: backX, y: backY, rotate: -6 }}
+              className="absolute top-0 left-[-80px] w-full h-full opacity-60 grayscale hover:grayscale-0 transition-all duration-500"
+            >
+               <img src={HERO_IMAGES[2]} className="w-full h-full object-cover rounded shadow-2xl" alt="Back" />
+            </motion.div>
+
+            {/* 2. Middle Image */}
+            <motion.div
+              style={{ x: midX, y: midY, rotate: 6 }}
+              className="absolute top-[40px] right-[-80px] w-full h-full opacity-80 brightness-75 hover:brightness-100 transition-all duration-500"
+            >
+               <img src={HERO_IMAGES[1]} className="w-full h-full object-cover rounded shadow-2xl" alt="Middle" />
+            </motion.div>
+
+            {/* 1. Front Main Image */}
+            <motion.div
+              style={{ x: frontX, y: frontY, rotate: frontRotate }}
+              className="absolute inset-0 z-40 bg-neutral-800 rounded shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden border border-white/10"
+            >
+                <img src={HERO_IMAGES[0]} className="w-full h-full object-cover scale-110" alt="Front" />
+                
+                {/* Overlay Text on Main Image */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+                  <div className="flex items-center justify-between border-t border-white/20 pt-4">
+                     <div>
+                       <p className="text-xs font-bold text-white uppercase tracking-widest mb-1">Vol. 01</p>
+                       <p className="text-[10px] text-white/60">Summer Collection</p>
+                     </div>
+                     <Maximize2 className="text-white/80 w-5 h-5" />
+                  </div>
+                </div>
+            </motion.div>
         </div>
+
+        {/* OVERLAY TYPOGRAPHY (Front - Blend Mode) */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50 mix-blend-exclusion">
+           <h1 className="text-[18vw] font-black tracking-tighter text-white leading-none select-none opacity-80">
+             STUDIO
+           </h1>
+        </div>
+
       </div>
-    </div>
+
+      {/* --- UI ELEMENTS --- */}
+      
+     
+
+      {/* Bottom Footer */}
+      <div className="absolute bottom-0 w-full p-8 flex justify-between items-end z-50">
+        <div className="flex gap-4">
+           <div className="flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-md rounded-full border border-white/10 text-white/80 text-xs">
+              <Camera className="w-3 h-3" />
+              <span>Scroll to explore</span>
+           </div>
+        </div>
+        
+        <button className="group flex items-center gap-3 text-white">
+           <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all duration-300">
+              <ArrowDownRight className="w-5 h-5 transform group-hover:rotate-45 transition-transform" />
+           </div>
+           <span className="text-xs uppercase tracking-widest hidden md:block">View Gallery</span>
+        </button>
+      </div>
+
+    </section>
   );
 }

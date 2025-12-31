@@ -1,14 +1,21 @@
 import { v2 as cloudinary, UploadApiOptions } from 'cloudinary';
 
-// CLOUDINARY_URL covers cloud_name, api_key, api_secret.
-const url = process.env.CLOUDINARY_URL;
-if (!url) {
-  console.warn('CLOUDINARY_URL not set. Set it in .env.local to enable uploads.');
-}
-
-cloudinary.config({
+// Configure Cloudinary
+// It will automatically use CLOUDINARY_URL if present in process.env
+// Otherwise, we can explicitly set the config from individual env vars
+const config: any = {
   secure: true,
-});
+};
+
+if (process.env.CLOUDINARY_CLOUD_NAME) config.cloud_name = process.env.CLOUDINARY_CLOUD_NAME;
+if (process.env.CLOUDINARY_API_KEY) config.api_key = process.env.CLOUDINARY_API_KEY;
+if (process.env.CLOUDINARY_API_SECRET) config.api_secret = process.env.CLOUDINARY_API_SECRET;
+
+cloudinary.config(config);
+
+if (!process.env.CLOUDINARY_URL && !process.env.CLOUDINARY_API_KEY) {
+  console.warn('Cloudinary credentials not set. Set CLOUDINARY_URL or CLOUDINARY_API_KEY in .env.local');
+}
 
 export type CloudinaryUploaded = { url: string; public_id: string; width?: number; height?: number; format?: string };
 

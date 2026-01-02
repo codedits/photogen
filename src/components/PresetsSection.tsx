@@ -23,8 +23,8 @@ export default function PresetsSection({ presets }: PresetsSectionProps) {
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {presets.map((preset) => (
-            <PresetCard key={preset.id} preset={preset} />
+          {presets.map((preset, index) => (
+            <PresetCard key={preset.id} preset={preset} priority={index === 0} />
           ))}
         </div>
       </div>

@@ -25,29 +25,8 @@ export default function LiveSearchPresets({ initial = [] }: { initial?: PresetSh
   useEffect(() => {
     let mounted = true;
     async function run() {
-      // If we have initial presets, do a fast local filter first to improve UX.
       setLoading(true);
       try {
-        const q = debouncedQuery.trim();
-        if (q && initial && initial.length) {
-          const tokens = q.split(/\s+/).map((t) => t.trim()).filter(Boolean);
-          const matches = initial.filter((p) => {
-            const name = (p.name || '').toLowerCase();
-            const tagList = (p.tags || []).map((t) => String(t).toLowerCase());
-            return tokens.every((tok) => {
-              const t2 = tok.toLowerCase();
-              if (name.includes(t2)) return true;
-              for (const tg of tagList) if (tg.includes(t2)) return true;
-              return false;
-            });
-          });
-          if (mounted) {
-            setResults(matches);
-            setLoading(false);
-            return;
-          }
-        }
-
         // fallback to server search for broader results / when no initial data
         const url = debouncedQuery ? `/api/presets?q=${encodeURIComponent(debouncedQuery)}` : `/api/presets`;
         const res = await fetch(url, { cache: 'no-store' });

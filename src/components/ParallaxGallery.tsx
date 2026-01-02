@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
+import Image from "next/image";
 import {
   motion,
   useScroll,
@@ -29,7 +30,6 @@ const IMAGES = [
   "https://framerusercontent.com/images/yqa8LtbxWvlsHn9yYkxT7qrKZdY.jpeg?width=960&height=1200",
 ];
 
-// Combine images to create a seamless loop buffer
 const DOUBLE_IMAGES = [...IMAGES, ...IMAGES];
 
 function ParallaxRow({
@@ -44,61 +44,60 @@ function ParallaxRow({
   scrollY: any;
 }) {
   const baseX = useMotionValue(0);
-  const { scrollY: componentScrollY } = useScroll();
-  const scrollVelocity = useVelocity(componentScrollY);
+  const scrollVelocity = useVelocity(scrollY);
   
-  // Smooth out the velocity so it doesn't jitter
   const smoothVelocity = useSpring(scrollVelocity, {
     damping: 50,
     stiffness: 400
   });
 
-  // Calculate dynamic effects based on scroll speed
-  const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 5], {
-    clamp: false
+  /**
+   * CHANGE 1: Increase the multiplier for scroll speed.
+   * Changing [0, 2] to [0, 5] makes the marquee move 5x faster 
+   * when you scroll quickly.
+   */
+  const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 3], {
+    clamp: false // Set to false to allow even more speed on fast scrolls
   });
-  
-  // Dynamic transformations based on speed (recreating your 'm' multiplier effects)
-  // When scrolling fast: scale goes down, gap changes, row shifts vertically
+
   const scrollSpeed = useTransform(smoothVelocity, (v) => Math.abs(v));
-  const scale = useTransform(scrollSpeed, [0, 3000], [1, 0.9]); // Shrink items slightly
-  const yOffset = useTransform(scrollSpeed, [0, 3000], [0, baseVelocity > 0 ? -10 : 10]); 
-  
-  // Continuous loop logic
+  const scale = useTransform(scrollSpeed, [0, 2000], [1, 0.98]); 
+  const yOffset = useTransform(scrollSpeed, [0, 2000], [0, baseVelocity > 0 ? -10 : 10]); 
+
   useAnimationFrame((t, delta) => {
     let moveBy = baseVelocity * (delta / 1000);
-
-    // Add scroll velocity to base movement
-    if (velocityFactor.get() < 0) {
-      moveBy += velocityFactor.get() * moveBy;
-    } else {
-      moveBy += velocityFactor.get() * moveBy;
-    }
-
+    moveBy += moveBy * velocityFactor.get();
     baseX.set(baseX.get() + moveBy);
   });
 
-  // Wrap the x position so it loops infinitely between -50% and 0%
   const x = useTransform(baseX, (v) => `${wrap(-50, 0, v)}%`);
 
   return (
     <motion.div
-      className={`flex flex-nowrap gap-2 ${className}`}
+      className={`flex flex-nowrap gap-4 ${className}`}
       style={{ x, scale, y: yOffset }}
     >
-      {images.map((src, i) => (
-        <div
-          key={i}
-          className="relative h-[300px] w-[200px] md:h-[420px] md:w-[300px] shrink-0 overflow-hidden rounded-md bg-neutral-900"
-        >
-          <img
-            src={src}
-            alt=""
-            className="h-full w-full object-cover"
-            loading="lazy"
-          />
-        </div>
-      ))}
+      {images.map((src, i) => {
+        const isFramer = typeof src === 'string' && src.includes('framerusercontent.com');
+        return (
+          <div
+            key={`${src}-${i}`}
+            className="relative h-[300px] w-[200px] md:h-[420px] md:w-[300px] shrink-0 overflow-hidden rounded-md bg-neutral-900"
+          >
+            <Image
+              src={src}
+              alt=""
+              fill
+              className="object-cover"
+              priority={i < 6}
+              loading={i < 6 ? 'eager' : 'lazy'}
+              quality={60}
+              sizes="(max-width: 768px) 200px, 300px"
+              unoptimized={isFramer}
+            />
+          </div>
+        );
+      })}
     </motion.div>
   );
 }
@@ -109,16 +108,14 @@ export default function ParallaxGallery() {
   const rotate = (arr: string[], n: number) => {
     const len = arr.length;
     if (len === 0) return arr;
-    const mod = ((n % len) + len) % len; // handle negative n
+    const mod = ((n % len) + len) % len;
     return arr.slice(mod).concat(arr.slice(0, mod));
   };
 
   return (
-    <section className="relative overflow-hidden bg-black py-24 md:py-32">
-      {/* Background Mask */}
+    <section id="gallery" className="relative overflow-hidden bg-black py-24 md:py-32">
       <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-r from-black via-transparent to-black" />
 
-      {/* Content Overlay */}
       <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-start">
         <div className="container mx-auto px-6 md:px-24 pointer-events-auto">
           <div className="max-w-xl">
@@ -136,23 +133,26 @@ export default function ParallaxGallery() {
         </div>
       </div>
 
-
-      {/* Rows */}
       <div className="flex flex-col gap-4 relative z-10 rotate-[-2deg] scale-105 origin-center">
+        {/**
+         * CHANGE 2: Increase baseVelocity.
+         * Changing -1.5 to -5 (or higher) increases the "idle" speed 
+         * when the user is not scrolling at all.
+         */}
         <ParallaxRow 
           images={rotate(DOUBLE_IMAGES, 0)} 
-          baseVelocity={-2} 
+          baseVelocity={-5} 
           scrollY={scrollY} 
         />
         <ParallaxRow 
           images={rotate(DOUBLE_IMAGES, 4)} 
-          baseVelocity={2} 
+          baseVelocity={5} 
           scrollY={scrollY} 
-          className="md:pl-24" // Offset slightly like your original
+          className="md:pl-24" 
         />
         <ParallaxRow 
           images={rotate(DOUBLE_IMAGES, 8)} 
-          baseVelocity={-2} 
+          baseVelocity={-5} 
           scrollY={scrollY} 
         />
       </div>

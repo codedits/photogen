@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import GalleryGrid from './GalleryGrid';
 import GalleryFilters from './GalleryFilters';
 
@@ -10,6 +10,9 @@ export default function GalleryPage() {
     featured: false,
     search: ''
   });
+
+  // Memoize filters to prevent unnecessary re-renders
+  const memoizedFilters = useMemo(() => filters, [filters.category, filters.featured, filters.search]);
 
   return (
     <main className="min-h-screen bg-[#050505] text-white">
@@ -32,13 +35,13 @@ export default function GalleryPage() {
       </section>
 
       {/* Filters & Grid */}
-      <section className="relative z-10 px-6 md:px-12 pb-24">
+      <section id="gallery" className="relative z-10 px-6 md:px-12 pb-24">
         <div className="max-w-7xl mx-auto">
           {/* Filter Controls */}
           <GalleryFilters onFiltersChange={setFilters} />
           
           {/* Gallery Grid */}
-          <GalleryGrid filters={filters} />
+          <GalleryGrid filters={memoizedFilters} />
         </div>
       </section>
     </main>

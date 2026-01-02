@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Link from "next/link";
 
 export default function Footer() {
   return (
@@ -17,9 +18,9 @@ export default function Footer() {
             <div>
               <h5 className="text-[10px] uppercase tracking-[0.2em] text-white/20 mb-6">Navigation</h5>
               <ul className="space-y-4 text-[11px] uppercase tracking-widest text-white/60">
-                <li><a href="/presets" className="hover:text-white transition-colors">Presets</a></li>
-                <li><a href="/studio" className="hover:text-white transition-colors">Studio</a></li>
-                <li><a href="/gallery" className="hover:text-white transition-colors">Gallery</a></li>
+                <li><Link href="/presets" className="hover:text-white transition-colors">Presets</Link></li>
+                <li><Link href="/studio" className="hover:text-white transition-colors">Studio</Link></li>
+                <li><Link href="/gallery" className="hover:text-white transition-colors">Gallery</Link></li>
               </ul>
             </div>
             <div>

@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
     // Cache public requests for 60 seconds
     if (visibility === 'public') {
       response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+      response.headers.set('Vary', 'Accept-Encoding');
     }
 
     return response;

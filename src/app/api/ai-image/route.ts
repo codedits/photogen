@@ -26,13 +26,30 @@ function setCache(key: string, data: Record<string, unknown>): void {
 // Simple server-side proxy to avoid CORS and keep the client domain constant
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const text = searchParams.get("text") || "";
+  const text = searchParams.get("text") || searchParams.get("prompt") || "";
+  const model = searchParams.get("model") || "midjourney";
   const taskUrlParam = searchParams.get("task_url") || searchParams.get("taskUrl") || "";
   const ratioRaw = searchParams.get("ratio") || ""; // e.g., "1:1", "16:9", "9:16"
   const imageUrlParam = searchParams.get("image_url") || searchParams.get("imageUrl") || "";
   const filenameParam = searchParams.get("filename") || "";
 
-  // Direct image download proxy (for cross-origin safe downloads)
+  // Read API key from environment (server-side). Do not expose this to clients.
+  const PAXSENIX_API_KEY = process.env.PAXSENIX_API_KEY || process.env.NEXT_PUBLIC_PAXSENIX_API_KEY;
+  
+  function paxsenixHeadersFor(u?: string | URL | null): HeadersInit | undefined {
+    try {
+      if (!u) return undefined;
+      const host = typeof u === "string" ? new URL(u).hostname : new URL(u.toString()).hostname;
+      if (host && host.endsWith("paxsenix.org") && PAXSENIX_API_KEY) {
+        return { Authorization: `Bearer ${PAXSENIX_API_KEY}` } as Record<string, string>;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return undefined;
+  }
+
+  // 1. Direct image download proxy
   if (imageUrlParam) {
     try {
       const u = new URL(imageUrlParam);
@@ -48,14 +65,13 @@ export async function GET(req: NextRequest) {
       const ct = upstreamRes.headers.get("content-type") || "application/octet-stream";
       const buf = await upstreamRes.arrayBuffer();
       const safeName = (filenameParam || "photogen-image").replace(/[^A-Za-z0-9._-]+/g, "_");
-      // best-effort extension inference
       const ext = ct.includes("/") ? ct.split("/")[1].split(";")[0] : "bin";
       const fname = safeName.includes(".") ? safeName : `${safeName}.${ext}`;
       return new Response(buf, {
         status: 200,
         headers: {
           "content-type": ct,
-          "cache-control": "public, max-age=31536000, immutable", // Cache downloaded images for 1 year
+          "cache-control": "public, max-age=31536000, immutable",
           "content-disposition": `attachment; filename="${fname}"`,
         },
       });
@@ -67,6 +83,38 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // 2. Polling logic (if task_url is provided, we don't need 'text')
+  if (taskUrlParam) {
+    try {
+      const taskRes = await fetch(taskUrlParam, { 
+        cache: "no-store",
+        headers: paxsenixHeadersFor(taskUrlParam),
+      });
+      const taskCt = taskRes.headers.get("content-type") || "";
+
+      if (!taskRes.ok) {
+        if (taskCt.includes("application/json")) {
+          const data = await taskRes.json().catch(() => null);
+          return new Response(JSON.stringify(data || { error: `Upstream error ${taskRes.status}` }), { status: taskRes.status, headers: { "content-type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ error: `Upstream error ${taskRes.status}` }), { status: taskRes.status, headers: { "content-type": "application/json" } });
+      }
+
+      if (taskCt.includes("application/json")) {
+        const data = await taskRes.json().catch(() => null) as unknown;
+        return new Response(JSON.stringify(data), { status: taskRes.status, headers: { "content-type": "application/json" } });
+      }
+      const buf = await taskRes.arrayBuffer();
+      return new Response(buf, { status: 200, headers: { "content-type": taskCt || "image/png" } });
+    } catch (err: unknown) {
+      return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) || "Polling request failed" }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      });
+    }
+  }
+
+  // 3. Generation logic (requires 'text')
   if (!text.trim()) {
     return new Response(JSON.stringify({ error: "Missing 'text' query param" }), {
       status: 400,
@@ -75,29 +123,25 @@ export async function GET(req: NextRequest) {
   }
 
   // Build upstream URL with prompt and optional ratio
-  const url = new URL("https://api.paxsenix.org/ai-image/midjourney");
-  url.searchParams.set("text", text);
+  // Supported models: midjourney, nano-banana, nano-banana-pro
+  let upstream: string;
   const ratio = ratioRaw.trim();
-  if (ratio) url.searchParams.set("ratio", ratio);
-  const upstream = url.toString();
-
-  // Read API key from environment (server-side). Do not expose this to clients.
-  const PAXSENIX_API_KEY = process.env.PAXSENIX_API_KEY || process.env.NEXT_PUBLIC_PAXSENIX_API_KEY;
-  function paxsenixHeadersFor(u?: string | URL | null): HeadersInit | undefined {
-    try {
-      if (!u) return undefined;
-      const host = typeof u === "string" ? new URL(u).hostname : new URL(u.toString()).hostname;
-      if (host && host.endsWith("paxsenix.org") && PAXSENIX_API_KEY) {
-        return { Authorization: `Bearer ${PAXSENIX_API_KEY}` } as Record<string, string>;
-      }
-    } catch (e) {
-      // ignore
-    }
-    return undefined;
+  
+  if (model === "nano-banana" || model === "nano-banana-pro") {
+    const url = new URL("https://api.paxsenix.org/ai-image/nano-banana");
+    url.searchParams.set("prompt", text);
+    url.searchParams.set("model", model);
+    if (ratio) url.searchParams.set("ratio", ratio);
+    upstream = url.toString();
+  } else {
+    const url = new URL("https://api.paxsenix.org/ai-image/midjourney");
+    url.searchParams.set("text", text);
+    if (ratio) url.searchParams.set("ratio", ratio);
+    upstream = url.toString();
   }
 
   // Check cache for this exact request
-  const cacheKey = `gen:${text}:${ratio}`;
+  const cacheKey = `gen:${model}:${text}:${ratio}`;
   const cached = getCached(cacheKey);
   if (cached) {
     return new Response(JSON.stringify(cached), { 
@@ -110,21 +154,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // If caller passed a task_url, fetch it directly (useful for status polling or collect)
-    if (taskUrlParam) {
-      const taskRes = await fetch(taskUrlParam, { 
-        cache: "no-store",
-        headers: paxsenixHeadersFor(taskUrlParam),
-      });
-      const taskCt = taskRes.headers.get("content-type") || "";
-       if (taskCt.includes("application/json")) {
-         const data = await taskRes.json().catch(() => null) as unknown;
-         return new Response(JSON.stringify(data), { status: taskRes.status, headers: { "content-type": "application/json" } });
-      }
-      const buf = await taskRes.arrayBuffer();
-      return new Response(buf, { status: 200, headers: { "content-type": taskCt || "application/json" } });
-    }
-
     // Ensure API key present for paxsenix upstream requests
     if (!PAXSENIX_API_KEY) {
       return new Response(JSON.stringify({ error: "Server missing PAXSENIX_API_KEY environment variable" }), {
@@ -185,53 +214,18 @@ export async function GET(req: NextRequest) {
           return new Response(JSON.stringify(response), { status: 200, headers: { "content-type": "application/json", "x-cache": "MISS" } });
         }
 
-  // If upstream returned a task/job reference, attempt to poll the task until completion (short timeout)
-  let taskUrl: string | undefined;
-  const jobId = d["jobId"];
+        // If upstream returned a task/job reference, return it immediately to the client
+        let taskUrl: string | undefined;
+        const jobId = d["jobId"];
         if (typeof d["task_url"] === "string") taskUrl = d["task_url"] as string;
         else if (typeof d["taskUrl"] === "string") taskUrl = d["taskUrl"] as string;
         else if (typeof d["task"] === "string") taskUrl = d["task"] as string;
         else if (typeof d["url"] === "string" && (d["url"] as string).startsWith("https://api.paxsenix.org/task/")) taskUrl = d["url"] as string;
 
         if (taskUrl) {
-          // Poll task endpoint (server-side) for up to ~25 seconds
-          const maxAttempts = 40;
-          const intervalMs = 1000;
-          let attempt = 0;
-          while (attempt < maxAttempts) {
-            attempt++;
-            const tRes = await fetch(taskUrl, { 
-              cache: "no-store",
-              headers: paxsenixHeadersFor(taskUrl),
-            });
-            const tct = tRes.headers.get("content-type") || "";
-            if (tct.includes("application/json")) {
-              const tdata = await tRes.json().catch(() => null) as unknown;
-              if (typeof tdata === "object" && tdata !== null) {
-                const td = tdata as Record<string, unknown>;
-                // If task result contains multiple urls, return them
-                if (Array.isArray(td["urls"]) && (td["urls"] as unknown[]).every((v) => typeof v === "string")) {
-                  const response = { ok: true, urls: td["urls"] };
-                  setCache(cacheKey, response);
-                  return new Response(JSON.stringify(response), { status: 200, headers: { "content-type": "application/json", "x-cache": "MISS" } });
-                }
-                // If task result contains a single url, normalize into urls array
-                if (typeof td["url"] === "string") {
-                  const response = { ok: true, urls: [td["url"]] };
-                  setCache(cacheKey, response);
-                  return new Response(JSON.stringify(response), { status: 200, headers: { "content-type": "application/json", "x-cache": "MISS" } });
-                }
-                if (typeof td["status"] === "string" && td["status"] === "failed") {
-                  return new Response(JSON.stringify({ error: "Upstream task failed" }), { status: 502, headers: { "content-type": "application/json" } });
-                }
-              }
-            }
-            // wait before next attempt
-            await new Promise((r) => setTimeout(r, intervalMs));
-          }
-
-          // Timed out waiting. Return job info so client can poll the task_url if desired.
-          return new Response(JSON.stringify({ ok: false, message: "Task queued", jobId, task_url: taskUrl }), { status: 202, headers: { "content-type": "application/json" } });
+          // Return job info so client can poll the task_url
+          const message = typeof d["message"] === "string" ? d["message"] : "Task queued";
+          return new Response(JSON.stringify({ ok: true, message, jobId, task_url: taskUrl }), { status: 200, headers: { "content-type": "application/json" } });
         }
 
         // Try common shapes for immediate image URL/base64 and normalize into JSON

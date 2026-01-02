@@ -126,6 +126,7 @@ export default function Carousel({
   {/* blurred backdrop to avoid empty letterbox when image is object-contain */}
   <div className="relative z-10 w-full h-full flex items-center justify-center">
           <ImageWithLqip
+            key={current.url}
             src={current.url}
             alt={current.alt || `Slide ${index + 1}`}
             fill

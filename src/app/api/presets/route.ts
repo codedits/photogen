@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     const cacheKey = `presets:q=${q}:page=${page}:limit=${limit}`;
     if (cachingEligible) {
       const cached = getCache<{ ok: boolean; presets: unknown[]; hasMore: boolean; page: number; limit: number }>(cacheKey);
-      if (cached) return NextResponse.json(cached, { headers: { 'cache-control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=120' } });
+      if (cached) return NextResponse.json(cached, { headers: { 'cache-control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=120', 'Vary': 'Accept-Encoding' } });
     }
     const db = await getDatabase();
     await ensurePresetIndexes(db.databaseName);

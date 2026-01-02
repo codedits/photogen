@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Maximize2, Minimize2, ChevronLeft, ChevronRight, Image as ImageIcon } from "lucide-react";
+import { thumbUrl } from "../../../lib/cloudinaryUrl";
+import useBlurDataUrl from "../../../lib/useBlurDataUrl";
 
 interface PresetGalleryProps {
   images: { url: string; public_id?: string }[];
@@ -14,6 +16,34 @@ export default function PresetGallery({ images, presetName }: PresetGalleryProps
   const [fitMode, setFitMode] = useState<"contain" | "cover">("contain");
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Aggressive preloading of all images in the gallery (idempotent + cleanup)
+  useEffect(() => {
+    if (!images || images.length <= 1) return;
+
+    const added: HTMLLinkElement[] = [];
+
+    images.forEach((img, idx) => {
+      // Skip current image since it is loaded via priority
+      if (idx === currentIndex) return;
+
+      const href = thumbUrl(img.url, { w: 1200, h: 1600, fit: 'contain', q: 'auto:good' });
+      // Avoid adding duplicates
+      if (document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
+
+      const link = document.createElement('link');
+      link.rel = 'preload';
+      link.as = 'image';
+      link.href = href;
+      document.head.appendChild(link);
+      added.push(link);
+    });
+
+    return () => {
+      // Clean up only the links we added
+      for (const l of added) try { l.remove(); } catch {}
+    };
+  }, [images, currentIndex]);
+
   if (!images || images.length === 0) {
     return (
       <div className="w-full h-[50vh] lg:h-screen bg-[#080808] flex flex-col items-center justify-center text-white/20 border-b lg:border-b-0 lg:border-r border-white/10">
@@ -24,6 +54,9 @@ export default function PresetGallery({ images, presetName }: PresetGalleryProps
   }
 
   const currentImage = images[currentIndex];
+  // Construct optimized URL and LQIP blur data (hook only runs when currentImage exists)
+  const optimizedUrl = thumbUrl(currentImage.url, { w: 1200, h: 1600, fit: 'contain', q: 'auto:good' });
+  const blurData = useBlurDataUrl(currentImage.url, { w: 10, h: 10 });
 
   const nextImage = () => setCurrentIndex((prev) => (prev + 1) % images.length);
   const prevImage = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
@@ -35,26 +68,29 @@ export default function PresetGallery({ images, presetName }: PresetGalleryProps
       {/* This fills the black bars so 'contain' mode looks elegant */}
       <div className="absolute inset-0 z-0">
         <Image
-          src={currentImage.url}
+          src={thumbUrl(currentImage.url, { w: 200, h: 200, fit: 'cover', q: 30 })}
           alt="Ambience"
           fill
           className="object-cover opacity-20 blur-[50px] scale-110"
-          quality={10}
+          unoptimized
         />
       </div>
 
       {/* --- MAIN IMAGE --- */}
       <div className="relative z-10 w-full h-full p-4 lg:p-12 transition-all duration-500">
         <Image
-          src={currentImage.url}
+          key={currentImage.url}
+          src={optimizedUrl}
           alt={`${presetName} view ${currentIndex + 1}`}
           fill
           className={`transition-all duration-700 ease-in-out ${
             fitMode === "contain" ? "object-contain" : "object-cover"
           }`}
           sizes="(max-width: 768px) 100vw, 70vw"
-          quality={90}
           priority
+          placeholder={blurData ? "blur" : "empty"}
+          blurDataURL={blurData}
+          unoptimized
         />
       </div>
 

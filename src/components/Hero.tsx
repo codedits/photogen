@@ -1,153 +1,168 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useCallback } from "react";
+import Image from "next/image";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { ArrowDownRight, Camera, Aperture, Maximize2 } from "lucide-react";
+import { ArrowDownRight, Camera, Maximize2, MoveRight } from "lucide-react";
 
 const HERO_IMAGES = [
-  // Front Image (Portrait)
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop",
-  // Middle Image (Architecture/Abstract)
-  "https://images.unsplash.com/photo-1486325212027-8081e485255e?q=80&w=1000&auto=format&fit=crop",
-  // Back Image (Landscape/Texture)
-  "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=1000&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1486325212027-8081e485255e?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=800&auto=format&fit=crop",
 ];
 
 export default function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 1. Track Mouse Position
+  // Mouse tracking with the same heavy spring logic as your marquee
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
-  // 2. Smooth the mouse data (Spring Physics)
-  const mouseX = useSpring(x, { stiffness: 100, damping: 20 });
-  const mouseY = useSpring(y, { stiffness: 100, damping: 20 });
+  const mouseX = useSpring(x, { stiffness: 150, damping: 30 });
+  const mouseY = useSpring(y, { stiffness: 150, damping: 30 });
 
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
     if (!containerRef.current) return;
     const { width, height, left, top } = containerRef.current.getBoundingClientRect();
-    // Normalize coordinates from -0.5 to 0.5
-    const currentX = (e.clientX - left) / width - 0.5;
-    const currentY = (e.clientY - top) / height - 0.5;
-    x.set(currentX);
-    y.set(currentY);
+    x.set((e.clientX - left) / width - 0.5);
+    y.set((e.clientY - top) / height - 0.5);
   }
 
-  // --- PARALLAX LAYERS CALCULATIONS ---
+  // Layered movement for 3D depth
+  const frontX = useTransform(mouseX, [-0.5, 0.5], [30, -30]);
+  const frontY = useTransform(mouseY, [-0.5, 0.5], [30, -30]);
   
-  // Front Image: Moves mostly with mouse
-  const frontX = useTransform(mouseX, [-0.5, 0.5], [40, -40]);
-  const frontY = useTransform(mouseY, [-0.5, 0.5], [40, -40]);
-  const frontRotate = useTransform(mouseX, [-0.5, 0.5], [-5, 5]);
+  const midX = useTransform(mouseX, [-0.5, 0.5], [-50, 50]);
+  const midY = useTransform(mouseY, [-0.5, 0.5], [-40, 40]);
 
-  // Middle Image: Moves opposite (creates separation)
-  const midX = useTransform(mouseX, [-0.5, 0.5], [-60, 60]);
-  const midY = useTransform(mouseY, [-0.5, 0.5], [-20, 20]);
-  const midRotate = useTransform(mouseX, [-0.5, 0.5], [5, -5]);
+  const backX = useTransform(mouseX, [-0.5, 0.5], [-80, 80]);
+  const backY = useTransform(mouseY, [-0.5, 0.5], [-20, 20]);
 
-  // Back Image: Moves slowest, anchors the scene
-  const backX = useTransform(mouseX, [-0.5, 0.5], [-20, 20]);
-  const backY = useTransform(mouseY, [-0.5, 0.5], [-60, 60]);
-  
-  // Text Parallax
-  const textX = useTransform(mouseX, [-0.5, 0.5], [20, -20]);
+  // Smooth scroll to the gallery section when user clicks the button
+  const scrollToGallery = useCallback(() => {
+    const el = document.getElementById('gallery');
+    if (!el) return;
+    // small offset to account for sticky nav (adjust if needed)
+    const offset = window.innerWidth < 768 ? 40 : 80;
+    const y = el.getBoundingClientRect().top + window.pageYOffset - offset;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+  }, []);
 
   return (
     <section
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className="relative h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-[#080808] perspective-1000"
+      className="relative h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-black selection:bg-white selection:text-black"
     >
-      {/* Decorative Grid Background */}
-      <div className="absolute inset-0 z-0 opacity-10" 
+      {/* 1. Refined Background: Subtle Grid + Radial Glow */}
+      <div className="absolute inset-0 z-0 opacity-20" 
         style={{ 
-          backgroundImage: 'linear-gradient(to right, #333 1px, transparent 1px), linear-gradient(to bottom, #333 1px, transparent 1px)', 
-          backgroundSize: '80px 80px' 
+          backgroundImage: 'radial-gradient(circle at 2px 2px, #444 1px, transparent 0)', 
+          backgroundSize: '40px 40px' 
         }} 
       />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black z-10" />
 
-      {/* --- CONTENT LAYER --- */}
-      <div className="relative z-20 w-full max-w-7xl mx-auto h-[600px] flex items-center justify-center">
+      {/* 2. Background Typography (Behind the images) */}
+      <motion.div 
+        style={{ x: useTransform(mouseX, [-0.5, 0.5], [50, -50]) }}
+        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0"
+      >
+        <h1 className="text-[22vw] font-black tracking-tighter text-white/[0.05] leading-none uppercase">
+          Explore
+        </h1>
+      </motion.div>
+
+      {/* 3. Image Stack with High-End Borders */}
+      <div className="relative w-[320px] h-[450px] md:w-[450px] md:h-[600px] z-20 flex items-center justify-center">
         
-        {/* BIG TYPOGRAPHY (Behind) */}
-        <motion.div 
-          style={{ x: textX }}
-          className="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
+        {/* Back Layer */}
+        <motion.div
+          style={{ x: backX, y: backY, rotate: -8 }}
+          className="absolute w-full h-[80%] opacity-40 blur-[2px] scale-90"
         >
-           <h1 className="text-[18vw] font-black tracking-tighter text-[#1a1a1a] leading-none select-none">
-             STUDIO
-           </h1>
+          <Image 
+            src={HERO_IMAGES[2]} 
+            alt="" 
+            fill 
+            className="object-cover rounded-sm grayscale" 
+            sizes="(max-width: 768px) 320px, 450px"
+            priority
+          />
         </motion.div>
 
-        {/* --- IMAGE STACK --- */}
-        <div className="relative w-[300px] h-[400px] md:w-[400px] md:h-[550px] z-30">
-            
-            {/* 3. Back Image */}
-            <motion.div
-              style={{ x: backX, y: backY, rotate: -6 }}
-              className="absolute top-0 left-[-80px] w-full h-full opacity-60 grayscale hover:grayscale-0 transition-all duration-500"
-            >
-               <img src={HERO_IMAGES[2]} className="w-full h-full object-cover rounded shadow-2xl" alt="Back" />
-            </motion.div>
+        {/* Mid Layer */}
+        <motion.div
+          style={{ x: midX, y: midY, rotate: 4 }}
+          className="absolute w-[90%] h-[90%] opacity-60 brightness-50"
+        >
+          <Image 
+            src={HERO_IMAGES[1]} 
+            alt="" 
+            fill 
+            className="object-cover rounded-sm" 
+            sizes="(max-width: 768px) 320px, 450px"
+            priority
+          />
+        </motion.div>
 
-            {/* 2. Middle Image */}
-            <motion.div
-              style={{ x: midX, y: midY, rotate: 6 }}
-              className="absolute top-[40px] right-[-80px] w-full h-full opacity-80 brightness-75 hover:brightness-100 transition-all duration-500"
-            >
-               <img src={HERO_IMAGES[1]} className="w-full h-full object-cover rounded shadow-2xl" alt="Middle" />
-            </motion.div>
+        {/* Front Layer (The Hero) */}
+        <motion.div
+          style={{ x: frontX, y: frontY, rotate: useTransform(mouseX, [-0.5, 0.5], [-2, 2]) }}
+          className="relative w-full h-full z-30 bg-neutral-900 rounded-sm overflow-hidden border border-white/20 shadow-2xl group"
+        >
+          <Image 
+            src={HERO_IMAGES[0]} 
+            alt="Hero" 
+            fill 
+            className="object-cover scale-110 transition-transform duration-700 group-hover:scale-100" 
+            priority
+            sizes="(max-width: 768px) 320px, 450px"
+          />
+          
+          {/* Internal Label Styling */}
+          <div className="absolute top-6 left-6 flex items-center gap-2">
+             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+             <span className="text-[10px] uppercase tracking-[0.3em] text-white/80 font-medium">Live Studio</span>
+          </div>
 
-            {/* 1. Front Main Image */}
-            <motion.div
-              style={{ x: frontX, y: frontY, rotate: frontRotate }}
-              className="absolute inset-0 z-40 bg-neutral-800 rounded shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden border border-white/10"
-            >
-                <img src={HERO_IMAGES[0]} className="w-full h-full object-cover scale-110" alt="Front" />
-                
-                {/* Overlay Text on Main Image */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
-                  <div className="flex items-center justify-between border-t border-white/20 pt-4">
-                     <div>
-                       <p className="text-xs font-bold text-white uppercase tracking-widest mb-1">Vol. 01</p>
-                       <p className="text-[10px] text-white/60">Summer Collection</p>
-                     </div>
-                     <Maximize2 className="text-white/80 w-5 h-5" />
-                  </div>
+          <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black to-transparent">
+             <div className="flex justify-between items-end">
+                <div>
+                  <h3 className="text-white text-2xl font-light tracking-tight">Ethereal Moments</h3>
+                  <p className="text-white/40 text-[10px] uppercase tracking-widest mt-2">Conceptual Photography ©2024</p>
                 </div>
-            </motion.div>
-        </div>
-
-        {/* OVERLAY TYPOGRAPHY (Front - Blend Mode) */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50 mix-blend-exclusion">
-           <h1 className="text-[18vw] font-black tracking-tighter text-white leading-none select-none opacity-80">
-             STUDIO
-           </h1>
-        </div>
-
+                <div className="p-3 rounded-full border border-white/10 backdrop-blur-md text-white hover:bg-white hover:text-black transition-colors cursor-pointer">
+                   <Maximize2 className="w-4 h-4" />
+                </div>
+             </div>
+          </div>
+        </motion.div>
       </div>
 
-      {/* --- UI ELEMENTS --- */}
-      
-     
+      {/* 4. Foreground Mix-Blend Typography */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40 mix-blend-difference">
+         <h1 className="text-[18vw] font-black tracking-tighter text-white leading-none uppercase opacity-90">
+           Create
+         </h1>
+      </div>
 
-      {/* Bottom Footer */}
-      <div className="absolute bottom-0 w-full p-8 flex justify-between items-end z-50">
-        <div className="flex gap-4">
-           <div className="flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-md rounded-full border border-white/10 text-white/80 text-xs">
-              <Camera className="w-3 h-3" />
-              <span>Scroll to explore</span>
-           </div>
-        </div>
-        
-        <button className="group flex items-center gap-3 text-white">
-           <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all duration-300">
-              <ArrowDownRight className="w-5 h-5 transform group-hover:rotate-45 transition-transform" />
-           </div>
-           <span className="text-xs uppercase tracking-widest hidden md:block">View Gallery</span>
+    
+
+      <div className="absolute bottom-12 right-12 z-50">
+        <button type="button" aria-label="Scroll to gallery" onClick={scrollToGallery} className="group relative flex items-center justify-center p-1">
+          {/* Circular Button with Hover Effect */}
+          <div className="absolute inset-0 rounded-full border border-white/10 group-hover:scale-110 group-hover:border-white/40 transition-all duration-500" />
+          <div className="relative w-16 h-16 rounded-full flex items-center justify-center text-white bg-white/5 backdrop-blur-xl">
+             <ArrowDownRight className="w-6 h-6 transform group-hover:rotate-45 transition-transform duration-300" />
+          </div>
+          <span className="absolute -top-8 text-[9px] uppercase tracking-[0.5em] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity">
+            Scroll
+          </span>
         </button>
       </div>
+
+  
 
     </section>
   );

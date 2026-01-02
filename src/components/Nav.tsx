@@ -12,7 +12,9 @@ export default function Nav() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-      <nav className="relative pointer-events-auto w-full px-6 sm:px-12 py-6 flex items-center justify-between bg-transparent text-white">
+      {/* subtle top gradient to improve contrast against variable page backgrounds */}
+      <div className="absolute top-0 left-0 right-0 h-20 pointer-events-none z-0 bg-gradient-to-b from-black/40 via-black/30 to-transparent" />
+      <nav className="relative z-50 pointer-events-auto w-full px-6 sm:px-12 py-6 flex items-center justify-between bg-transparent text-white">
         {/* Brand (left) */}
         <Link href="/" className="flex items-center gap-3 leading-none">
           <span className="font-light text-xl tracking-tighter text-white uppercase">PhotoGen</span>
@@ -25,6 +27,9 @@ export default function Nav() {
           </Link>
           <Link href="/studio" className="text-[10px] uppercase tracking-[0.2em] text-white/60 hover:text-white transition-colors">
             Studio
+          </Link>
+          <Link href="/gallery" className="text-[10px] uppercase tracking-[0.2em] text-white/60 hover:text-white transition-colors">
+            Gallery
           </Link>
         </div>
       </nav>

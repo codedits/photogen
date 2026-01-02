@@ -21,7 +21,7 @@ interface GalleryItem extends Omit<GalleryDoc, '_id'> {
 
 // --- SUB-COMPONENT: GALLERY CARD ---
 // Handles the display of a single item in the grid
-const GalleryCard = ({ item, onClick }: { item: GalleryItem; onClick: () => void }) => {
+const GalleryCard = React.memo(({ item, onClick }: { item: GalleryItem; onClick: () => void }) => {
   return (
     <div className="break-inside-avoid mb-6 group cursor-zoom-in" onClick={onClick}>
       <div className="relative bg-neutral-900 rounded-sm overflow-hidden">
@@ -66,7 +66,7 @@ const GalleryCard = ({ item, onClick }: { item: GalleryItem; onClick: () => void
       </div>
     </div>
   );
-};
+});
 
 // --- SUB-COMPONENT: LIGHTBOX ---
 // Full screen modal to view images
@@ -183,7 +183,7 @@ export default function GalleryGrid({ filters }: GalleryGridProps) {
          if (filters?.featured) params.set('featured', 'true');
          if (filters?.search) params.set('q', filters.search);
 
-         const res = await fetch(`/api/gallery?${params}`);
+         const res = await fetch(`/api/gallery?${params}`, { cache: 'no-store' });
          const data = await res.json();
          if (!res.ok) throw new Error(data.error);
 

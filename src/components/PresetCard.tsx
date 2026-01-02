@@ -18,9 +18,10 @@ export type Preset = {
 interface PresetCardProps {
   preset: Preset;
   className?: string;
+  priority?: boolean;
 }
 
-export default function PresetCard({ preset, className = "" }: PresetCardProps) {
+export default function PresetCard({ preset, className = "", priority = false }: PresetCardProps) {
   // Logic to grab the main image (unchanged)
   const thumbnails = (preset.images && preset.images.length)
     ? preset.images.slice(0, 3).map(i => i.url)
@@ -58,6 +59,7 @@ export default function PresetCard({ preset, className = "" }: PresetCardProps) 
                 className="object-cover transition-all duration-700 opacity-80 group-hover:opacity-100" 
                 transformOpts={{ w: 600, h: 800, fit: 'cover', q: 'auto:good' }}
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                priority={priority}
              />
            </motion.div>
         ) : (

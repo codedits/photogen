@@ -34,13 +34,16 @@ export default async function Home() {
         <Hero />
       </FullBleed>
       
-      <FullBleed>
-        <PresetsSection presets={presets} />
-      </FullBleed>
+
 
       <FullBleed>
         <ParallaxGallery />
       </FullBleed>
+
+      <FullBleed>
+        <PresetsSection presets={presets} />
+      </FullBleed>
+
 
       <FullBleed>
         <section className="py-24 bg-[#0a0a0a] border-t border-white/5">

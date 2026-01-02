@@ -12,11 +12,13 @@ const dmSans = DM_Sans({
   variable: "--font-dm-sans",
   subsets: ["latin"],
   weight: ["400", "500", "700"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -58,6 +60,7 @@ export default async function RootLayout({
         <link rel="icon" href="/gen.svg" />
   {/* Preconnect to Cloudinary to improve image fetch latency */}
   <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
+  <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
       <body
         className={`${dmSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Filter, Grid, Camera, Tag, Star, Search } from 'lucide-react';
 
 const CATEGORIES = [
@@ -28,16 +28,16 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
   const [isFeatured, setIsFeatured] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleCategoryChange = (category: string) => {
+  const handleCategoryChange = useCallback((category: string) => {
     setActiveCategory(category);
     onFiltersChange({
       category: category === 'All' ? '' : category,
       featured: isFeatured,
       search: searchQuery
     });
-  };
+  }, [isFeatured, searchQuery, onFiltersChange]);
 
-  const toggleFeatured = () => {
+  const toggleFeatured = useCallback(() => {
     const nextFeatured = !isFeatured;
     setIsFeatured(nextFeatured);
     onFiltersChange({
@@ -45,9 +45,9 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
       featured: nextFeatured,
       search: searchQuery
     });
-  };
+  }, [activeCategory, searchQuery, onFiltersChange]);
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
     onFiltersChange({
@@ -55,7 +55,7 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
       featured: isFeatured,
       search: query
     });
-  };
+  }, [activeCategory, isFeatured, onFiltersChange]);
 
   return (
     <div className="flex flex-col space-y-6 mb-12">

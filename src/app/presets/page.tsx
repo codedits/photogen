@@ -123,17 +123,7 @@ export default async function PresetsPage({ searchParams }: { searchParams?: { q
                  </p>
               </div>
 
-              {/* Technical Stats */}
-              <div className="flex flex-row md:flex-col gap-6 md:gap-1 text-right items-start md:items-end">
-                 <div className="flex flex-col items-end">
-                    <span className="text-[10px] uppercase tracking-widest text-white/30">Database</span>
-                    <span className="text-xs font-mono text-white/70">MONGO.V2</span>
-                 </div>
-                 <div className="flex flex-col items-end">
-                    <span className="text-[10px] uppercase tracking-widest text-white/30">Loaded</span>
-                    <span className="text-xs font-mono text-white/70">{presets.length.toString().padStart(2, '0')} ASSETS</span>
-                 </div>
-              </div>
+              
            </div>
         </header>
 

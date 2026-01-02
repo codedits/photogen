@@ -35,7 +35,7 @@ export default function PresetCard({ preset, className = "", priority = false }:
       initial="rest"
       whileHover="hover"
       animate="rest"
-      className={`group relative w-full bg-neutral-950 border border-white/10 overflow-hidden cursor-pointer ${className}`}
+      className={`group relative w-full bg-neutral-950 border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden cursor-pointer ${className}`}
     >
       {/* ASPECT RATIO CONTAINER 
         Using 4:5 (Standard Portrait) for a "Photo Studio" feel

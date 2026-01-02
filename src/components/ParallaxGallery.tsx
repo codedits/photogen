@@ -10,7 +10,6 @@ import {
   useMotionValue,
   useVelocity,
   useAnimationFrame,
-  wrap,
 } from "framer-motion";
 
 const IMAGES = [
@@ -56,26 +55,43 @@ function ParallaxRow({
    * Changing [0, 2] to [0, 5] makes the marquee move 5x faster 
    * when you scroll quickly.
    */
-  const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 3], {
-    clamp: false // Set to false to allow even more speed on fast scrolls
-  });
+  // Map scroll speed to a multiplier for the movement (non-negative)
+  const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 3], { clamp: true });
 
   const scrollSpeed = useTransform(smoothVelocity, (v) => Math.abs(v));
-  const scale = useTransform(scrollSpeed, [0, 2000], [1, 0.98]); 
-  const yOffset = useTransform(scrollSpeed, [0, 2000], [0, baseVelocity > 0 ? -10 : 10]); 
+  const scale = useTransform(scrollSpeed, [0, 2000], [1, 0.98]);
+  const yOffset = useTransform(scrollSpeed, [0, 2000], [0, baseVelocity > 0 ? -10 : 10]);
+
+  // Bounded loop parameters
+  const RANGE = 50; // percent range for the seamless double-width loop
 
   useAnimationFrame((t, delta) => {
-    let moveBy = baseVelocity * (delta / 1000);
-    moveBy += moveBy * velocityFactor.get();
-    baseX.set(baseX.get() + moveBy);
+    // clamp delta to avoid large jumps on tab switches or throttling
+    const d = Math.min(delta, 48);
+    // percent movement per frame
+    let moveBy = baseVelocity * (d / 1000);
+
+    // apply a clamped velocity boost to avoid sudden large jumps
+    const vf = Math.max(Math.min(velocityFactor.get(), 3), 0);
+    moveBy += moveBy * vf;
+
+    const curr = baseX.get();
+    const next = curr + moveBy;
+    // map to [-RANGE, 0) to maintain a compact domain and avoid numeric growth
+    const wrapped = ((next + RANGE) % RANGE) - RANGE;
+
+    // If a wrap jump occurred, the spring-based display value will animate softly, removing any jerk.
+    baseX.set(wrapped);
   });
 
-  const x = useTransform(baseX, (v) => `${wrap(-50, 0, v)}%`);
+  // Smooth display value to ease wrap boundary transitions
+  const displayX = useSpring(baseX, { damping: 50, stiffness: 400 });
+  const x = useTransform(displayX, (v) => `${v}%`);
 
   return (
     <motion.div
       className={`flex flex-nowrap gap-4 ${className}`}
-      style={{ x, scale, y: yOffset }}
+      style={{ x, scale, y: yOffset, willChange: 'transform' as any }}
     >
       {images.map((src, i) => {
         const isFramer = typeof src === 'string' && src.includes('framerusercontent.com');

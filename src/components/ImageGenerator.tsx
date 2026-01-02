@@ -289,15 +289,21 @@ export default function ImageGenerator() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
           {/* Left: form and actions */}
           <div className="order-1">
-            <form onSubmit={handleGenerate} className="bg-white/[0.03] border border-white/10 rounded-xl p-4 backdrop-blur-md">
+            <form onSubmit={handleGenerate} className="bg-white/[0.03] border border-white/10 rounded-xl p-4 backdrop-blur-md shadow-2xl">
               <div className="flex flex-col gap-3">
-                <input type="text" value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="Describe your image..." className="w-full rounded-xl px-4 py-3 bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:outline-none focus:border-white/30 transition-colors" />
+                <input 
+                  type="text" 
+                  value={prompt} 
+                  onChange={(e) => setPrompt(e.target.value)} 
+                  placeholder="Describe your image..." 
+                  className="w-full rounded-xl px-4 py-3 bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:outline-none focus:border-white/50 focus:bg-white/10 focus:ring-1 focus:ring-white/20 transition-all duration-300" 
+                />
 
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch">
                   <select
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
-                    className="rounded-xl px-4 py-3 border border-white/10 bg-white/5 text-white flex-1 focus:outline-none focus:border-white/30 transition-colors appearance-none cursor-pointer"
+                    className="rounded-xl px-4 py-3 border border-white/10 bg-white/5 text-white flex-1 focus:outline-none focus:border-white/50 focus:bg-white/10 transition-all duration-300 appearance-none cursor-pointer hover:bg-white/10"
                     title="Generation Model"
                   >
                     <option value="midjourney" className="bg-neutral-900">Midjourney</option>
@@ -308,7 +314,7 @@ export default function ImageGenerator() {
                   <select
                     value={ratio}
                     onChange={(e) => setRatio(e.target.value)}
-                    className="rounded-xl px-4 py-3 border border-white/10 bg-white/5 text-white sm:w-40 focus:outline-none focus:border-white/30 transition-colors appearance-none cursor-pointer"
+                    className="rounded-xl px-4 py-3 border border-white/10 bg-white/5 text-white sm:w-40 focus:outline-none focus:border-white/50 focus:bg-white/10 transition-all duration-300 appearance-none cursor-pointer hover:bg-white/10"
                     title="Aspect Ratio"
                   >
                     <option value="16:9" className="bg-neutral-900">16:9 Landscape</option>
@@ -316,7 +322,7 @@ export default function ImageGenerator() {
                     <option value="9:16" className="bg-neutral-900">9:16 Portrait</option>
                   </select>
 
-                  <button type="submit" disabled={!canGenerate} className={`w-full sm:w-auto rounded-xl px-4 py-2 sm:px-5 sm:py-3 font-medium transition-all duration-300 ${!canGenerate ? 'opacity-50 cursor-not-allowed bg-white/5 text-white/40' : 'bg-white text-black hover:bg-white/90 active:scale-95'}`}>
+                  <button type="submit" disabled={!canGenerate} className={`w-full sm:w-auto rounded-xl px-4 py-2 sm:px-5 sm:py-3 font-medium transition-all duration-300 shadow-lg hover:shadow-white/20 ${!canGenerate ? 'opacity-50 cursor-not-allowed bg-white/5 text-white/40' : 'bg-white text-black hover:scale-105 hover:bg-white active:scale-95'}`}>
                     {loading ? "Generating…" : "Generate"}
                   </button>
                 </div>

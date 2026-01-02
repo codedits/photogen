@@ -22,13 +22,22 @@ export default function Nav() {
 
         {/* Actions (right) */}
         <div className="flex items-center gap-8 justify-end leading-none">
-          <Link href="/presets" className="text-[10px] uppercase tracking-[0.2em] text-white/60 hover:text-white transition-colors">
+          <Link 
+            href="/presets" 
+            className={`text-[10px] uppercase tracking-[0.2em] transition-colors ${pathname.startsWith('/presets') ? 'text-white font-medium' : 'text-white/60 hover:text-white'}`}
+          >
             Presets
           </Link>
-          <Link href="/studio" className="text-[10px] uppercase tracking-[0.2em] text-white/60 hover:text-white transition-colors">
+          <Link 
+            href="/studio" 
+            className={`text-[10px] uppercase tracking-[0.2em] transition-colors ${pathname.startsWith('/studio') ? 'text-white font-medium' : 'text-white/60 hover:text-white'}`}
+          >
             Studio
           </Link>
-          <Link href="/gallery" className="text-[10px] uppercase tracking-[0.2em] text-white/60 hover:text-white transition-colors">
+          <Link 
+            href="/gallery" 
+            className={`text-[10px] uppercase tracking-[0.2em] transition-colors ${pathname.startsWith('/gallery') ? 'text-white font-medium' : 'text-white/60 hover:text-white'}`}
+          >
             Gallery
           </Link>
         </div>

@@ -165,6 +165,30 @@ export default function ImageGenerator() {
         cache: 'no-store'
       });
       
+      // Sanitize and log the response as JSON for debugging each poll attempt
+      try {
+        const contentType = res.headers.get("content-type") || "";
+        let loggedBody: any = null;
+
+        if (contentType.includes("application/json")) {
+          loggedBody = await res.clone().json().catch(() => null);
+        } else {
+          // Avoid downloading binary payloads just to log; include content-length if available
+          loggedBody = { note: "non-json response", contentLength: res.headers.get("content-length") || null };
+        }
+
+        console.log("AI poll response:", JSON.stringify({
+          attempt: pollCountRef.current,
+          taskUrl,
+          status: res.status,
+          contentType,
+          body: loggedBody,
+        }));
+      } catch (logErr) {
+        // Best-effort logging only
+        try { console.log("AI poll response: (logging failed)", logErr); } catch (e) { /* noop */ }
+      }
+
       if (!res.ok) {
         // If 5xx, retry. If 4xx, fail.
         if (res.status >= 400 && res.status < 500) {

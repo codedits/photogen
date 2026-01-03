@@ -2,16 +2,11 @@
 
 import React from "react";
 import ImageGenerator from "../../components/ImageGenerator";
-import LazyDarkVeil from "../../components/LazyDarkVeil";
 import { PageContainer, Section } from "../../components/layout/Primitives";
 
 export default function StudioPage() {
   return (
     <PageContainer className="bg-black text-white overflow-x-hidden">
-      {/* Background Shader */}
-      <div className="fixed inset-0 z-0 opacity-40 pointer-events-none">
-        <LazyDarkVeil />
-      </div>
 
       {/* Content */}
       <main className="relative z-10 pt-32 pb-24">

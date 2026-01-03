@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowUpRight, Layers, Image as ImageIcon } from "lucide-react";
 import ImageWithLqip from './ImageWithLqip';
 
+
 export type Preset = {
   id: string;
   name: string;
@@ -35,7 +36,7 @@ export default function PresetCard({ preset, className = "", priority = false }:
       initial="rest"
       whileHover="hover"
       animate="rest"
-      className={`group relative w-full bg-neutral-950 border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden cursor-pointer ${className}`}
+      className={`group relative w-full bg-neutral-950 border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden ${className}`}
     >
       {/* ASPECT RATIO CONTAINER 
         Using 4:5 (Standard Portrait) for a "Photo Studio" feel
@@ -125,6 +126,6 @@ export default function PresetCard({ preset, className = "", priority = false }:
            </div>
         </div>
       </div>
-    </motion.article>
+      </motion.article>
   );
 }

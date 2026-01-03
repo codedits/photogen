@@ -15,6 +15,7 @@ export default function ImageWithLqip({
   priority,
   sizes,
   loading,
+  onLoad,
 }: {
   src: string;
   alt?: string;
@@ -26,6 +27,7 @@ export default function ImageWithLqip({
   priority?: boolean;
   sizes?: string;
   loading?: 'eager' | 'lazy';
+  onLoad?: () => void;
 }) {
   if (!src || src === "undefined") {
     return <div className={className} style={{ width, height, position: fill ? 'absolute' : 'relative', inset: fill ? 0 : undefined, backgroundColor: 'rgba(255,255,255,0.05)' }} />;
@@ -41,8 +43,8 @@ export default function ImageWithLqip({
 
   if (fill) {
     // When using `fill`, pass objectFit via style to Next/Image to prevent stretching
-    return <Image src={url} alt={alt || ''} fill style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={blur} priority={priority} sizes={sizes} loading={loading} />;
+    return <Image src={url} alt={alt || ''} fill style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={blur} priority={priority} sizes={sizes} loading={loading} onLoad={onLoad} />;
   }
 
-  return <Image src={url} alt={alt || ''} width={width} height={height} style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={blur} priority={priority} sizes={sizes} loading={loading} />;
+  return <Image src={url} alt={alt || ''} width={width} height={height} style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={blur} priority={priority} sizes={sizes} loading={loading} onLoad={onLoad} />;
 }

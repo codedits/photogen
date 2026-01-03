@@ -26,7 +26,12 @@ export async function POST(req: Request) {
     }
     const buf = Buffer.from(await file.arrayBuffer());
     const payload = `data:${file.type || 'image/png'};base64,${buf.toString('base64')}`;
-  const res = await cloudinary.uploader.upload(payload, { folder: 'photogen/uploads', unique_filename: true, overwrite: false });
+    const res = await cloudinary.uploader.upload(payload, { 
+      folder: 'photogen/uploads', 
+      unique_filename: true, 
+      overwrite: false,
+      format: 'webp'
+    });
     return NextResponse.json({ ok: true, url: res.secure_url, public_id: res.public_id });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

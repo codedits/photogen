@@ -26,6 +26,7 @@ export async function uploadImages(images: Array<string | Buffer>, folder = 'pho
       folder,
       unique_filename: true,
       overwrite: false,
+      format: 'webp',
     });
   });
   const res = await Promise.all(uploads);

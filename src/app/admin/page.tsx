@@ -1,9 +1,13 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback, memo } from "react";
-import ImageWithLqip from '../../components/ImageWithLqip';
+import React, { useState, useEffect, useCallback, memo, createContext, useContext } from "react";
 import { usePresets } from '../../lib/usePresets';
 import PresetsManagement from './PresetsManagement';
 import GalleryManagement from './GalleryManagement';
+import AdminSidebar from './components/AdminSidebar';
+import AdminHeader from './components/AdminHeader';
+import PresetForm from './components/PresetForm';
+import GalleryForm from './components/GalleryForm';
+import { Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
 
 type PresetRow = {
   id: string;
@@ -15,27 +19,66 @@ type PresetRow = {
   dng?: { url?: string; public_id?: string; format?: string } | null;
 };
 
+export type AdminView = 
+  | { type: 'list'; tab: 'presets' | 'gallery' }
+  | { type: 'create-preset' }
+  | { type: 'edit-preset'; preset: PresetRow }
+  | { type: 'create-gallery' }
+  | { type: 'edit-gallery'; item: any };
+
+// Toast Context for global notifications
+type Toast = { id: string; message: string; type: 'success' | 'error' | 'info' };
+const ToastContext = createContext<{ addToast: (message: string, type: Toast['type']) => void }>({ addToast: () => {} });
+export const useToast = () => useContext(ToastContext);
+
+function ToastContainer({ toasts, removeToast }: { toasts: Toast[]; removeToast: (id: string) => void }) {
+  return (
+    <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
+      {toasts.map(toast => (
+        <div
+          key={toast.id}
+          className={`
+            px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md border animate-in slide-in-from-right-5 fade-in duration-300
+            ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400/50 text-white' : ''}
+            ${toast.type === 'error' ? 'bg-red-500/90 border-red-400/50 text-white' : ''}
+            ${toast.type === 'info' ? 'bg-white/10 border-white/20 text-white' : ''}
+          `}
+          onClick={() => removeToast(toast.id)}
+        >
+          <p className="text-sm font-medium">{toast.message}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [pwd, setPwd] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
   const [authMsg, setAuthMsg] = useState<string | null>(null);
   const [remember, setRemember] = useState(true);
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [tags, setTags] = useState("");
-  const [uploadItems, setUploadItems] = useState<Array<{ id: string; preview: string; file?: File; progress: number; status: 'idle'|'uploading'|'done'|'error'|'cancelled'; public_id?: string; url?: string; xhr?: XMLHttpRequest | null }>>([]);
+  const [loginLoading, setLoginLoading] = useState(false);
   
-  const [dngUrl, setDngUrl] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  // list state now managed via SWR-like hook
-  const { items: list, loading: listLoading, hasMore, loadMore, refresh } = usePresets({ limit: 20, staleMs: 20000, enabled: authed === true });
-  const [showCreate, setShowCreate] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [activeTab, setActiveTab] = useState<'presets' | 'gallery'>('presets');
+  const [view, setView] = useState<AdminView>({ type: 'list', tab: 'presets' });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Toast state
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const addToast = useCallback((message: string, type: Toast['type']) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+  }, []);
+  const removeToast = useCallback((id: string) => setToasts(prev => prev.filter(t => t.id !== id)), []);
+
+  const { items: list, loading: listLoading, hasMore, loadMore, refresh } = usePresets({ 
+    limit: 50, 
+    staleMs: 20000, 
+    enabled: authed === true 
+  });
 
   useEffect(() => {
-    // check session
     fetch('/api/admin/session', { cache: 'no-store' })
       .then(r => r.json()).then(d => setAuthed(!!d?.ok)).catch(()=>setAuthed(false));
   }, []);
@@ -43,603 +86,276 @@ export default function AdminPage() {
   const doLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthMsg(null);
+    setLoginLoading(true);
     try {
-  const res = await fetch('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: pwd, remember }) });
+      const res = await fetch('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: pwd, remember }) });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.ok) {
-  setAuthed(true);
+        setAuthed(true);
+        addToast('Welcome back!', 'success');
       } else {
         setAuthMsg(data?.error || 'Login failed');
       }
     } catch (err: unknown) {
       setAuthMsg(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoginLoading(false);
     }
   };
 
-  const handleFiles = (files?: FileList | null) => {
-    if (!files || !files.length) return;
-    const list = Array.from(files).slice(0, 8);
-    const readers = list.map((f) => new Promise<{ preview: string; file: File }>((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve({ preview: String(r.result), file: f });
-      r.readAsDataURL(f);
-    }));
-    Promise.all(readers).then((arr) => {
-      const items = arr.map((a, i) => ({ id: `${Date.now()}_${i}`, preview: a.preview, file: a.file, progress: 0, status: 'idle' as const, xhr: null }));
-  setUploadItems((prev) => [...prev, ...items]);
-  items.forEach((it, idx) => setTimeout(() => startUpload(it), idx * 120));
-    });
+  const handleLogout = async () => {
+    await fetch('/api/admin/logout', { method: 'POST' });
+    setAuthed(false);
+    addToast('Logged out successfully', 'info');
   };
 
-  
+  const handleSavePreset = async (data: any) => {
+    const isEdit = view.type === 'edit-preset';
+    const url = isEdit ? `/api/presets/${(view as any).preset.id}` : '/api/presets';
+    const method = isEdit ? 'PATCH' : 'POST';
 
-  const startUpload = (item: { id: string; preview: string; file?: File }) => {
-    if (!item.file) return;
     const form = new FormData();
-    form.append('image', item.file, item.file.name);
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/upload-image');
-    xhr.upload.onprogress = (ev) => {
-      if (!ev.lengthComputable) return;
-      const pct = Math.round((ev.loaded / ev.total) * 100);
-      setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, progress: pct } : p));
-    };
-    xhr.onload = () => {
+    form.set('name', data.name);
+    form.set('description', data.description);
+    form.set('tags', data.tags.join(', '));
+    form.set('dngUrl', data.dngUrl);
+    
+    data.imageUrls.forEach((img: string) => {
       try {
-        const data = JSON.parse(xhr.responseText || '{}');
-        if (xhr.status >= 200 && xhr.status < 300 && data?.ok) {
-          setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'done', progress: 100, public_id: data.public_id, url: data.url, xhr: null } : p));
-        } else {
-          setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
-        }
+        // If it's already a stringified object, use it, otherwise stringify it
+        JSON.parse(img);
+        form.append('imageUrls', img);
       } catch {
-        setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
+        form.append('imageUrls', img);
       }
-    };
-    xhr.onerror = () => {
-      setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
-    };
-    setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'uploading', xhr } : p));
-    xhr.send(form);
-  };
-
-  const cancelUpload = async (id: string) => {
-    const it = uploadItems.find((u) => u.id === id);
-    if (!it) return;
-    if (it.xhr) try { it.xhr.abort(); } catch {}
-    if (it.public_id) {
-      try {
-        await fetch('/api/upload-image', { method: 'DELETE', body: JSON.stringify({ public_id: it.public_id }), headers: { 'content-type': 'application/json' } });
-      } catch {}
+    });
+    
+    if (data.orderPublicIds) {
+      data.orderPublicIds.forEach((pid: string) => form.append('orderPublicIds', pid));
     }
-    setUploadItems((prev) => prev.filter((p) => p.id !== id));
-  };
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    setUploadProgress(0);
-    try {
-      if (!dngUrl || !dngUrl.trim()) {
-        setMessage('Error: DNG download URL is required');
-        setLoading(false);
-        return;
-      }
-      const form = new FormData();
-      form.set('dngUrl', dngUrl.trim());
-      form.set('name', name);
-      form.set('description', description);
-      form.set('tags', tags);
-      const doneItems = uploadItems.filter((u) => u.status === 'done').slice(0, 8);
-      for (let i = 0; i < doneItems.length; i++) {
-        form.append('imageUrls', JSON.stringify({ public_id: doneItems[i].public_id, url: doneItems[i].url }));
-      }
-      const result = await new Promise<{ ok?: boolean; id?: string; error?: string }>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/presets');
-        xhr.upload.onprogress = (ev) => {
-          if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
-        };
-        xhr.onload = () => {
-          try {
-            const data = JSON.parse(xhr.responseText || '{}');
-            if (xhr.status >= 200 && xhr.status < 300) resolve(data);
-            else reject(data);
-          } catch (err) { reject(err); }
-        };
-        xhr.onerror = () => reject(new Error('Network error'));
-        xhr.send(form);
-      });
-      if (result?.ok) {
-        setMessage('Preset created: ' + result.id);
-        // trigger refresh to include newly created preset
-        refresh();
-  setName(''); setDescription(''); setTags('');
-  setDngUrl('');
-        setShowCreate(false);
-        setUploadItems([]);
-      } else {
-        setMessage('Error: ' + (result?.error || 'Unknown'));
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setMessage('Error: ' + msg);
-    }
-    setUploadProgress(0);
-    setLoading(false);
-  };
-
-  // refresh when authed toggles true
-  useEffect(() => { if (authed) { refresh(); } }, [authed, refresh]);
-
-  const updatePreset = useCallback(async (row: PresetRow, changes: Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null; removePublicIds?: string[]; orderPublicIds?: string[] }) => {
-  const form = new FormData();
-    if (changes.name !== undefined) form.set('name', changes.name);
-    if (changes.description !== undefined) form.set('description', changes.description || '');
-    if (changes.prompt !== undefined) form.set('prompt', changes.prompt || '');
-    if (changes.tags !== undefined) form.set('tags', (changes.tags || []).join(', '));
-    (changes.removePublicIds || []).forEach((pid) => form.append('removePublicIds', pid));
-    (changes.addUrls || []).slice(0,8).forEach((u) => form.append('imageUrls', u));
-  (changes.orderPublicIds || []).forEach((pid) => form.append('orderPublicIds', pid));
-    if (changes.addFiles && changes.addFiles.length) {
-      const list = Array.from(changes.addFiles).slice(0, 8);
-      for (let i = 0; i < list.length; i++) form.append('images', list[i]);
-    }
-    // Optimistically update local list to reflect changes immediately
-  // Optimistic local reflection (best-effort: mutate cached hook state)
-  // Direct mutation of hook cache not exposed; we can fallback to refresh after success
-    const res = await fetch(`/api/presets/${row.id}`, { method: 'PATCH', body: form });
-    const data = await res.json();
-    if (!data?.ok) {
-      throw new Error(data?.error || 'Update failed');
-    }
-  // After successful update, background refresh (doesn't block UI)
-  refresh();
-  }, [refresh]);
-
-  const deletePreset = useCallback(async (row: PresetRow) => {
-    const res = await fetch(`/api/presets/${row.id}`, { method: 'DELETE' });
-    const data = await res.json();
-    if (!data?.ok) {
-      throw new Error(data?.error || 'Delete failed');
-    }
+    const res = await fetch(url, { method, body: form });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Failed to save preset');
     refresh();
-  }, [refresh]);
+    addToast('Preset saved successfully', 'success');
+  };
+
+  const handleDeletePreset = async (preset: PresetRow) => {
+    const res = await fetch(`/api/presets/${preset.id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    refresh();
+    addToast('Preset deleted', 'info');
+  };
+
+  const handleSaveGallery = async (data: any) => {
+    const isEdit = view.type === 'edit-gallery';
+    const url = isEdit ? `/api/gallery/${(view as any).item._id}` : '/api/gallery';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const result = await res.json();
+      throw new Error(result.error || 'Failed to save gallery item');
+    }
+    addToast('Gallery item saved successfully', 'success');
+  };
+
+  const handleDeleteGallery = async (item: any) => {
+    const res = await fetch(`/api/gallery/${item._id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    addToast('Gallery item deleted', 'info');
+  };
+
+  useEffect(() => { if (authed) { refresh(); } }, [authed, refresh]);
 
   if (authed === false) {
     return (
-      <div className="min-h-screen px-6 pt-24 pb-8 flex items-start justify-center">
-        <form onSubmit={doLogin} className="w-full max-w-sm bg-black/30 border border-white/10 rounded-xl p-4">
-          <h2 className="text-xl font-semibold mb-3">Admin Login</h2>
-          <input type="password" value={pwd} onChange={(e)=>setPwd(e.target.value)} placeholder="Password" className="w-full p-2 rounded bg-white/5" required />
-          <label className="mt-2 inline-flex items-center gap-2 text-sm text-slate-300">
-            <input type="checkbox" checked={remember} onChange={(e)=>setRemember(e.target.checked)} />
-            Keep me logged in
-          </label>
-          {authMsg && <div className="text-sm text-red-400 mt-2">{authMsg}</div>}
-          <button className="mt-3 px-3 py-2 rounded bg-indigo-600 text-white w-full">Sign in</button>
-        </form>
+      <div className="min-h-screen flex items-center justify-center bg-black relative overflow-hidden">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-pink-500/20 opacity-50" />
+        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-indigo-500/30 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl animate-pulse delay-1000" />
+        
+        <div className="relative z-10 w-full max-w-md px-4">
+          <form onSubmit={doLogin} className="bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
+            {/* Logo/Brand */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mb-4 shadow-lg shadow-indigo-500/25">
+                <Sparkles className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-white">Photogen Admin</h1>
+              <p className="text-zinc-400 text-sm mt-1">Sign in to manage your content</p>
+            </div>
+
+            {/* Password Input */}
+            <div className="space-y-4">
+              <div className="relative">
+                <input 
+                  type={showPwd ? "text" : "password"}
+                  value={pwd} 
+                  onChange={(e)=>setPwd(e.target.value)} 
+                  placeholder="Enter password" 
+                  className="w-full px-4 py-3.5 pr-12 rounded-xl bg-black/50 border border-white/10 text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all" 
+                  required 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(!showPwd)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-zinc-400 hover:text-white transition-colors"
+                >
+                  {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              {/* Remember Me */}
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative">
+                  <input 
+                    type="checkbox" 
+                    checked={remember} 
+                    onChange={(e)=>setRemember(e.target.checked)} 
+                    className="peer sr-only" 
+                  />
+                  <div className="w-5 h-5 rounded-md border border-white/20 bg-black/50 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 transition-all flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                </div>
+                <span className="text-sm text-zinc-400 group-hover:text-zinc-300 transition-colors">Keep me logged in</span>
+              </label>
+            </div>
+
+            {/* Error Message */}
+            {authMsg && (
+              <div className="mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+                <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                {authMsg}
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button 
+              disabled={loginLoading}
+              className="mt-6 w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loginLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                'Sign in'
+              )}
+            </button>
+
+            {/* Footer */}
+            <p className="mt-6 text-center text-xs text-zinc-500">
+              Protected area · Unauthorized access prohibited
+            </p>
+          </form>
+        </div>
       </div>
     );
   }
 
   if (authed === null) {
-    return (<div className="min-h-screen px-6 pt-24 pb-8">Checking session…</div>);
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          <p className="text-zinc-400 text-sm">Checking session…</p>
+        </div>
+      </div>
+    );
   }
 
+  const activeTab = view.type === 'list' ? view.tab : (view.type.includes('preset') ? 'presets' : 'gallery');
+
   return (
-    <div className="min-h-screen px-6 pt-24 pb-8">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold">Admin</h2>
-        <button
-          onClick={async ()=>{ await fetch('/api/admin/logout', { method: 'POST' }); setAuthed(false); }}
-          className="px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 text-sm"
-        >Logout</button>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="mb-6 border-b border-white/10">
-        <nav className="flex gap-6">
-          <button 
-            onClick={() => setActiveTab('presets')}
-            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'presets' 
-                ? 'border-indigo-500 text-indigo-400' 
-                : 'border-transparent text-white/70 hover:text-white'
-            }`}
-          >
-            Presets
-          </button>
-          <button 
-            onClick={() => setActiveTab('gallery')}
-            className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'gallery' 
-                ? 'border-indigo-500 text-indigo-400' 
-                : 'border-transparent text-white/70 hover:text-white'
-            }`}
-          >
-            Gallery
-          </button>
-        </nav>
-      </div>
-
-      {activeTab === 'presets' ? (
-        <PresetsManagement 
-          showCreate={showCreate}
-          setShowCreate={setShowCreate}
-          name={name}
-          setName={setName}
-          description={description}
-          setDescription={setDescription}
-          tags={tags}
-          setTags={setTags}
-          uploadItems={uploadItems}
-          setUploadItems={setUploadItems}
-          dngUrl={dngUrl}
-          setDngUrl={setDngUrl}
-          loading={loading}
-          message={message}
-          uploadProgress={uploadProgress}
-          handleFiles={handleFiles}
-          submit={submit}
-          list={list}
-          listLoading={listLoading}
-          hasMore={hasMore}
-          loadMore={loadMore}
-          updatePreset={updatePreset}
-          deletePreset={deletePreset}
+    <ToastContext.Provider value={{ addToast }}>
+      <div className="min-h-screen bg-black flex">
+        <AdminSidebar 
+          activeTab={activeTab} 
+          setActiveTab={(tab) => setView({ type: 'list', tab })} 
+          onLogout={handleLogout}
+          isOpen={sidebarOpen}
+          setIsOpen={setSidebarOpen}
         />
-      ) : (
-        <GalleryManagement />
-      )}
-    </div>
+        
+        <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+          <AdminHeader 
+            title={view.type === 'list' ? activeTab : (view.type.includes('preset') ? 'Edit Preset' : 'Edit Gallery')} 
+            onMenuClick={() => setSidebarOpen(true)}
+            breadcrumb={view.type !== 'list' ? [
+              { label: view.type.includes('preset') ? 'Presets' : 'Gallery', onClick: () => setView({ type: 'list', tab: view.type.includes('preset') ? 'presets' : 'gallery' }) },
+              { label: view.type.includes('create') ? 'Create New' : 'Editing' }
+            ] : undefined}
+          />
+          
+          <main className="flex-1 overflow-y-auto">
+            <div className="p-4 md:p-6 lg:p-10">
+              <div className="max-w-7xl mx-auto">
+                {view.type === 'list' && view.tab === 'presets' && (
+                  <PresetsManagement 
+                    list={list}
+                    listLoading={listLoading}
+                    hasMore={hasMore}
+                    loadMore={loadMore}
+                    onCreate={() => setView({ type: 'create-preset' })}
+                    onEdit={(preset) => setView({ type: 'edit-preset', preset })}
+                    onDelete={handleDeletePreset}
+                  />
+                )}
+                {view.type === 'list' && view.tab === 'gallery' && (
+                  <GalleryManagement 
+                    onCreate={() => setView({ type: 'create-gallery' })}
+                    onEdit={(item) => setView({ type: 'edit-gallery', item })}
+                    onDelete={handleDeleteGallery}
+                  />
+                )}
+                {view.type === 'create-preset' && (
+                  <PresetForm 
+                    onBack={() => setView({ type: 'list', tab: 'presets' })}
+                    onSave={handleSavePreset}
+                  />
+                )}
+                {view.type === 'edit-preset' && (
+                  <PresetForm 
+                    preset={view.preset}
+                    onBack={() => setView({ type: 'list', tab: 'presets' })}
+                    onSave={handleSavePreset}
+                    onDelete={handleDeletePreset}
+                  />
+                )}
+                {view.type === 'create-gallery' && (
+                  <GalleryForm 
+                    onBack={() => setView({ type: 'list', tab: 'gallery' })}
+                    onSave={handleSaveGallery}
+                  />
+                )}
+                {view.type === 'edit-gallery' && (
+                  <GalleryForm 
+                    item={view.item}
+                    onBack={() => setView({ type: 'list', tab: 'gallery' })}
+                    onSave={handleSaveGallery}
+                    onDelete={handleDeleteGallery}
+                  />
+                )}
+              </div>
+            </div>
+          </main>
+        </div>
+        
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+      </div>
+    </ToastContext.Provider>
   );
 }
-
-const AdminRow = memo(function AdminRow({ row, onUpdate, onDelete }: { row: PresetRow; onUpdate: (row: PresetRow, changes: Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null; removePublicIds?: string[]; orderPublicIds?: string[] }) => Promise<void>; onDelete: (row: PresetRow) => Promise<void> }) {
-  const [name, setName] = useState(row.name);
-  const [description, setDescription] = useState(row.description || '');
-  const [tags, setTags] = useState((row.tags || []).join(', '));
-  const [addUrls, setAddUrls] = useState('');
-  const [addFiles, setAddFiles] = useState<FileList | null>(null);
-  const [dngUrl, setDngUrl] = useState<string>((row.dng?.url) || '');
-  const [imagesLocal, setImagesLocal] = useState(row.images || [] as { url: string; public_id: string }[]);
-  const [deleting, setDeleting] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
-  const dragFrom = useRef<string | null>(null);
-  const dragOver = useRef<string | null>(null);
-  const touchFrom = useRef<string | null>(null);
-  const touchOver = useRef<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-  const [uploadItems, setUploadItems] = useState<Array<{ id: string; preview: string; file?: File; progress: number; status: 'idle'|'uploading'|'done'|'error'|'cancelled'; public_id?: string; url?: string; xhr?: XMLHttpRequest | null }>>([]);
-  // Close on escape when open
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
-
-  // Sync initial state only when row id changes (avoid overwriting unsaved edits)
-  const lastRowId = useRef(row.id);
-  useEffect(() => {
-    if (lastRowId.current !== row.id) {
-      lastRowId.current = row.id;
-      setName(row.name);
-      setDescription(row.description || '');
-      setTags((row.tags || []).join(', '));
-      setDngUrl((row.dng?.url) || '');
-      setImagesLocal(row.images || []);
-      setAddUrls('');
-      setAddFiles(null);
-      setSuccessMsg(null);
-    }
-  }, [row]);
-
-  // Abort outstanding uploads on unmount to prevent leaks
-  useEffect(() => {
-    return () => {
-      uploadItems.forEach(u => { if (u.xhr && u.status === 'uploading') { try { u.xhr.abort(); } catch {} } });
-    };
-  }, [uploadItems]);
-
-  const submit = async () => {
-    setBusy(true);
-    try {
-      const changes = {
-        name,
-        description,
-        tags: tags.split(',').map(s => s.trim()).filter(Boolean),
-        addUrls: addUrls.split(',').map(s => s.trim()).filter(Boolean).slice(0,8),
-        addFiles,
-        orderPublicIds: imagesLocal.map(i => i.public_id).filter(Boolean),
-        ...(dngUrl !== undefined ? { dngUrl: dngUrl.trim() } : {}),
-      } as Partial<PresetRow> & { addUrls?: string[]; addFiles?: FileList | null };
-
-  await onUpdate(row, changes);
-      setAddUrls(''); setAddFiles(null);
-      // on success, try to sync local images from server data if returned
-      // Some servers may not return content; we still keep optimistic UI
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      alert(msg || 'Update failed');
-    }
-    setBusy(false);
-  };
-
-  const handleDelete = async (pid: string) => {
-    if (deleting.includes(pid)) return;
-    setDeleting((s) => [...s, pid]);
-    const prev = imagesLocal;
-    setImagesLocal((list) => list.filter((i) => i.public_id !== pid));
-    try {
-      // call PATCH directly here so we don't force parent to reload the entire list
-      const form = new FormData();
-      form.append('removePublicIds', pid);
-      const res = await fetch(`/api/presets/${row.id}`, { method: 'PATCH', body: form });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || data?.ok === false) {
-        throw new Error(data?.error || `Failed to delete image (${res.status})`);
-      }
-    } catch (err: unknown) {
-      setImagesLocal(prev);
-      const msg = err instanceof Error ? err.message : String(err);
-      alert(msg || 'Failed to delete image');
-    } finally {
-      setDeleting((s) => s.filter((x) => x !== pid));
-    }
-  };
-
-  const handleCancel = () => {
-    // revert to initial row values
-    setName(row.name);
-    setDescription(row.description || '');
-    setTags((row.tags || []).join(', '));
-    setAddUrls('');
-    setAddFiles(null);
-    setDngUrl((row.dng?.url) || '');
-    setImagesLocal(row.images || [] as { url: string; public_id: string }[]);
-    setSuccessMsg(null);
-  };
-
-  const handleAddFiles = (files?: FileList | null) => {
-    if (!files || !files.length) return;
-    const list = Array.from(files).slice(0, 8);
-    const readers = list.map((f) => new Promise<{ preview: string; file: File }>((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve({ preview: String(r.result), file: f });
-      r.readAsDataURL(f);
-    }));
-    Promise.all(readers).then((arr) => {
-      const items = arr.map((a, i) => ({ id: `${Date.now()}_${i}`, preview: a.preview, file: a.file, progress: 0, status: 'idle' as const, xhr: null }));
-      setUploadItems((prev) => [...prev, ...items]);
-      items.forEach((it, idx) => setTimeout(() => startUpload(it), idx * 120));
-    });
-  };
-
-  const startUpload = (item: { id: string; preview: string; file?: File }) => {
-    if (!item.file) return;
-    const form = new FormData();
-    form.append('image', item.file, item.file.name);
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/upload-image');
-    xhr.upload.onprogress = (ev) => {
-      if (!ev.lengthComputable) return;
-      const pct = Math.round((ev.loaded / ev.total) * 100);
-      setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, progress: pct } : p));
-    };
-    xhr.onload = () => {
-      try {
-        const data = JSON.parse(xhr.responseText || '{}');
-        if (xhr.status >= 200 && xhr.status < 300 && data?.ok) {
-          setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'done', progress: 100, public_id: data.public_id, url: data.url, xhr: null } : p));
-          // add to imagesLocal so it appears with existing pictures
-          setImagesLocal((prev) => [{ url: data.url, public_id: data.public_id }, ...prev]);
-          // remove the upload item after a short delay so UI shows completion briefly
-          setTimeout(() => setUploadItems((prev) => prev.filter((p) => p.id !== item.id)), 500);
-        } else {
-          setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
-        }
-      } catch {
-        setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
-      }
-    };
-    xhr.onerror = () => {
-      setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
-    };
-    setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'uploading', xhr } : p));
-    xhr.send(form);
-  };
-
-  const cancelUpload = async (id: string) => {
-    const it = uploadItems.find((u) => u.id === id);
-    if (!it) return;
-    if (it.xhr) try { it.xhr.abort(); } catch {}
-    if (it.public_id) {
-      try {
-        await fetch('/api/upload-image', { method: 'DELETE', body: JSON.stringify({ public_id: it.public_id }), headers: { 'content-type': 'application/json' } });
-      } catch {}
-    }
-    setUploadItems((prev) => prev.filter((p) => p.id !== id));
-  };
-
-  return (
-    <div className="rounded-lg border border-white/10 overflow-hidden">
-      <div className="cursor-pointer flex items-center justify-between p-3 bg-black/10" onClick={() => setOpen(true)}>
-        <div className="flex items-center gap-3 min-w-0">
-          <span className={`inline-flex items-center justify-center w-6 h-6 text-slate-300 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} aria-hidden>
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-          </span>
-          {/* make thumbnail larger and non-shrinking so it's visible on narrow screens */}
-          <div className="flex-shrink-0 w-14 h-14 rounded overflow-hidden bg-slate-800 flex items-center justify-center">
-              {imagesLocal && imagesLocal[0] ? (
-              <ImageWithLqip src={imagesLocal[0].url} alt="thumb" width={56} height={56} className="object-cover w-full h-full" transformOpts={{ w: 160, h: 160, fit: 'cover' }} />
-            ) : (
-              <div className="text-sm">{row.name.charAt(0)}</div>
-            )}
-          </div>
-          <div className="min-w-0">
-            <div className="font-medium truncate">{row.name}</div>
-            <div className="text-xs text-slate-400 truncate">{(row.tags||[]).join(', ')}</div>
-            {/* show a short truncated description in the summary to avoid long rows */}
-            {row.description ? (
-              <div className="text-xs text-slate-300 mt-1 truncate max-w-[40ch]">{row.description}</div>
-            ) : null}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button title="Edit" onClick={(e)=>{ e.stopPropagation(); setOpen(true); }} className="p-1 rounded hover:bg-white/5">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17h2m-1-1v1m5-11l2 2m-4-1l-1 1M4 20h4l10-10-4-4L4 16v4z"/></svg>
-          </button>
-          <button title="Delete" onClick={(e)=>{ e.stopPropagation(); if (confirm(`Delete preset "${row.name}"? This cannot be undone.`)) { onDelete(row).then(()=>{ alert('Successfully deleted'); }).catch(err=>{ alert(err?.message || 'Delete failed'); }); } }} className="p-1 rounded hover:bg-white/5 text-red-400">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-        </div>
-      </div>
-
-      {/* Modal dialog */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-          <div className="relative z-10 w-full h-full sm:h-auto max-w-4xl bg-neutral-900 border border-white/10 p-4 sm:p-6 rounded-none sm:rounded-lg overflow-auto max-h-[92vh]">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Edit preset — {row.name}</h3>
-              <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-white/5">Close</button>
-            </div>
-            <div className="p-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <label className="block text-sm">Name</label>
-                  <input className="w-full p-2 rounded bg-white/5" value={name} onChange={(e)=>setName(e.target.value)} />
-                  <label className="block text-sm mt-3">Description</label>
-                  <input className="w-full p-2 rounded bg-white/5" value={description} onChange={(e)=>setDescription(e.target.value)} />
-                  <label className="block text-sm mt-3">Tags</label>
-                  <input className="w-full p-2 rounded bg-white/5" value={tags} onChange={(e)=>setTags(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm">Add Image URLs (comma separated)</label>
-                  <input className="w-full p-2 rounded bg-white/5" value={addUrls} onChange={(e)=>setAddUrls(e.target.value)} />
-                  <label className="block text-sm mt-3">Add Image Files (max 8)</label>
-                  <input type="file" multiple accept="image/*" onChange={(e)=>{ setAddFiles(e.target.files); handleAddFiles(e.target.files); }} className="w-full p-2 rounded bg-white/5" />
-                  <div className="text-xs text-slate-400">Click the red X on an image to delete it immediately.</div>
-                  <label className="block text-sm mt-3">DNG download URL</label>
-                  <input type="url" className="w-full p-2 rounded bg-white/5" value={dngUrl} onChange={(e)=>setDngUrl(e.target.value)} placeholder="https://.../preset.dng" />
-                </div>
-                <div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {uploadItems.map((it) => (
-                      <div key={it.id} className="relative h-24 rounded overflow-hidden border border-white/10 bg-slate-800">
-                        <img src={it.preview} alt="upload-preview" className="object-cover w-full h-full" />
-                        <div className="absolute left-1 right-1 bottom-1">
-                          <div className="w-full bg-white/5 rounded h-2 overflow-hidden">
-                            <div className="bg-indigo-600 h-2" style={{ width: `${it.progress}%` }} />
-                          </div>
-                          <div className="flex justify-between text-xs text-slate-300 mt-1">
-                            <div>{it.status}</div>
-                            <div>
-                              {it.status !== 'done' && (
-                                <button type="button" onClick={() => cancelUpload(it.id)} className="text-xs text-red-400">Cancel</button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-
-                    {imagesLocal.map((img) => {
-                      const isDeleting = deleting.includes(img.public_id);
-                      return (
-                        <div
-                          key={img.public_id}
-                          data-public-id={img.public_id}
-                          draggable
-                          onDragStart={() => { dragFrom.current = img.public_id; }}
-                          onDragEnter={(e) => { e.preventDefault(); dragOver.current = img.public_id; }}
-                          onDragOver={(e) => e.preventDefault()}
-                          onDragEnd={() => {
-                            const from = dragFrom.current; const to = dragOver.current;
-                            if (from && to && from !== to) {
-                              setImagesLocal(prev => {
-                                const arr = [...prev];
-                                const fromIdx = arr.findIndex(i => i.public_id === from);
-                                const toIdx = arr.findIndex(i => i.public_id === to);
-                                if (fromIdx >= 0 && toIdx >= 0) {
-                                  const [moved] = arr.splice(fromIdx, 1);
-                                  arr.splice(toIdx, 0, moved);
-                                }
-                                return arr;
-                              });
-                            }
-                            dragFrom.current = dragOver.current = null;
-                          }}
-                          onTouchStart={(e) => { touchFrom.current = img.public_id; touchOver.current = img.public_id; }}
-                          onTouchMove={(e) => {
-                            const t = e.touches && e.touches[0];
-                            if (!t) return;
-                            const el = document.elementFromPoint(t.clientX, t.clientY) as HTMLElement | null;
-                            if (!el) return;
-                            const tile = el.closest('[data-public-id]') as HTMLElement | null;
-                            if (tile) {
-                              const id = tile.getAttribute('data-public-id');
-                              if (id) touchOver.current = id;
-                            }
-                            // prevent scrolling while dragging
-                            e.preventDefault();
-                          }}
-                          onTouchEnd={() => {
-                            const from = touchFrom.current; const to = touchOver.current;
-                            if (from && to && from !== to) {
-                              setImagesLocal(prev => {
-                                const arr = [...prev];
-                                const fromIdx = arr.findIndex(i => i.public_id === from);
-                                const toIdx = arr.findIndex(i => i.public_id === to);
-                                if (fromIdx >= 0 && toIdx >= 0) {
-                                  const [moved] = arr.splice(fromIdx, 1);
-                                  arr.splice(toIdx, 0, moved);
-                                }
-                                return arr;
-                              });
-                            }
-                            touchFrom.current = touchOver.current = null;
-                          }}
-                          className="relative h-24 rounded overflow-hidden border border-white/10 cursor-move"
-                          title="Drag to reorder"
-                        >
-                          <ImageWithLqip src={img.url} alt="img" fill className="object-cover" transformOpts={{ w: 320, h: 240, fit: 'cover' }} />
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(img.public_id)}
-                            disabled={isDeleting}
-                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow"
-                            aria-label={isDeleting ? 'Deleting' : 'Delete image'}
-                          >
-                            {isDeleting ? (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v4" /></svg>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 mt-4">
-                <button disabled={busy} onClick={async () => { await submit(); setOpen(false); }} className="px-3 py-2 rounded bg-indigo-600 text-white">{busy ? 'Saving…' : 'Save'}</button>
-                <button disabled={busy} onClick={() => { handleCancel(); setOpen(false); }} className="px-3 py-2 rounded bg-white/6 text-sm">Cancel</button>
-                {successMsg && <div className="text-sm text-emerald-400 ml-2">{successMsg}</div>}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-});
-
-export { AdminRow };

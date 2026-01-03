@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 export default function Nav() {
   const pathname = usePathname() || '';
 
-  // Hide nav on presets detail page like /presets/:id where id is a 24-char hex ObjectId
+  // Hide nav on admin pages or presets detail page
+  if (pathname.startsWith('/admin')) return null;
   const isPresetDetail = /^\/presets\/[0-9a-fA-F]{24}\/?$/.test(pathname);
   if (isPresetDetail) return null;
 

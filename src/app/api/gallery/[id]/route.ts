@@ -19,7 +19,7 @@ export async function GET(
     const id = resolvedParams?.id;
     
     if (!id || !isValidObjectId(id)) {
-      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Invalid ID' }, { status: 400 });
     }
     
     const db = await getDatabase();
@@ -28,14 +28,14 @@ export async function GET(
     const item = await coll.findOne({ _id: new ObjectId(id) });
     
     if (!item) {
-      return NextResponse.json({ error: 'Gallery item not found' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Gallery item not found' }, { status: 404 });
     }
     
-    return NextResponse.json({ success: true, item });
+    return NextResponse.json({ ok: true, success: true, item });
     
   } catch (error) {
     console.error('Gallery GET by ID error:', error);
-    return NextResponse.json({ error: 'Failed to fetch gallery item' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Failed to fetch gallery item' }, { status: 500 });
   }
 }
 

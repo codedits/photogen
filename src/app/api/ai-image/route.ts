@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 // Simple in-memory cache for recent image generations (expires after 5 minutes)
 const generationCache = new Map<string, { data: Record<string, unknown>; expires: number }>();
@@ -54,20 +54,20 @@ export async function GET(req: NextRequest) {
     try {
       const u = new URL(imageUrlParam);
       if (u.protocol !== "https:") {
-        return new Response(JSON.stringify({ error: "Only https URLs are allowed" }), { status: 400, headers: { "content-type": "application/json" } });
+        return NextResponse.json({ ok: false, error: "Only https URLs are allowed" }, { status: 400 });
       }
       const upstreamRes = await fetch(u.toString(), { 
         cache: "no-store",
       });
       if (!upstreamRes.ok) {
-        return new Response(JSON.stringify({ error: `Failed to fetch image (${upstreamRes.status})` }), { status: 502, headers: { "content-type": "application/json" } });
+        return NextResponse.json({ ok: false, error: `Failed to fetch image (${upstreamRes.status})` }, { status: 502 });
       }
       const ct = upstreamRes.headers.get("content-type") || "application/octet-stream";
       const buf = await upstreamRes.arrayBuffer();
       const safeName = (filenameParam || "photogen-image").replace(/[^A-Za-z0-9._-]+/g, "_");
       const ext = ct.includes("/") ? ct.split("/")[1].split(";")[0] : "bin";
       const fname = safeName.includes(".") ? safeName : `${safeName}.${ext}`;
-      return new Response(buf, {
+      return new NextResponse(buf, {
         status: 200,
         headers: {
           "content-type": ct,
@@ -76,10 +76,7 @@ export async function GET(req: NextRequest) {
         },
       });
     } catch (e: unknown) {
-      return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Invalid image_url" }), {
-        status: 400,
-        headers: { "content-type": "application/json" },
-      });
+      return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Invalid image_url" }, { status: 400 });
     }
   }
 
@@ -95,31 +92,25 @@ export async function GET(req: NextRequest) {
       if (!taskRes.ok) {
         if (taskCt.includes("application/json")) {
           const data = await taskRes.json().catch(() => null);
-          return new Response(JSON.stringify(data || { error: `Upstream error ${taskRes.status}` }), { status: taskRes.status, headers: { "content-type": "application/json" } });
+          return NextResponse.json(data || { ok: false, error: `Upstream error ${taskRes.status}` }, { status: taskRes.status });
         }
-        return new Response(JSON.stringify({ error: `Upstream error ${taskRes.status}` }), { status: taskRes.status, headers: { "content-type": "application/json" } });
+        return NextResponse.json({ ok: false, error: `Upstream error ${taskRes.status}` }, { status: taskRes.status });
       }
 
       if (taskCt.includes("application/json")) {
         const data = await taskRes.json().catch(() => null) as unknown;
-        return new Response(JSON.stringify(data), { status: taskRes.status, headers: { "content-type": "application/json" } });
+        return NextResponse.json(data, { status: taskRes.status });
       }
       const buf = await taskRes.arrayBuffer();
-      return new Response(buf, { status: 200, headers: { "content-type": taskCt || "image/png" } });
+      return new NextResponse(buf, { status: 200, headers: { "content-type": taskCt || "image/png" } });
     } catch (err: unknown) {
-      return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) || "Polling request failed" }), {
-        status: 500,
-        headers: { "content-type": "application/json" },
-      });
+      return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) || "Polling request failed" }, { status: 500 });
     }
   }
 
   // 3. Generation logic (requires 'text')
   if (!text.trim()) {
-    return new Response(JSON.stringify({ error: "Missing 'text' query param" }), {
-      status: 400,
-      headers: { "content-type": "application/json" },
-    });
+    return NextResponse.json({ ok: false, error: "Missing 'text' query param" }, { status: 400 });
   }
 
   // Build upstream URL with prompt and optional ratio
@@ -144,10 +135,9 @@ export async function GET(req: NextRequest) {
   const cacheKey = `gen:${model}:${text}:${ratio}`;
   const cached = getCached(cacheKey);
   if (cached) {
-    return new Response(JSON.stringify(cached), { 
+    return NextResponse.json(cached, { 
       status: 200, 
       headers: { 
-        "content-type": "application/json",
         "x-cache": "HIT"
       } 
     });
@@ -156,10 +146,7 @@ export async function GET(req: NextRequest) {
   try {
     // Ensure API key present for paxsenix upstream requests
     if (!PAXSENIX_API_KEY) {
-      return new Response(JSON.stringify({ error: "Server missing PAXSENIX_API_KEY environment variable" }), {
-        status: 500,
-        headers: { "content-type": "application/json" },
-      });
+      return NextResponse.json({ ok: false, error: "Server missing PAXSENIX_API_KEY environment variable" }, { status: 500 });
     }
 
     const res = await fetch(upstream, { 
@@ -175,21 +162,12 @@ export async function GET(req: NextRequest) {
          if (typeof data === "object" && data !== null) {
            const d = data as Record<string, unknown>;
            const errMsg = typeof d["error"] === "string" ? d["error"] : `Upstream error ${res.status}`;
-           return new Response(JSON.stringify({ error: errMsg }), {
-             status: res.status,
-             headers: { "content-type": "application/json" },
-           });
+           return NextResponse.json({ ok: false, error: errMsg }, { status: res.status });
          }
-         return new Response(JSON.stringify({ error: `Upstream error ${res.status}` }), {
-            status: res.status,
-            headers: { "content-type": "application/json" },
-          });
+         return NextResponse.json({ ok: false, error: `Upstream error ${res.status}` }, { status: res.status });
         }
         // Otherwise forward status with a generic message
-        return new Response(JSON.stringify({ error: `Upstream error ${res.status}` }), {
-          status: res.status,
-          headers: { "content-type": "application/json" },
-        });
+        return NextResponse.json({ ok: false, error: `Upstream error ${res.status}` }, { status: res.status });
       }
 
     // Handle possible JSON success payloads (single url, multiple urls, base64, or job/task reference)
@@ -204,14 +182,14 @@ export async function GET(req: NextRequest) {
         if (Array.isArray(d["urls"]) && (d["urls"] as unknown[]).every((v) => typeof v === "string")) {
           const response = { ok: true, urls: d["urls"] };
           setCache(cacheKey, response);
-          return new Response(JSON.stringify(response), { status: 200, headers: { "content-type": "application/json", "x-cache": "MISS" } });
+          return NextResponse.json(response, { status: 200, headers: { "x-cache": "MISS" } });
         }
 
         // If upstream returned 'images' or similar arrays, try common alternatives
         if (Array.isArray(d["images"]) && (d["images"] as unknown[]).every((v) => typeof v === "string")) {
           const response = { ok: true, urls: d["images"] };
           setCache(cacheKey, response);
-          return new Response(JSON.stringify(response), { status: 200, headers: { "content-type": "application/json", "x-cache": "MISS" } });
+          return NextResponse.json(response, { status: 200, headers: { "x-cache": "MISS" } });
         }
 
         // If upstream returned a task/job reference, return it immediately to the client
@@ -225,47 +203,44 @@ export async function GET(req: NextRequest) {
         if (taskUrl) {
           // Return job info so client can poll the task_url
           const message = typeof d["message"] === "string" ? d["message"] : "Task queued";
-          return new Response(JSON.stringify({ ok: true, message, jobId, task_url: taskUrl }), { status: 200, headers: { "content-type": "application/json" } });
+          return NextResponse.json({ ok: true, message, jobId, task_url: taskUrl }, { status: 200 });
         }
 
         // Try common shapes for immediate image URL/base64 and normalize into JSON
         // Prefer returning JSON with urls array so frontend can handle multiple images uniformly
         if (typeof d["url"] === "string") {
-          return new Response(JSON.stringify({ ok: true, urls: [d["url"]] }), { status: 200, headers: { "content-type": "application/json" } });
+          return NextResponse.json({ ok: true, urls: [d["url"]] }, { status: 200 });
         }
         if (typeof d["image_url"] === "string") {
-          return new Response(JSON.stringify({ ok: true, urls: [d["image_url"]] }), { status: 200, headers: { "content-type": "application/json" } });
+          return NextResponse.json({ ok: true, urls: [d["image_url"]] }, { status: 200 });
         }
         if (typeof d["image"] === "string") {
-          return new Response(JSON.stringify({ ok: true, urls: [d["image"]] }), { status: 200, headers: { "content-type": "application/json" } });
+          return NextResponse.json({ ok: true, urls: [d["image"]] }, { status: 200 });
         }
         if (typeof d["result"] === "string") {
-          return new Response(JSON.stringify({ ok: true, urls: [d["result"]] }), { status: 200, headers: { "content-type": "application/json" } });
+          return NextResponse.json({ ok: true, urls: [d["result"]] }, { status: 200 });
         }
 
         // If base64 image payload is present, return it in JSON so frontend can construct a data URL
         if (typeof d["image_base64"] === "string") {
-          return new Response(JSON.stringify({ ok: true, b64: d["image_base64"] }), { status: 200, headers: { "content-type": "application/json" } });
+          return NextResponse.json({ ok: true, b64: d["image_base64"] }, { status: 200 });
         }
         if (typeof d["base64"] === "string") {
-          return new Response(JSON.stringify({ ok: true, b64: d["base64"] }), { status: 200, headers: { "content-type": "application/json" } });
+          return NextResponse.json({ ok: true, b64: d["base64"] }, { status: 200 });
         }
         if (typeof d["data"] === "string") {
-          return new Response(JSON.stringify({ ok: true, b64: d["data"] }), { status: 200, headers: { "content-type": "application/json" } });
+          return NextResponse.json({ ok: true, b64: d["data"] }, { status: 200 });
         }
       }
 
       // If JSON but unknown structure
-      return new Response(JSON.stringify({ error: "Unexpected JSON response from upstream", data }), {
-        status: 502,
-        headers: { "content-type": "application/json" },
-      });
+      return NextResponse.json({ ok: false, error: "Unexpected JSON response from upstream", data }, { status: 502 });
     }
 
     // For image/binary, stream it through as-is
     const body = await res.arrayBuffer();
     const ct = contentType || "image/png";
-    return new Response(body, {
+    return new NextResponse(body, {
       status: 200,
       headers: {
         "content-type": ct,
@@ -276,9 +251,6 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (err: unknown) {
-     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) || "Proxy request failed" }), {
-      status: 500,
-      headers: { "content-type": "application/json" },
-    });
+     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) || "Proxy request failed" }, { status: 500 });
   }
 }

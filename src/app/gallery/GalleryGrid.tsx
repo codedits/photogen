@@ -25,52 +25,52 @@ interface GalleryItem extends Omit<GalleryDoc, '_id'> {
 const GalleryCard = React.memo(({ item, onQuickView }: { item: GalleryItem; onQuickView: (e: React.MouseEvent) => void }) => {
   return (
     <Link href={`/gallery/${item._id}`} className="break-inside-avoid mb-8 block group">
-      <div className="relative bg-neutral-900 rounded-sm overflow-hidden border border-white/5 transition-all duration-500 group-hover:border-white/20 group-hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+      <div className="relative bg-[#0a0a0a] rounded-xl overflow-hidden border border-white/[0.03] transition-all duration-700 group-hover:border-white/10 group-hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)]">
         
         {/* Image Container */}
-        <div className="relative w-full overflow-hidden">
+        <div className="relative w-full overflow-hidden aspect-[4/5]">
            <ImageWithLqip
               src={item.images[0].url}
               alt={item.name}
               width={800}
               height={1000}
-              className="w-full h-auto block transition-transform duration-1000 ease-out group-hover:scale-110 group-hover:rotate-1"
+              className="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105"
               transformOpts={{ w: 800, q: 'auto:good' }}
             />
             
-            {/* Overlays */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500" />
+            {/* Sophisticated Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-90 transition-opacity duration-700" />
             
-            {/* Quick View Button */}
+            {/* Quick View Button - More Minimal */}
             <button 
               onClick={onQuickView}
-              className="absolute top-4 right-4 p-3 rounded-full bg-black/50 backdrop-blur-md border border-white/10 text-white opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 hover:bg-white hover:text-black"
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white/50 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 hover:bg-white hover:text-black hover:scale-110"
               title="Quick View"
             >
-              <Maximize2 className="w-4 h-4" />
+              <Maximize2 className="w-4 h-4 mx-auto" />
             </button>
 
-            {/* Bottom Info */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500">
-               <div className="flex items-center gap-2 mb-2">
-                  <span className="px-2 py-0.5 bg-white/10 backdrop-blur-md border border-white/10 rounded text-[8px] uppercase tracking-[0.2em] text-white/80">
+            {/* Bottom Info - Refined Typography */}
+            <div className="absolute bottom-0 left-0 right-0 p-6">
+               <div className="flex items-center gap-2 mb-3">
+                  <span className="px-2 py-0.5 bg-white/[0.05] backdrop-blur-md border border-white/[0.08] rounded text-[7px] uppercase tracking-[0.3em] text-white/60">
                     {item.category}
                   </span>
                   {item.featured && (
-                    <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                    <Star className="w-2.5 h-2.5 fill-yellow-500/80 text-yellow-500/80" />
                   )}
                </div>
-               <h3 className="text-white font-light text-xl tracking-tight mb-2">{item.name}</h3>
-               <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[9px] text-white/40 font-mono uppercase tracking-widest">
+               <h3 className="text-white font-light text-lg tracking-tight mb-2 group-hover:translate-x-1 transition-transform duration-700">{item.name}</h3>
+               <div className="flex items-center justify-between opacity-40 group-hover:opacity-100 transition-opacity duration-700">
+                  <div className="flex items-center gap-2 text-[8px] font-medium uppercase tracking-[0.2em]">
                     {item.location && (
-                       <span className="flex items-center gap-1">
-                          <MapPin className="w-2.5 h-2.5" /> {item.location}
+                       <span className="flex items-center gap-1.5">
+                          <MapPin className="w-2.5 h-2.5 text-indigo-400" /> {item.location}
                        </span>
                     )}
                   </div>
-                  <span className="text-[9px] text-white/20 font-mono">
-                    {item.images.length} {item.images.length === 1 ? 'IMAGE' : 'IMAGES'}
+                  <span className="text-[8px] font-mono tracking-tighter">
+                    {item.images.length.toString().padStart(2, '0')} / EXP
                   </span>
                </div>
             </div>
@@ -245,7 +245,7 @@ export default function GalleryGrid({ filters }: GalleryGridProps) {
             </div>
          ) : (
             /* Responsive Masonry Layout */
-            <div className="columns-1 sm:columns-2 lg:columns-3 gap-8 space-y-8">
+            <div className="columns-1 sm:columns-2 lg:columns-3 gap-8">
                {items.map((item) => (
                   <GalleryCard 
                      key={item._id} 

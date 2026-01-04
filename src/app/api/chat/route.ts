@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // New upstream per your request
 const UPSTREAM = 'https://api.bk9.dev/ai/gpt-reasoning';
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const role = body && typeof body['role'] === 'string' ? (body['role'] as string) : 'You are PhotoGen, an AI assistant for photographers. Answer concisely.';
 
     if (!text || typeof text !== 'string') {
-      return new Response(JSON.stringify({ error: "Missing 'text' in request body" }), { status: 400, headers: { 'content-type': 'application/json' } });
+      return NextResponse.json({ ok: false, error: "Missing 'text' in request body" }, { status: 400 });
     }
 
     const upstreamUrl = buildSafeUrl(UPSTREAM, text, role);
@@ -46,19 +46,19 @@ export async function POST(req: NextRequest) {
 
     if (!upstreamRes.ok) {
       const textBody = await upstreamRes.text().catch(() => '');
-      return new Response(JSON.stringify({ error: `Upstream ${status}: ${textBody || upstreamRes.statusText}` }), { status: 502, headers: { 'content-type': 'application/json' } });
+      return NextResponse.json({ ok: false, error: `Upstream ${status}: ${textBody || upstreamRes.statusText}` }, { status: 502 });
     }
 
     if (ct.includes('application/json')) {
       const json = await upstreamRes.json().catch(() => null);
-      return new Response(JSON.stringify(json), { status: 200, headers: { 'content-type': 'application/json' } });
+      return NextResponse.json(json, { status: 200 });
     }
 
     // Otherwise return text
     const txt = await upstreamRes.text().catch(() => '');
-    return new Response(txt, { status: 200, headers: { 'content-type': ct || 'text/plain' } });
+    return new NextResponse(txt, { status: 200, headers: { 'content-type': ct || 'text/plain' } });
   } catch (err: unknown) {
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), { status: 500, headers: { 'content-type': 'application/json' } });
+    return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }
 
@@ -68,24 +68,24 @@ export async function GET(req: NextRequest) {
     const text = url.searchParams.get('text') || '';
     const role = url.searchParams.get('role') || 'You are PhotoGen, an AI assistant for photographers. Answer concisely.';
     if (!text.trim()) {
-      return new Response(JSON.stringify({ error: "Missing 'text' query param" }), { status: 400, headers: { 'content-type': 'application/json' } });
+      return NextResponse.json({ ok: false, error: "Missing 'text' query param" }, { status: 400 });
     }
 
     const upstreamRes = await fetch(buildSafeUrl(UPSTREAM, text, role), { method: 'GET', cache: 'no-store' });
     const ct = upstreamRes.headers.get('content-type') || '';
     if (!upstreamRes.ok) {
       const body = await upstreamRes.text().catch(() => '');
-      return new Response(JSON.stringify({ error: `Upstream ${upstreamRes.status}: ${body || upstreamRes.statusText}` }), { status: 502, headers: { 'content-type': 'application/json' } });
+      return NextResponse.json({ ok: false, error: `Upstream ${upstreamRes.status}: ${body || upstreamRes.statusText}` }, { status: 502 });
     }
 
     if (ct.includes('application/json')) {
       const json = await upstreamRes.json().catch(() => null);
-      return new Response(JSON.stringify(json), { status: 200, headers: { 'content-type': 'application/json' } });
+      return NextResponse.json(json, { status: 200 });
     }
 
     const txt = await upstreamRes.text().catch(() => '');
-    return new Response(txt, { status: 200, headers: { 'content-type': ct || 'text/plain' } });
+    return new NextResponse(txt, { status: 200, headers: { 'content-type': ct || 'text/plain' } });
   } catch (err: unknown) {
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), { status: 500, headers: { 'content-type': 'application/json' } });
+    return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
 }

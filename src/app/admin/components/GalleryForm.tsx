@@ -48,6 +48,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
     file?: File; 
     progress: number; 
     status: 'idle'|'uploading'|'done'|'error'|'cancelled'; 
+    error?: string;
     public_id?: string; 
     url?: string; 
     xhr?: XMLHttpRequest | null 
@@ -136,14 +137,16 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
           } : p));
           setImagesLocal((prev: any) => [...prev, { url: data.url, public_id: data.public_id }]);
         } else {
-          setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
+          const errMsg = data?.error || (xhr.status === 413 ? 'File too large for server' : 'Upload failed');
+          setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', error: errMsg, xhr: null } : p));
         }
       } catch {
-        setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
+        const errMsg = xhr.status === 413 ? 'File too large for server' : 'Upload failed';
+        setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', error: errMsg, xhr: null } : p));
       }
     };
     xhr.onerror = () => {
-      setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', xhr: null } : p));
+      setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', error: 'Network error', xhr: null } : p));
     };
     setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'uploading', xhr } : p));
     xhr.send(form);
@@ -431,11 +434,11 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
                       )}
                       {it.status === 'error' && (
                         <div className="text-center p-2">
-                          <p className="text-xs text-red-400">Upload failed</p>
+                          <p className="text-xs text-red-400 font-medium">{it.error || 'Upload failed'}</p>
                           <button
                             type="button"
                             onClick={() => cancelUpload(it.id)}
-                            className="mt-2 text-xs text-zinc-400 hover:text-white"
+                            className="mt-2 text-[10px] px-2 py-1 rounded bg-white/10 text-zinc-300 hover:text-white hover:bg-white/20 transition-colors"
                           >
                             Remove
                           </button>

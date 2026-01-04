@@ -102,20 +102,20 @@ export async function POST(req: NextRequest) {
     const session = await sessionRes.json();
     
     if (!session.ok) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
     
     const body = await req.json();
     
     // Validate required fields
     if (!body.name?.trim()) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Name is required' }, { status: 400 });
     }
     if (!body.images?.length) {
-      return NextResponse.json({ error: 'At least one image is required' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'At least one image is required' }, { status: 400 });
     }
     if (!body.category?.trim()) {
-      return NextResponse.json({ error: 'Category is required' }, { status: 400 });
+      return NextResponse.json({ ok: false, error: 'Category is required' }, { status: 400 });
     }
     
     const db = await getDatabase();
@@ -147,6 +147,7 @@ export async function POST(req: NextRequest) {
     const result = await coll.insertOne(galleryDoc);
     
     return NextResponse.json({
+      ok: true,
       success: true,
       id: result.insertedId,
       message: 'Gallery entry created successfully'
@@ -154,6 +155,6 @@ export async function POST(req: NextRequest) {
     
   } catch (error) {
     console.error('Gallery POST error:', error);
-    return NextResponse.json({ error: 'Failed to create gallery entry' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'Failed to create gallery entry' }, { status: 500 });
   }
 }

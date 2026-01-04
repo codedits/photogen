@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import GalleryGrid from './GalleryGrid';
 import GalleryFilters from './GalleryFilters';
+import { cn } from '../../lib/utils';
 
 export default function GalleryPage() {
   const [filters, setFilters] = useState({
@@ -10,51 +11,63 @@ export default function GalleryPage() {
     featured: false,
     search: ''
   });
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+
+  // Fetch total count for the hero
+  useEffect(() => {
+    fetch('/api/gallery?limit=1')
+      .then(res => res.json())
+      .then(data => setTotalCount(data.total || null))
+      .catch(() => {});
+  }, []);
+
+  // Handle scroll for sticky header effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 100);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Memoize filters to prevent unnecessary re-renders
   const memoizedFilters = useMemo(() => filters, [filters.category, filters.featured, filters.search]);
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white selection:bg-white/20">
-      {/* Header Section */}
-      <section className="relative min-h-[60vh] flex flex-col justify-center pt-32 pb-16 px-6 md:px-12 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/60 to-[#050505] z-10" />
+    <main className="min-h-screen bg-[#050505] text-white selection:bg-white/20 overflow-x-hidden">
+      {/* Top Banner - compact, avoids navbar overlap */}
+      <div className="pt-24 md:pt-28 pb-6 bg-transparent">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <div className="py-6 md:py-8">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-tight uppercase">Creative Archive</h1>
+            <p className="text-sm text-white/50 mt-2">A curated collection of visual stories.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Gallery Section with Sticky Filters */}
+      <section id="gallery" className="relative z-10 pb-40">
+        {/* Sticky Filter Bar Container */}
+        <div className={cn(
+          "sticky top-20 md:top-24 z-40 w-full transition-all duration-500 border-b",
+          isScrolled 
+            ? "bg-black/80 backdrop-blur-xl border-white/10 py-4" 
+            : "bg-transparent border-transparent py-8"
+        )}>
+          <div className="max-w-7xl mx-auto px-6 md:px-12">
+            <GalleryFilters onFiltersChange={setFilters} />
+          </div>
+        </div>
         
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 z-0">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white/5 rounded-full blur-[120px] animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-white/[0.02] rounded-full blur-[150px] animate-pulse [animation-delay:2s]" />
-        </div>
-
-        <div className="relative z-20 max-w-6xl mx-auto text-center">
-          <div className="inline-block px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-[10px] uppercase tracking-[0.4em] text-white/40 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            Curated Collection
-          </div>
-          <h1 className="text-7xl md:text-9xl font-light tracking-tighter uppercase mb-8 leading-[0.8] animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-100">
-            Visual <br />
-            <span className="text-white/20">Stories</span>
-          </h1>
-          <p className="text-lg md:text-xl text-white/40 font-light max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
-            A sanctuary of light and shadow, capturing the ephemeral beauty of the human experience through a digital lens.
-          </p>
-          
-          <div className="mt-16 flex flex-col items-center gap-4 animate-in fade-in duration-1000 delay-500">
-            <div className="w-px h-24 bg-gradient-to-b from-white/20 to-transparent" />
-            <span className="text-[9px] uppercase tracking-[0.5em] text-white/10 font-bold">Scroll to Explore</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Filters & Grid */}
-      <section id="gallery" className="relative z-10 px-6 md:px-12 pb-40">
-        <div className="max-w-7xl mx-auto">
-          {/* Filter Controls */}
-          <GalleryFilters onFiltersChange={setFilters} />
-          
-          {/* Gallery Grid */}
+        {/* Grid Container */}
+        <div className="max-w-7xl mx-auto px-6 md:px-12 mt-12">
           <GalleryGrid filters={memoizedFilters} />
         </div>
       </section>
+
+      {/* Minimal Footer Decoration */}
+      <div className="h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent" />
     </main>
   );
 }

@@ -93,7 +93,7 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
            style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }} />
 
       {/* --- FLOATING NAV --- */}
-      <nav className="fixed top-0 left-0 w-full h-24 px-6 md:px-12 z-50 flex items-center justify-between pointer-events-none">
+      <nav className="fixed top-8 md:top-9 left-0 w-full h-24 px-3 md:px-12 z-50 flex items-center justify-between pointer-events-none">
         <Link 
           href="/gallery" 
           className="group flex items-center gap-3 px-6 py-3 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-full hover:bg-white hover:text-black transition-all duration-500 pointer-events-auto shadow-2xl"

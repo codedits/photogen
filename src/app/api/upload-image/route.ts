@@ -15,23 +15,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Missing image file' }, { status: 400 });
     }
     // Basic validation: only images, size <= 10MB
-    const allowed = ['image/png','image/jpeg','image/webp','image/gif'];
+    const allowed = ['image/png','image/jpeg','image/jpg','image/webp','image/gif','image/avif','image/heic','image/heif'];
     const maxBytes = 10 * 1024 * 1024;
     const claimedType = file.type || 'application/octet-stream';
-    if (!allowed.includes(claimedType)) {
-      return NextResponse.json({ ok: false, error: 'Unsupported file type' }, { status: 415 });
+    if (!allowed.includes(claimedType) && !claimedType.startsWith('image/')) {
+      return NextResponse.json({ ok: false, error: `Unsupported file type: ${claimedType}` }, { status: 415 });
     }
     if (typeof file.size === 'number' && file.size > maxBytes) {
-      return NextResponse.json({ ok: false, error: 'File too large (max 10MB)' }, { status: 413 });
+      return NextResponse.json({ ok: false, error: `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max 10MB.` }, { status: 413 });
     }
     const buf = Buffer.from(await file.arrayBuffer());
-    const payload = `data:${file.type || 'image/png'};base64,${buf.toString('base64')}`;
-    const res = await cloudinary.uploader.upload(payload, { 
-      folder: 'photogen/uploads', 
-      unique_filename: true, 
-      overwrite: false,
-      format: 'webp'
+    
+    // Use upload_stream for better performance and to avoid base64 overhead
+    const res: any = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { 
+          folder: 'photogen/uploads', 
+          unique_filename: true, 
+          overwrite: false,
+          format: 'webp'
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(buf);
     });
+
     return NextResponse.json({ ok: true, url: res.secure_url, public_id: res.public_id });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

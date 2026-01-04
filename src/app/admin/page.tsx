@@ -1,13 +1,15 @@
 "use client";
-import React, { useState, useEffect, useCallback, memo, createContext, useContext } from "react";
+import React, { useState, useEffect, useCallback, memo, createContext, useContext, Suspense, lazy } from "react";
 import { usePresets } from '../../lib/usePresets';
-import PresetsManagement from './PresetsManagement';
-import GalleryManagement from './GalleryManagement';
 import AdminSidebar from './components/AdminSidebar';
 import AdminHeader from './components/AdminHeader';
-import PresetForm from './components/PresetForm';
-import GalleryForm from './components/GalleryForm';
 import { Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
+
+// Lazy load heavy components
+const PresetsManagement = lazy(() => import('./PresetsManagement'));
+const GalleryManagement = lazy(() => import('./GalleryManagement'));
+const PresetForm = lazy(() => import('./components/PresetForm'));
+const GalleryForm = lazy(() => import('./components/GalleryForm'));
 
 type PresetRow = {
   id: string;
@@ -62,6 +64,7 @@ export default function AdminPage() {
   
   const [view, setView] = useState<AdminView>({ type: 'list', tab: 'presets' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // Toast state
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -75,7 +78,7 @@ export default function AdminPage() {
   const { items: list, loading: listLoading, hasMore, loadMore, refresh } = usePresets({ 
     limit: 50, 
     staleMs: 20000, 
-    enabled: authed === true 
+    enabled: authed === true && view.type === 'list' && view.tab === 'presets'
   });
 
   useEffect(() => {
@@ -288,6 +291,8 @@ export default function AdminPage() {
           onLogout={handleLogout}
           isOpen={sidebarOpen}
           setIsOpen={setSidebarOpen}
+          collapsed={sidebarCollapsed}
+          setCollapsed={setSidebarCollapsed}
         />
         
         <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
@@ -300,9 +305,13 @@ export default function AdminPage() {
             ] : undefined}
           />
           
-          <main className="flex-1 overflow-y-auto">
-            <div className="p-4 md:p-6 lg:p-10">
-              <div className="max-w-7xl mx-auto">
+          <main className="flex-1 overflow-y-auto bg-black/50">
+            <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-64">
+                  <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                </div>
+              }>
                 {view.type === 'list' && view.tab === 'presets' && (
                   <PresetsManagement 
                     list={list}
@@ -349,7 +358,7 @@ export default function AdminPage() {
                     onDelete={handleDeleteGallery}
                   />
                 )}
-              </div>
+              </Suspense>
             </div>
           </main>
         </div>

@@ -10,21 +10,12 @@ export default function Nav() {
   const [open, setOpen] = useState(false);
   const firstLinkRef = useRef<HTMLAnchorElement | null>(null);
 
+  useEffect(() => setOpen(false), [pathname]);
+
   // Hide nav on admin pages or presets detail page
   if (pathname.startsWith('/admin')) return null;
   const isPresetDetail = /^\/presets\/[0-9a-fA-F]{24}\/?$/.test(pathname);
   if (isPresetDetail) return null;
-
-  // close on route change or escape
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    if (open) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = '';
-    window.addEventListener('keydown', onKey);
-    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
-  }, [open]);
-
-  useEffect(() => setOpen(false), [pathname]);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex justify-center pointer-events-none">

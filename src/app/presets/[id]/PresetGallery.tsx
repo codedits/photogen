@@ -11,10 +11,26 @@ interface PresetGalleryProps {
   presetName: string;
 }
 
-export default function PresetGallery({ images, presetName }: PresetGalleryProps) {
+export default function PresetGallery({ images: rawImages, presetName }: PresetGalleryProps) {
+  // Filter valid images to prevent crashes
+  const images = React.useMemo(() => {
+    return (rawImages || []).filter(img => img && img.url && typeof img.url === 'string');
+  }, [rawImages]);
+
   // "contain" ensures NO CROP. "cover" zooms in to fill.
   const [fitMode, setFitMode] = useState<"contain" | "cover">("contain");
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Reset index if images change
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [images]);
+
+  const currentImage = (images && images.length > 0) ? images[currentIndex] : undefined;
+  // Construct optimized URL and LQIP blur data (hook only runs when currentImage exists)
+  // MOVED HOOKS UP: Hooks must be called unconditionally
+  const optimizedUrl = currentImage ? thumbUrl(currentImage.url, { w: 1200, h: 1600, fit: 'contain', q: 'auto:good' }) : '';
+  const blurData = useBlurDataUrl(currentImage?.url, { w: 10, h: 10 });
 
   // Aggressive preloading of all images in the gallery (idempotent + cleanup)
   useEffect(() => {
@@ -27,8 +43,15 @@ export default function PresetGallery({ images, presetName }: PresetGalleryProps
       if (idx === currentIndex) return;
 
       const href = thumbUrl(img.url, { w: 1200, h: 1600, fit: 'contain', q: 'auto:good' });
+      if (!href) return;
+
       // Avoid adding duplicates
-      if (document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
+      try {
+        if (document.querySelector(`link[rel="preload"][href="${href}"]`)) return;
+      } catch {
+        // Ignore invalid selector errors
+        return;
+      }
 
       const link = document.createElement('link');
       link.rel = 'preload';
@@ -44,7 +67,7 @@ export default function PresetGallery({ images, presetName }: PresetGalleryProps
     };
   }, [images, currentIndex]);
 
-  if (!images || images.length === 0) {
+  if (!images || images.length === 0 || !currentImage) {
     return (
       <div className="w-full h-[50vh] lg:h-screen bg-[#080808] flex flex-col items-center justify-center text-white/20 border-b lg:border-b-0 lg:border-r border-white/10">
         <ImageIcon className="w-16 h-16 opacity-20 mb-4" />
@@ -52,11 +75,6 @@ export default function PresetGallery({ images, presetName }: PresetGalleryProps
       </div>
     );
   }
-
-  const currentImage = images[currentIndex];
-  // Construct optimized URL and LQIP blur data (hook only runs when currentImage exists)
-  const optimizedUrl = thumbUrl(currentImage.url, { w: 1200, h: 1600, fit: 'contain', q: 'auto:good' });
-  const blurData = useBlurDataUrl(currentImage.url, { w: 10, h: 10 });
 
   const nextImage = () => setCurrentIndex((prev) => (prev + 1) % images.length);
   const prevImage = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);

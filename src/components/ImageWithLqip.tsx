@@ -29,10 +29,12 @@ export default function ImageWithLqip({
   loading?: 'eager' | 'lazy';
   onLoad?: () => void;
 }) {
+  const blur = useBlurDataUrl(src, { w: Math.min(transformOpts?.w || width || 400, 24), h: Math.min(transformOpts?.h || height || 300, 24), fit: transformOpts?.fit || 'cover' });
+  
   if (!src || src === "undefined") {
     return <div className={className} style={{ width, height, position: fill ? 'absolute' : 'relative', inset: fill ? 0 : undefined, backgroundColor: 'rgba(255,255,255,0.05)' }} />;
   }
-  const blur = useBlurDataUrl(src, { w: Math.min(transformOpts?.w || width || 400, 24), h: Math.min(transformOpts?.h || height || 300, 24), fit: transformOpts?.fit || 'cover' });
+  
   const url = thumbUrl(src, { w: transformOpts?.w || width || 400, h: transformOpts?.h || height || 300, fit: transformOpts?.fit || 'cover', q: transformOpts?.q ?? 'auto', f: transformOpts?.f ?? 'auto', dpr: transformOpts?.dpr });
   const placeholder = blur ? 'blur' as const : undefined;
 

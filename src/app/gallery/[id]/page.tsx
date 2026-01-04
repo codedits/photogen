@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { cache } from 'react';
 import { ObjectId } from 'mongodb';
 import Link from 'next/link';
 import { ArrowLeft, MapPin, Camera, Info, Calendar, User, Maximize2, Star } from 'lucide-react';
@@ -16,7 +16,7 @@ function isValidObjectId(id: string) {
   return /^[0-9a-fA-F]{24}$/.test(id);
 }
 
-async function getGalleryItem(id: string) {
+const getGalleryItem = cache(async (id: string) => {
   if (!id || !isValidObjectId(id)) return null;
   try {
     const db = await getDatabase();
@@ -27,7 +27,7 @@ async function getGalleryItem(id: string) {
     console.error("DB Error:", e);
     return null;
   }
-}
+});
 
 // --- SSG / ISR CONFIG ---
 export const revalidate = 3600; // Revalidate every hour
@@ -89,7 +89,7 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
   return (
     <main className="min-h-screen bg-[#050505] text-white selection:bg-white/20">
       {/* Global Grain Texture */}
-      <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay" 
+      <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay hidden md:block" 
            style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }} />
 
       {/* --- FLOATING NAV --- */}
@@ -113,6 +113,7 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
             fill
             className="object-cover opacity-20 blur-3xl scale-110"
             transformOpts={{ w: 100, q: 10 }}
+            sizes="100vw"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent" />
         </div>
@@ -216,6 +217,7 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
                   className="w-full h-auto block transition-transform duration-[2s] ease-out group-hover:scale-110"
                   transformOpts={{ w: 1200, q: 'auto:best' }}
                   priority={idx < 2}
+                  sizes="(max-width: 768px) 100vw, 50vw"
                 />
                 
                 {/* Subtle Overlay on Hover */}

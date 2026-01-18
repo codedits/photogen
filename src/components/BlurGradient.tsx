@@ -6,6 +6,7 @@ interface BlurGradientProps {
   blur?: number;
   borderRadius?: number;
   direction?: Direction;
+  hideOnMobile?: boolean;
 }
 
 function dirToCss(d: Direction) {
@@ -22,7 +23,7 @@ function dirToCss(d: Direction) {
   }
 }
 
-export default function BlurGradient({ blur = 10, borderRadius = 0, direction = "toBottom" }: BlurGradientProps) {
+export default function BlurGradient({ blur = 10, borderRadius = 0, direction = "toBottom", hideOnMobile = false }: BlurGradientProps) {
   // Layers with progressively smaller blur radii and stepped gradient masks
   const layers = [
     { blur: `${blur / 128}px`, gradient: "rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 1) 12.5%, rgba(0, 0, 0, 1) 25%, rgba(0, 0, 0, 0) 37.5%" },
@@ -38,7 +39,7 @@ export default function BlurGradient({ blur = 10, borderRadius = 0, direction = 
   const dirCss = dirToCss(direction);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%", borderRadius: `${borderRadius}px` }}>
+    <div style={{ position: "relative", width: "100%", height: "100%", borderRadius: `${borderRadius}px` }} className={hideOnMobile ? "hidden md:block" : ""}>
       {layers.map((layer, idx) => (
         <div
           key={idx}

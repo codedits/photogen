@@ -79,8 +79,46 @@ export default function PresetGallery({ images: rawImages, presetName }: PresetG
   const nextImage = () => setCurrentIndex((prev) => (prev + 1) % images.length);
   const prevImage = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
 
+  // Touch / pointer swipe handling for mobile
+  const startX = React.useRef<number | null>(null);
+  const startY = React.useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (startX.current == null) return;
+    const dx = e.changedTouches[0].clientX - startX.current;
+    const dy = e.changedTouches[0].clientY - startY.current!;
+    // Only consider horizontal swipes and require a minimum threshold
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+      if (dx > 0) prevImage();
+      else nextImage();
+    }
+    startX.current = null;
+    startY.current = null;
+  };
+
+  // Pointer fallback (some browsers/devices)
+  const pointerStartX = React.useRef<number | null>(null);
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'touch') pointerStartX.current = e.clientX;
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (pointerStartX.current == null) return;
+    const dx = e.clientX - pointerStartX.current;
+    if (Math.abs(dx) > 40) {
+      if (dx > 0) prevImage();
+      else nextImage();
+    }
+    pointerStartX.current = null;
+  };
+
   return (
-    <div className="relative w-full h-[60vh] lg:h-screen bg-[#050505] overflow-hidden group border-b lg:border-b-0 lg:border-r border-white/10">
+    <div className="relative w-full h-[60vh] lg:h-screen bg-[#050505] overflow-hidden group border-b lg:border-b-0 lg:border-r border-white/10"
+      onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
+      onPointerDown={onPointerDown} onPointerUp={onPointerUp}
+      style={{ touchAction: 'pan-y' }}>
       
       {/* --- AMBIENCE LAYER (The blurred background) --- */}
       {/* This fills the black bars so 'contain' mode looks elegant */}

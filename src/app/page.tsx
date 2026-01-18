@@ -65,7 +65,7 @@ export default async function Home() {
 
       {/* Fixed bottom overlay */}
       <div className="pointer-events-none fixed inset-x-0 bottom-0 h-40 z-40">
-        <BlurGradient blur={10} direction="toBottom" borderRadius={0} />
+        <BlurGradient blur={10} direction="toBottom" borderRadius={0} hideOnMobile={true} />
       </div>
     </PageContainer>
   );

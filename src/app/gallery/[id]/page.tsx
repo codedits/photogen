@@ -208,31 +208,36 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
                 idx % 4 === 2 ? 'md:mt-12' : 'md:mt-32'
               }`}
             >
-              <div className="relative overflow-hidden bg-neutral-900 rounded-sm shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] group-hover:shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6)] transition-all duration-500">
-                <ImageWithLqip
-                  src={img.url} 
-                  alt={`${item.name} - ${idx + 1}`}
-                  width={1200}
-                  height={1600}
-                  className="w-full h-auto block transition-transform duration-[2s] ease-out group-hover:scale-110"
-                  transformOpts={{ w: 1200, q: 'auto:best' }}
-                  priority={idx < 2}
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                />
-                
-                {/* Subtle Overlay on Hover */}
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
-                
-                {/* Quick Actions */}
-                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0">
-                  <a 
-                    href={img.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="p-3 rounded-full bg-black/50 backdrop-blur-md border border-white/10 text-white hover:bg-white hover:text-black transition-all"
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                  </a>
+              <div className="relative transition-all duration-500 group-hover:shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6)]">
+                {/* Card wrapper */}
+                <div className="p-4 bg-[#070707]/70 rounded-xl md:rounded-2xl border border-white/6 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]">
+                  <div className="relative overflow-hidden rounded-xl md:rounded-2xl">
+                    <ImageWithLqip
+                      src={img.url}
+                      alt={`${item.name} - ${idx + 1}`}
+                      width={1200}
+                      height={1600}
+                      className="w-full h-auto block transition-transform duration-[2s] ease-out group-hover:scale-110 rounded-xl md:rounded-2xl"
+                      transformOpts={{ w: 1200, q: 'auto:best' }}
+                      priority={idx < 2}
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                    />
+
+                    {/* Subtle Overlay on Hover */}
+                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none rounded-xl md:rounded-2xl" />
+
+                    {/* Quick Actions */}
+                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0">
+                      <a
+                        href={img.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-3 rounded-full bg-black/50 backdrop-blur-md border border-white/10 text-white hover:bg-white hover:text-black transition-all"
+                      >
+                        <Maximize2 className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
               

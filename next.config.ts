@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
     qualities: [60, 75],
     // Cache images for 1 year
     minimumCacheTTL: 31536000,
+    unoptimized: true,
   },
 
   // Compression

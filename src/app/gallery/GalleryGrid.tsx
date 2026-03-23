@@ -1,83 +1,113 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Eye, MapPin, Camera, X, ChevronLeft, ChevronRight, Maximize2, Star } from 'lucide-react';
+import { MapPin, Camera, X, ChevronLeft, ChevronRight, Maximize2, ArrowUpRight, Image as ImageIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import ImageWithLqip from '../../components/ImageWithLqip';
 import type { GalleryDoc } from '../api/gallery/route';
+import { cn } from '../../lib/utils';
 
 import Link from 'next/link';
 
 // --- TYPES ---
 
 interface GalleryGridProps {
-  filters?: {
-    category: string;
-    featured: boolean;
-    search: string;
-  };
+   filters?: {
+      category: string;
+      featured: boolean;
+      search: string;
+   };
 }
 
 interface GalleryItem extends Omit<GalleryDoc, '_id'> {
-  _id: string;
+   _id: string;
 }
 
 // --- SUB-COMPONENT: GALLERY CARD ---
-const GalleryCard = React.memo(({ item, onQuickView }: { item: GalleryItem; onQuickView: (e: React.MouseEvent) => void }) => {
-  return (
-    <Link href={`/gallery/${item._id}`} className="break-inside-avoid mb-8 block group">
-      <div className="relative bg-[#0a0a0a] rounded-xl overflow-hidden border border-white/[0.03] transition-all duration-700 group-hover:border-white/10 group-hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)]">
-        
-        {/* Image Container */}
-        <div className="relative w-full overflow-hidden aspect-[4/5]">
-           <ImageWithLqip
-              src={item.images[0].url}
-              alt={item.name}
-              width={800}
-              height={1000}
-              className="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105"
-              transformOpts={{ w: 800, q: 'auto:good' }}
-            />
-            
-            {/* Sophisticated Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-90 transition-opacity duration-700" />
-            
-            {/* Quick View Button - More Minimal */}
-            <button 
-              onClick={onQuickView}
-              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white/50 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-500 hover:bg-white hover:text-black hover:scale-110"
-              title="Quick View"
-            >
-              <Maximize2 className="w-4 h-4 mx-auto" />
-            </button>
+const GalleryCard = React.memo(({ item, index, onQuickView }: { item: GalleryItem; index: number; onQuickView: (e: React.MouseEvent) => void }) => {
+   const dateStr = item.uploadDate ? new Date(item.uploadDate).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+   }) : '';
 
-            {/* Bottom Info - Refined Typography */}
-            <div className="absolute bottom-0 left-0 right-0 p-6">
-               <div className="flex items-center gap-2 mb-3">
-                  <span className="px-2 py-0.5 bg-white/[0.05] backdrop-blur-md border border-white/[0.08] rounded text-[7px] uppercase tracking-[0.3em] text-white/60">
-                    {item.category}
-                  </span>
-                  {item.featured && (
-                    <Star className="w-2.5 h-2.5 fill-yellow-500/80 text-yellow-500/80" />
-                  )}
-               </div>
-               <h3 className="text-white font-light text-lg tracking-tight mb-2 group-hover:translate-x-1 transition-transform duration-700">{item.name}</h3>
-               <div className="flex items-center justify-between opacity-40 group-hover:opacity-100 transition-opacity duration-700">
-                  <div className="flex items-center gap-2 text-[8px] font-medium uppercase tracking-[0.2em]">
-                    {item.location && (
-                       <span className="flex items-center gap-1.5">
-                          <MapPin className="w-2.5 h-2.5 text-indigo-400" /> {item.location}
-                       </span>
-                    )}
+   return (
+      <motion.div
+         initial={{ opacity: 0, y: 20 }}
+         whileInView={{ opacity: 1, y: 0 }}
+         viewport={{ once: true, margin: "-50px" }}
+         transition={{ duration: 1, delay: (index % 3) * 0.1, ease: [0.16, 1, 0.3, 1] }}
+         className="w-full"
+      >
+         <motion.article 
+            initial="rest"
+            whileHover="hover"
+            animate="rest"
+            className="group relative w-full bg-neutral-950 border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden"
+         >
+            <Link href={`/gallery/${item._id}`} className="block">
+               {/* ASPECT RATIO CONTAINER - 3:2 for "Large Cinematic Width" */}
+               <div className="relative aspect-[3/2] overflow-hidden w-full">
+                  
+                  {/* --- IMAGE LAYER --- */}
+                  <motion.div 
+                     className="w-full h-full relative"
+                     variants={{
+                        rest: { scale: 1 },
+                        hover: { scale: 1.05 }
+                     }}
+                     transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
+                  >
+                     <ImageWithLqip
+                        src={item.images[0].url}
+                        alt={item.name}
+                        fill
+                        className="object-cover transition-all duration-700 opacity-80 group-hover:opacity-100" 
+                        transformOpts={{ w: 1000, q: 'auto:best' }}
+                        noBlur={true}
+                     />
+                  </motion.div>
+
+                  {/* --- OVERLAY GRADIENT (Cinematic fade) --- */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90 pointer-events-none" />
+                  
+                  {/* --- BOTTOM CONTENT AREA --- */}
+                  <div className="absolute bottom-0 left-0 right-0 p-5 z-20">
+                     
+                     {/* Decorative Line that fills on hover */}
+                     <div className="w-full h-[1px] bg-white/20 mb-3 overflow-hidden">
+                        <motion.div 
+                           className="h-full bg-white w-full origin-left"
+                           variants={{ rest: { scaleX: 0 }, hover: { scaleX: 1 }}}
+                           transition={{ duration: 0.4 }}
+                        />
+                     </div>
+
+                     {/* Title & Arrow */}
+                     <div className="flex justify-between items-start mb-1">
+                        <h2 className="text-xl md:text-2xl font-light text-white uppercase tracking-tighter leading-none">
+                           {item.name}
+                        </h2>
+                        <ArrowUpRight className="w-4 h-4 text-white/50 group-hover:text-white group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                     </div>
+                     
+                     {/* Tags / Metadata */}
+                     <div className="flex items-center justify-between mt-2">
+                        <p className="text-[10px] text-white/50 font-mono uppercase tracking-widest truncate max-w-[80%]">
+                           {item.category} / {dateStr}
+                        </p>
+                        
+                        {/* Fake ID/Ref number for "Technical" look */}
+                        <span className="text-[9px] text-white/20 font-mono">
+                           {item._id.substring(0, 4).toUpperCase()}
+                        </span>
+                     </div>
                   </div>
-                  <span className="text-[8px] font-mono tracking-tighter">
-                    {item.images.length.toString().padStart(2, '0')} / EXP
-                  </span>
                </div>
-            </div>
-        </div>
-      </div>
-    </Link>
-  );
+            </Link>
+         </motion.article>
+      </motion.div>
+   );
 });
 
 // --- SUB-COMPONENT: LIGHTBOX ---
@@ -96,79 +126,86 @@ const Lightbox = ({ item, onClose }: { item: GalleryItem; onClose: () => void })
       };
       window.addEventListener('keydown', handleKey);
       document.body.style.overflow = 'hidden';
-      return () => { 
+      return () => {
          window.removeEventListener('keydown', handleKey);
-         document.body.style.overflow = ''; 
+         document.body.style.overflow = '';
       };
    }, []);
 
    return (
-      <div className="fixed inset-0 z-[100] bg-black/98 backdrop-blur-2xl flex flex-col animate-in fade-in duration-500">
-         
+      <motion.div
+         initial={{ opacity: 0 }}
+         animate={{ opacity: 1 }}
+         exit={{ opacity: 0 }}
+         className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex flex-col"
+      >
          {/* Top Toolbar */}
-         <div className="flex items-center justify-between p-6 md:p-10 z-50">
+         <div className="flex items-center justify-between p-8 md:p-12 z-50">
             <div className="flex flex-col">
-               <h2 className="text-white text-lg font-light tracking-tight">{item.name}</h2>
-               <div className="text-white/30 text-[10px] font-mono tracking-[0.3em] uppercase mt-1">
+               <h2 className="text-white text-xl font-extralight tracking-tight uppercase">
+                  {item.name}
+               </h2>
+               <div className="text-white/30 text-[10px] font-mono tracking-[0.3em] uppercase mt-2">
                   {index + 1} / {item.images.length} — {item.category}
                </div>
             </div>
-            <div className="flex items-center gap-4">
-               <Link 
+            <div className="flex items-center gap-6">
+               <Link
                   href={`/gallery/${item._id}`}
-                  className="hidden md:flex items-center gap-2 px-5 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] uppercase tracking-[0.2em] text-white hover:bg-white hover:text-black transition-all"
+                  className="hidden md:flex items-center gap-4 px-8 py-3 bg-white/5 border border-white/10 rounded-full text-[10px] uppercase tracking-[0.3em] text-white hover:bg-white hover:text-black transition-all"
                >
-                  View Details
+                  Explore Details
                </Link>
-               <button onClick={onClose} className="p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/20 text-white transition-all">
+               <button onClick={onClose} className="p-4 rounded-full bg-white/5 border border-white/10 hover:bg-white hover:text-black transition-all group">
                   <X className="w-5 h-5" />
                </button>
             </div>
          </div>
 
          {/* Main Stage */}
-         <div className="flex-1 relative flex items-center justify-center p-4 md:p-12" onClick={onClose}>
-            <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-               {!isLoaded && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                     <div className="w-10 h-10 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" />
-                  </div>
-               )}
-               <ImageWithLqip
-                  src={item.images[index].url}
-                  alt=""
-                  width={2400}
-                  height={1800}
-                  className={`max-w-full max-h-full object-contain transition-all duration-1000 ${isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
-                  transformOpts={{ w: 2400, q: 'auto:best' }}
-                  onLoad={() => setIsLoaded(true)}
-                  priority
-               />
-            </div>
+         <div className="flex-1 relative flex items-center justify-center p-6 md:p-20" onClick={onClose}>
+            <AnimatePresence mode="wait">
+               <motion.div
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.02 }}
+                  transition={{ duration: 0.6, ease: [0.2, 0, 0, 1] }}
+                  className="relative w-full h-full flex items-center justify-center"
+                  onClick={(e) => e.stopPropagation()}
+               >
+                  {!isLoaded && (
+                     <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-8 h-8 border-t-2 border-white/40 rounded-full animate-spin" />
+                     </div>
+                  )}
+                  <ImageWithLqip
+                     src={item.images[index].url}
+                     alt=""
+                     width={2400}
+                     height={1800}
+                     className={`max-w-full max-h-full object-contain ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+                     transformOpts={{ w: 2400, q: 'auto:best' }}
+                     onLoad={() => setIsLoaded(true)}
+                     priority
+                     noBlur={true}
+                  />
+               </motion.div>
+            </AnimatePresence>
 
             {/* Arrows */}
             {item.images.length > 1 && (
                <>
-                  <button onClick={prev} className="absolute left-4 md:left-12 p-4 rounded-full bg-black/20 border border-white/5 text-white/30 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all backdrop-blur-md">
-                     <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
+                  <button onClick={prev} className="absolute left-8 md:left-12 p-5 rounded-full bg-black/20 border border-white/5 text-white/30 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md">
+                     <ChevronLeft className="w-8 h-8" />
                   </button>
-                  <button onClick={next} className="absolute right-4 md:right-12 p-4 rounded-full bg-black/20 border border-white/5 text-white/30 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all backdrop-blur-md">
-                     <ChevronRight className="w-6 h-6 md:w-8 md:h-8" />
+                  <button onClick={next} className="absolute right-8 md:right-12 p-5 rounded-full bg-black/20 border border-white/5 text-white/30 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md">
+                     <ChevronRight className="w-8 h-8" />
                   </button>
                </>
             )}
          </div>
-
-         {/* Mobile Details Link */}
-         <div className="md:hidden p-6 border-t border-white/5">
-            <Link 
-               href={`/gallery/${item._id}`}
-               className="flex items-center justify-center gap-2 w-full py-4 bg-white text-black rounded-full text-[10px] uppercase tracking-[0.2em] font-bold"
-            >
-               View Full Details
-            </Link>
-         </div>
-      </div>
+      </motion.div>
    );
 };
 
@@ -181,9 +218,9 @@ export default function GalleryGrid({ filters }: GalleryGridProps) {
    const [hasMore, setHasMore] = useState(true);
    const [page, setPage] = useState(0);
    const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
-   
+
    const observerRef = useRef<HTMLDivElement>(null);
-   const ITEMS_PER_PAGE = 12;
+   const ITEMS_PER_PAGE = 14; // Even number for better grid fit
 
    const fetchItems = useCallback(async (reset = false) => {
       try {
@@ -244,17 +281,18 @@ export default function GalleryGrid({ filters }: GalleryGridProps) {
                <button onClick={() => fetchItems(true)} className="px-8 py-3 border border-white/10 rounded-full text-white text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all">Retry Connection</button>
             </div>
          ) : (
-            /* Responsive Masonry Layout */
-            <div className="columns-1 sm:columns-2 lg:columns-3 gap-8">
-               {items.map((item) => (
-                  <GalleryCard 
-                     key={item._id} 
-                     item={item} 
+            /* Refined Responsive Grid - 3 Columns on Desktop */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
+               {items.map((item, index) => (
+                  <GalleryCard
+                     key={item._id}
+                     item={item}
+                     index={index}
                      onQuickView={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         setSelectedItem(item);
-                     }} 
+                     }}
                   />
                ))}
             </div>
@@ -263,30 +301,39 @@ export default function GalleryGrid({ filters }: GalleryGridProps) {
          {/* Loading Indicators */}
          <div ref={observerRef} className="py-24 flex flex-col items-center justify-center w-full">
             {loading && (
-               <div className="flex flex-col items-center gap-4">
-                  <div className="flex gap-1.5">
-                     <span className="w-1 h-1 bg-white rounded-full animate-bounce [animation-delay:-0.3s]" />
-                     <span className="w-1 h-1 bg-white rounded-full animate-bounce [animation-delay:-0.15s]" />
-                     <span className="w-1 h-1 bg-white rounded-full animate-bounce" />
+               <div className="flex flex-col items-center gap-6">
+                  <div className="w-12 h-12 relative">
+                     <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-0 border border-white/5 rounded-full"
+                     />
+                     <motion.div
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute inset-[30%] bg-white/20 rounded-full"
+                     />
                   </div>
-                  <span className="text-[8px] uppercase tracking-[0.4em] text-white/20">Loading Collection</span>
+                  <span className="text-[10px] uppercase tracking-[0.5em] text-white/20">Loading Volume</span>
                </div>
             )}
             {!loading && items.length === 0 && !error && (
                <div className="text-center py-20">
-                  <Camera className="w-8 h-8 mx-auto mb-4 text-white/10" />
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/30">No works found in this category</p>
+                  <Camera className="w-12 h-12 mx-auto mb-6 text-white/5" />
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-white/30 font-light italic">No frames found in this category</p>
                </div>
             )}
          </div>
 
          {/* Lightbox Modal */}
-         {selectedItem && (
-            <Lightbox 
-               item={selectedItem} 
-               onClose={() => setSelectedItem(null)} 
-            />
-         )}
+         <AnimatePresence>
+            {selectedItem && (
+               <Lightbox
+                  item={selectedItem}
+                  onClose={() => setSelectedItem(null)}
+               />
+            )}
+         </AnimatePresence>
       </div>
    );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { LayoutGrid, Image, LogOut, Home, X, ChevronRight, Sparkles, ChevronLeft } from 'lucide-react';
+import { LayoutGrid, Image, LogOut, Home, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import Link from 'next/link';
 
@@ -25,88 +25,79 @@ export default function AdminSidebar({
   setCollapsed
 }: AdminSidebarProps) {
   const navItems = [
-    { id: 'presets', label: 'Presets', icon: LayoutGrid, description: 'Manage Lightroom presets' },
-    { id: 'gallery', label: 'Gallery', icon: Image, description: 'Portfolio images' },
+    { id: 'presets', label: 'Presets', icon: LayoutGrid },
+    { id: 'gallery', label: 'Gallery', icon: Image },
   ] as const;
 
   return (
     <>
-      {/* Mobile Overlay */}
       <div 
         className={cn(
-          "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden transition-opacity duration-300",
+          "fixed inset-0 z-40 bg-black/60 md:hidden transition-opacity duration-200",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         onClick={() => setIsOpen(false)}
       />
 
-      {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 bg-zinc-950/95 backdrop-blur-xl border-r border-white/[0.06] transform transition-all duration-300 ease-out md:translate-x-0 md:static md:h-screen flex flex-col",
+          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-zinc-800 bg-zinc-950 transform transition-all duration-200 md:translate-x-0 md:static md:h-screen",
           isOpen ? "translate-x-0" : "-translate-x-full",
-          "w-72", // Mobile width
-          collapsed ? "md:w-[80px]" : "md:w-72" // Desktop width
+          "w-64",
+          collapsed ? "md:w-20" : "md:w-64"
         )}
       >
-        {/* Header */}
         <div className={cn(
-          "h-16 flex items-center border-b border-white/[0.06] transition-all duration-300",
-          "justify-between px-5", // Base styles
-          collapsed && "md:justify-center md:px-0" // Desktop collapsed override
+          "h-14 flex items-center border-b border-zinc-800",
+          collapsed ? "justify-center px-0" : "justify-between px-4"
         )}>
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-9 h-9 min-w-[36px] rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Sparkles className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="h-8 w-8 rounded-lg border border-zinc-700 bg-zinc-900 flex items-center justify-center text-zinc-200 text-xs font-semibold">
+              PG
             </div>
             <div className={cn(
-              "transition-all duration-300 overflow-hidden whitespace-nowrap",
+              "overflow-hidden whitespace-nowrap transition-all",
               collapsed ? "md:w-0 md:opacity-0" : "w-auto opacity-100"
             )}>
-              <span className="text-base font-semibold text-white">Photogen</span>
-              <span className="ml-1.5 text-[10px] font-medium text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">Admin</span>
+              <span className="text-sm font-semibold text-zinc-100">Photogen Admin</span>
             </div>
           </div>
           <button 
             onClick={() => setIsOpen(false)}
-            className="md:hidden p-2 -mr-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+            className="md:hidden p-2 -mr-2 text-zinc-500 hover:text-zinc-100 rounded-md hover:bg-zinc-900"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Quick Actions */}
         <div className={cn(
-          "py-4 border-b border-white/[0.06] transition-all duration-300",
-          "px-4", // Base
-          collapsed && "md:px-2" // Desktop collapsed override
+          "border-b border-zinc-800 py-3",
+          collapsed ? "md:px-2" : "px-3"
         )}>
           <Link 
             href="/"
             className={cn(
-              "flex items-center gap-3 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-all group",
-              "px-3 py-2.5", // Base
-              collapsed && "md:justify-center md:p-2" // Desktop collapsed override
+              "flex items-center gap-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900",
+              collapsed ? "justify-center p-2" : "px-3 py-2"
             )}
             title={collapsed ? "View Site" : undefined}
           >
-            <Home size={18} />
-            <div className={cn("flex items-center gap-3 flex-1", collapsed && "md:hidden")}>
-              <span className="text-sm font-medium">View Site</span>
-              <ChevronRight size={14} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Home size={16} />
+            <div className={cn("flex items-center gap-2 flex-1", collapsed && "md:hidden")}>
+              <span className="text-sm">View Site</span>
+              <ChevronRight size={14} className="ml-auto" />
             </div>
           </Link>
         </div>
 
-        {/* Main Nav */}
-        <nav className="flex-1 py-4 space-y-1.5 overflow-y-auto overflow-x-hidden">
+        <nav className="flex-1 py-3 space-y-1 overflow-y-auto overflow-x-hidden">
           <p className={cn(
-            "px-7 mb-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-500 animate-in fade-in duration-300",
+            "px-6 mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500",
             collapsed && "md:hidden"
           )}>
             Content
           </p>
-          <div className={cn("space-y-1.5", "px-4", collapsed && "md:px-2")}>
+          <div className={cn("space-y-1", collapsed ? "px-2" : "px-3")}>
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -118,62 +109,52 @@ export default function AdminSidebar({
                     setIsOpen(false);
                   }}
                   className={cn(
-                    "w-full flex items-center gap-3 rounded-xl text-sm font-medium transition-all group relative overflow-hidden",
-                    "px-3 py-3", // Base
-                    collapsed && "md:justify-center md:p-2", // Desktop collapsed override
+                    "w-full flex items-center gap-2 rounded-md text-sm transition-colors",
+                    collapsed ? "justify-center p-2" : "px-3 py-2",
                     isActive 
-                      ? "bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-white border border-indigo-500/20" 
-                      : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
+                      ? "bg-zinc-900 text-zinc-100 border border-zinc-700" 
+                      : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 border border-transparent"
                   )}
                   title={collapsed ? item.label : undefined}
                 >
                   <div className={cn(
-                    "flex items-center justify-center w-9 h-9 rounded-lg transition-colors shrink-0",
-                    isActive ? "bg-indigo-500/20 text-indigo-400" : "bg-white/5 text-zinc-500 group-hover:text-zinc-300"
+                    "flex items-center justify-center h-7 w-7 rounded-md transition-colors shrink-0",
+                    isActive ? "bg-zinc-800 text-zinc-100" : "bg-zinc-900 text-zinc-400"
                   )}>
-                    <Icon size={18} />
+                    <Icon size={16} />
                   </div>
                   <div className={cn("text-left overflow-hidden whitespace-nowrap", collapsed && "md:hidden")}>
                     <span className="block">{item.label}</span>
-                    <span className="text-[10px] text-zinc-500 font-normal">{item.description}</span>
                   </div>
-                  {isActive && (
-                    <div className={cn(
-                      "absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-indigo-500 rounded-l-full",
-                      collapsed && "md:hidden"
-                    )} />
-                  )}
                 </button>
               );
             })}
           </div>
         </nav>
 
-        {/* Footer / Collapse Toggle */}
-        <div className="p-4 border-t border-white/[0.06] space-y-2">
+        <div className={cn("border-t border-zinc-800 p-3 space-y-1", collapsed && "px-2")}>
           <button
             onClick={() => setCollapsed(!collapsed)}
             className={cn(
-              "hidden md:flex w-full items-center gap-3 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-all group",
-              collapsed ? "justify-center p-2" : "px-3 py-2.5"
+              "hidden md:flex w-full items-center gap-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900",
+              collapsed ? "justify-center p-2" : "px-3 py-2"
             )}
             title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
-            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-            <span className={cn("text-sm font-medium", collapsed && "hidden")}>Collapse Sidebar</span>
+            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            <span className={cn("text-sm", collapsed && "hidden")}>Collapse</span>
           </button>
 
           <button
             onClick={onLogout}
             className={cn(
-              "w-full flex items-center gap-3 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all group",
-              "px-3 py-2.5", // Base
-              collapsed && "md:justify-center md:p-2" // Desktop collapsed override
+              "w-full flex items-center gap-2 rounded-md text-zinc-400 hover:text-red-300 hover:bg-red-500/10",
+              collapsed ? "justify-center p-2" : "px-3 py-2"
             )}
             title={collapsed ? "Sign Out" : undefined}
           >
-            <LogOut size={18} />
-            <span className={cn("text-sm font-medium", collapsed && "md:hidden")}>Sign Out</span>
+            <LogOut size={16} />
+            <span className={cn("text-sm", collapsed && "md:hidden")}>Sign Out</span>
           </button>
         </div>
       </aside>

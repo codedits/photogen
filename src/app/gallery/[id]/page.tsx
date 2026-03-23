@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, MapPin, Camera, Info, Calendar, User, Maximize2, Star } from 'lucide-react';
 import getDatabase from '../../../lib/mongodb';
 import ImageWithLqip from '../../../components/ImageWithLqip';
+import GalleryImageGrid from '../../../components/GalleryImageGrid';
 import type { GalleryDoc } from '../../api/gallery/route';
 
 // --- TYPES ---
@@ -85,199 +86,131 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
       </div>
     );
   }
-
+  
   return (
-    <main className="min-h-screen bg-[#050505] text-white selection:bg-white/20">
-      {/* Global Grain Texture */}
-      <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay hidden md:block" 
-           style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }} />
-
-      {/* --- FLOATING NAV --- */}
-      <nav className="fixed top-8 md:top-9 left-0 w-full h-24 px-3 md:px-12 z-50 flex items-center justify-between pointer-events-none">
-        <Link 
-          href="/gallery" 
-          className="group flex items-center gap-3 px-6 py-3 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-full hover:bg-white hover:text-black transition-all duration-500 pointer-events-auto shadow-2xl"
-        >
-          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-          <span className="text-[10px] uppercase tracking-[0.3em] font-bold">Collection</span>
-        </Link>
-      </nav>
-
-      {/* --- HERO HEADER --- */}
-      <header className="relative min-h-[70vh] flex flex-col justify-end pt-40 pb-24 px-6 md:px-12 overflow-hidden">
-        {/* Background Image (Blurred) */}
-        <div className="absolute inset-0 z-0">
-          <ImageWithLqip
-            src={item.images[0].url}
-            alt=""
-            fill
-            className="object-cover opacity-20 blur-3xl scale-110"
-            transformOpts={{ w: 100, q: 10 }}
-            sizes="100vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent" />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto w-full">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-16">
-            <div className="max-w-4xl">
-              <div className="flex items-center gap-4 mb-8 animate-in slide-in-from-bottom-4 duration-700">
-                <span className="px-4 py-1.5 bg-white/5 border border-white/10 rounded-full text-[10px] uppercase tracking-[0.3em] text-white/60 font-medium">
-                  {item.category}
-                </span>
-                {item.featured && (
-                  <div className="flex items-center gap-2 px-4 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-[10px] uppercase tracking-[0.3em] text-yellow-500 font-medium">
-                    <Star className="w-3 h-3 fill-yellow-500" />
-                    <span>Featured Work</span>
-                  </div>
-                )}
-              </div>
-              
-              <h1 className="text-6xl md:text-8xl lg:text-9xl font-light tracking-tighter uppercase mb-10 leading-[0.85] animate-in slide-in-from-bottom-8 duration-1000 delay-100">
-                {item.name.split(' ').map((word, i) => (
-                  <React.Fragment key={i}>
-                    {i > 0 && <br className="hidden md:block" />}
-                    <span className={i % 2 === 1 ? 'text-white/30' : 'text-white'}>{word} </span>
-                  </React.Fragment>
-                ))}
-              </h1>
-
-              {item.description && (
-                <p className="text-xl md:text-2xl text-white/50 font-light leading-relaxed max-w-2xl animate-in slide-in-from-bottom-4 duration-1000 delay-300">
-                  {item.description}
-                </p>
-              )}
-            </div>
-
-            {/* Technical Specs Sidebar */}
-            <div className="grid grid-cols-2 lg:grid-cols-1 gap-x-12 gap-y-10 border-l border-white/10 pl-8 lg:pl-16 animate-in slide-in-from-right-8 duration-1000 delay-500">
-              {item.location && (
-                <div>
-                  <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.4em] text-white/20 mb-3 font-bold">
-                    <MapPin className="w-3 h-3" /> Location
-                  </span>
-                  <span className="text-lg font-light tracking-tight">{item.location}</span>
-                </div>
-              )}
-              {item.photographer && (
-                <div>
-                  <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.4em] text-white/20 mb-3 font-bold">
-                    <User className="w-3 h-3" /> Artist
-                  </span>
-                  <span className="text-lg font-light tracking-tight">{item.photographer}</span>
-                </div>
-              )}
-              {item.equipment && (
-                <div className="col-span-2 lg:col-span-1">
-                  <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.4em] text-white/20 mb-3 font-bold">
-                    <Camera className="w-3 h-3" /> Equipment
-                  </span>
-                  <span className="text-sm font-light text-white/60 leading-relaxed">{item.equipment}</span>
-                </div>
-              )}
-              {item.metadata && (
-                <div className="col-span-2 lg:col-span-1 flex gap-12">
-                  {item.metadata.aperture && (
-                    <div>
-                      <span className="block text-[10px] uppercase tracking-[0.4em] text-white/20 mb-3 font-bold">Aperture</span>
-                      <span className="text-sm font-mono text-white/80">{item.metadata.aperture}</span>
-                    </div>
-                  )}
-                  {item.metadata.shutter && (
-                    <div>
-                      <span className="block text-[10px] uppercase tracking-[0.4em] text-white/20 mb-3 font-bold">Shutter</span>
-                      <span className="text-sm font-mono text-white/80">{item.metadata.shutter}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* --- IMAGE SHOWCASE --- */}
-      <section className="py-32 px-6 md:px-12 bg-[#050505]">
-        <div className="max-w-7xl mx-auto columns-1 md:columns-2 gap-16 space-y-16">
-          {item.images.map((img, idx) => (
-            <div 
-              key={idx} 
-              className={`relative group break-inside-avoid transition-all duration-700 hover:z-10 ${
-                idx % 4 === 0 ? 'md:mt-24' : 
-                idx % 4 === 1 ? 'md:mt-0' : 
-                idx % 4 === 2 ? 'md:mt-12' : 'md:mt-32'
-              }`}
-            >
-              <div className="relative transition-all duration-500 group-hover:shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6)]">
-                {/* Card wrapper */}
-                <div className="p-4 bg-[#070707]/70 rounded-xl md:rounded-2xl border border-white/6 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]">
-                  <div className="relative overflow-hidden rounded-xl md:rounded-2xl">
-                    <ImageWithLqip
-                      src={img.url}
-                      alt={`${item.name} - ${idx + 1}`}
-                      width={1200}
-                      height={1600}
-                      className="w-full h-auto block transition-transform duration-[2s] ease-out group-hover:scale-110 rounded-xl md:rounded-2xl"
-                      transformOpts={{ w: 1200, q: 'auto:best' }}
-                      priority={idx < 2}
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                    />
-
-                    {/* Subtle Overlay on Hover */}
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none rounded-xl md:rounded-2xl" />
-
-                    {/* Quick Actions */}
-                    <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0">
-                      <a
-                        href={img.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-3 rounded-full bg-black/50 backdrop-blur-md border border-white/10 text-white hover:bg-white hover:text-black transition-all"
-                      >
-                        <Maximize2 className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Image Caption */}
-              <div className="mt-6 flex items-center justify-between px-2">
-                <div className="flex items-center gap-4">
-                  <span className="text-white/10 font-mono text-[9px] uppercase tracking-[0.4em]">
-                    {String(idx + 1).padStart(2, '0')}
-                  </span>
-                  <div className="h-px w-8 bg-white/5" />
-                  <span className="text-white/30 text-[9px] uppercase tracking-[0.2em] font-light">
-                    {item.name}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* --- FOOTER NAV --- */}
-      <footer className="py-48 border-t border-white/5 text-center relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5 pointer-events-none">
-           <h2 className="text-[30vw] font-black uppercase tracking-tighter leading-none select-none">
-             {item.category}
-           </h2>
-        </div>
+    <main className="min-h-screen bg-[#0d0d0d] text-white font-sans selection:bg-white/20">
+      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-10 pt-28 md:pt-32 pb-4 md:pb-8 lg:pb-10">
         
-        <div className="relative z-10 max-w-2xl mx-auto px-6">
-          <div className="w-px h-24 bg-gradient-to-b from-white/20 to-transparent mx-auto mb-12" />
-          <h3 className="text-3xl md:text-4xl font-light uppercase tracking-tighter mb-12">End of Series</h3>
-          <Link 
-            href="/gallery" 
-            className="group relative inline-flex items-center justify-center px-16 py-5 bg-white text-black text-[10px] font-bold uppercase tracking-[0.4em] overflow-hidden transition-all hover:scale-105 active:scale-95"
-          >
-            <span className="relative z-10">Back to Collection</span>
-            <div className="absolute inset-0 bg-neutral-200 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-          </Link>
+        {/* Main Layout Grid */}
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 relative items-start">
+          
+          {/* --- LEFT SIDEBAR (Fixed/Sticky on Desktop) --- */}
+          <aside className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 lg:sticky lg:top-32 flex flex-col pb-10 lg:pb-0">
+            
+            <div className="flex flex-col gap-10">
+              {/* Back to Gallery */}
+              <Link 
+                href="/gallery" 
+                className="group flex items-center gap-3 text-[#a1a1aa] hover:text-white transition-colors duration-500 mb-4"
+              >
+                <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                <span className="text-[11px] uppercase tracking-[0.4em]">Back to Archive</span>
+              </Link>
+
+              {/* Header: Album Info */}
+              <div className="flex items-center gap-3">
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/10">
+                  <ImageWithLqip 
+                    src={item.images[0].url} 
+                    alt="Album Thumbnail" 
+                    fill
+                    className="object-cover"
+                    transformOpts={{ w: 100, q: 20 }}
+                    noBlur={true}
+                  />
+                </div>
+                <div>
+                  <h1 className="text-white font-semibold text-[17px] tracking-tight leading-tight">{item.name}</h1>
+                  <p className="text-[#a1a1aa] text-[14px] uppercase tracking-widest mt-1 opacity-60">{item.category}</p>
+                </div>
+              </div>
+
+              {/* Main Description */}
+              <h2 className="text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight">
+                {item.description?.split(' ').map((word, i) => (
+                  <span key={i} className={i > 5 ? 'text-[#888888]' : 'text-white'}>
+                    {word}{' '}
+                  </span>
+                )) || "Capturing visual stories through light and shadow."}
+              </h2>
+
+              {/* Availability & Action */}
+              <div className="flex flex-col items-start gap-6">
+                <div className="flex items-center gap-2 text-[#a1a1aa] text-[14px]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                  Professional prints available upon request.
+                </div>
+                
+                <Link 
+                  href="/contact"
+                  className="bg-white text-black font-semibold text-[14px] uppercase tracking-widest px-8 py-3.5 rounded-full hover:bg-neutral-200 transition-all duration-300 hover:scale-105 active:scale-95"
+                >
+                  Inquiry
+                </Link>
+              </div>
+
+              {/* Divider */}
+              <div className="w-full h-[1px] bg-white/[0.08] mt-4"></div>
+
+              {/* Editorial Logos */}
+              <div className="flex items-center gap-6 opacity-30 grayscale flex-wrap pointer-events-none">
+                <div className="font-bold text-xl tracking-tighter italic">LUMINA</div>
+                <div className="font-bold text-xl tracking-tighter">STUDIO</div>
+                <div className="font-bold text-xl tracking-widest uppercase text-sm">Vogue</div>
+                <div className="font-bold text-xl tracking-tighter">KINFORK</div>
+              </div>
+
+              {/* Technical Details */}
+              <div className="mt-8 flex flex-col gap-6">
+                <div>
+                  <h3 className="text-white font-bold text-[17px] mb-3">About this series.</h3>
+                  <p className="text-[#a1a1aa] text-[15px] leading-relaxed max-w-[95%] font-light">
+                    This collection was curated to showcase the intersection of environmental context and human narrative. 
+                    {item.location && ` Captured in ${item.location}. `}
+                    {item.photographer && ` Produced by ${item.photographer}.`}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-8">
+                  <div>
+                    <span className="text-white font-semibold text-sm block mb-1">{item.images.length}+ Assets</span>
+                    <span className="text-[#a1a1aa] text-[13px] uppercase tracking-wider">High-Res Plates</span>
+                  </div>
+                  {item.equipment && (
+                    <div>
+                      <span className="text-white font-bold text-sm block mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                        {item.equipment.split(' ')[0]}
+                      </span>
+                      <span className="text-[#a1a1aa] text-[13px] uppercase tracking-wider">Primary Optic</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </aside>
+
+          {/* --- RIGHT GALLERY (Two Column Masonry) --- */}
+          <main className="flex-1">
+            <GalleryImageGrid images={item.images} userName={item.name} />
+          </main>
         </div>
-      </footer>
+      </div>
+
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-8 right-8 flex flex-col items-end gap-3 z-50 pointer-events-none hidden md:flex">
+        <Link 
+          href="/contact"
+          className="pointer-events-auto bg-white text-black font-bold text-[11px] uppercase tracking-widest px-6 py-3 rounded-full shadow-2xl hover:bg-neutral-200 transition-transform hover:scale-105 active:scale-95"
+        >
+          Book a Session
+        </Link>
+        <button className="pointer-events-auto bg-[#1a1a1a]/80 backdrop-blur-xl text-white/40 font-bold text-[10px] uppercase tracking-widest px-6 py-3 rounded-full border border-white/5 shadow-2xl hover:text-white transition-all">
+          Shared with PhotoGen
+        </button>
+      </div>
     </main>
   );
 }
+
+

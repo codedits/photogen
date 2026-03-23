@@ -16,6 +16,7 @@ export default function ImageWithLqip({
   sizes,
   loading,
   onLoad,
+  noBlur = false,
 }: {
   src: string;
   alt?: string;
@@ -28,6 +29,7 @@ export default function ImageWithLqip({
   sizes?: string;
   loading?: 'eager' | 'lazy';
   onLoad?: () => void;
+  noBlur?: boolean;
 }) {
   const blur = useBlurDataUrl(src, { w: Math.min(transformOpts?.w || width || 400, 24), h: Math.min(transformOpts?.h || height || 300, 24), fit: transformOpts?.fit || 'cover' });
   
@@ -36,7 +38,7 @@ export default function ImageWithLqip({
   }
   
   const url = thumbUrl(src, { w: transformOpts?.w || width || 400, h: transformOpts?.h || height || 300, fit: transformOpts?.fit || 'cover', q: transformOpts?.q ?? 'auto', f: transformOpts?.f ?? 'auto', dpr: transformOpts?.dpr });
-  const placeholder = blur ? 'blur' as const : undefined;
+  const placeholder = (blur && !noBlur) ? 'blur' as const : undefined;
 
   // Determine objectFit from className if present, fall back to cover for thumbs and contain for fills
   const hasObjectContain = typeof className === 'string' && className.includes('object-contain');

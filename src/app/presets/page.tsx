@@ -4,7 +4,6 @@ import LiveSearchPresets from '../../components/LiveSearchPresets';
 import getDatabase, { ensurePresetIndexes } from "../../lib/mongodb";
 import { getCache, setCache } from '../../lib/simpleCache';
 import { ObjectId } from 'mongodb';
-import { Layers } from "lucide-react"; // Optional: Add an icon if you have lucide-react
 
 type PresetShape = {
   id: string;
@@ -89,51 +88,30 @@ export default async function PresetsPage({ searchParams }: { searchParams?: { q
   const presets = await getPresetsFiltered(q);
 
   return (
-    <main className="min-h-screen w-full bg-[#050505] text-[#e1e1e1] selection:bg-white/20 relative overflow-x-hidden">
+    <main className="min-h-screen w-full bg-[#050505] text-[#e1e1e1] selection:bg-white/20 relative">
       
-      {/* --- BACKGROUND TEXTURE --- */}
-      {/* Noise */}
-      <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay"
-           style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }} />
-      {/* Technical Grid */}
-      <div className="fixed inset-0 z-0 opacity-[0.05] pointer-events-none" 
-        style={{ 
-          backgroundImage: 'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)', 
-          backgroundSize: '40px 40px' 
-        }} 
-      />
-
-      <div className="relative z-10 container mx-auto px-6 pt-32 pb-24">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 pt-32 pb-24">
         
-        {/* --- HEADER SECTION --- */}
-        <header className="mb-24 border-b border-white/10 pb-12">
-           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-              <div className="space-y-4">
-                 <div className="flex items-center gap-3 text-white/40 mb-2">
-                    <Layers className="w-4 h-4" />
-                    <span className="text-[10px] uppercase tracking-[0.2em]">Library / Index</span>
-                 </div>
-                 
-                 <h1 className="text-[12vw] md:text-[8vw] leading-[0.85] font-bold tracking-tighter text-white/90">
-                    PRESETS
-                 </h1>
-                 
-                 <p className="text-sm md:text-base uppercase tracking-[0.2em] text-white/50 max-w-lg mt-6 border-l border-white/20 pl-4">
-                    Curated grading tools <br/> for intelligent photography.
-                 </p>
-              </div>
-
-              
-           </div>
+        {/* Header */}
+        <header className="mb-16 pb-8 border-b border-white/[0.06]">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-white/30 mb-6 flex items-center gap-2">
+            <span className="w-4 h-px bg-white/20" />
+            Library
+          </p>
+          <h1 className="text-3xl md:text-4xl font-normal tracking-tight text-white/90">
+            Presets
+          </h1>
+          <p className="text-[13px] text-white/40 mt-4 max-w-md leading-relaxed">
+            Curated grading tools for intelligent photography.
+          </p>
         </header>
 
-        {/* --- CONTENT AREA --- */}
+        {/* Content */}
         <div className="w-full">
-           {/* Passing presets to the client component */}
-           <LiveSearchPresets initial={presets} />
+          <LiveSearchPresets initial={presets} />
         </div>
 
       </div>
     </main>
   );
-}
+}

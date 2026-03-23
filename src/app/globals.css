@@ -132,9 +132,9 @@ html {
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* Prevent accidental horizontal scroll on small devices */
+/* Prevent accidental horizontal scroll on small devices (Surgical fix for sticky positioning) */
 html, body, #__next {
-  overflow-x: hidden;
+  overflow-x: visible;
 }
 
 @layer base {

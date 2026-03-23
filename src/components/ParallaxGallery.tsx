@@ -11,6 +11,7 @@ import {
   useVelocity,
   useAnimationFrame,
 } from "framer-motion";
+import Link from "next/link";
 
 const IMAGES = [
   "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?width=904&height=1200",
@@ -34,141 +35,125 @@ const DOUBLE_IMAGES = [...IMAGES, ...IMAGES];
 function ParallaxRow({
   images,
   baseVelocity = 100,
-  className = "",
   scrollY,
 }: {
   images: string[];
   baseVelocity: number;
-  className?: string;
   scrollY: any;
 }) {
   const baseX = useMotionValue(0);
   const scrollVelocity = useVelocity(scrollY);
-  
   const smoothVelocity = useSpring(scrollVelocity, {
     damping: 50,
     stiffness: 400
   });
-
-  /**
-   * CHANGE 1: Increase the multiplier for scroll speed.
-   * Changing [0, 2] to [0, 5] makes the marquee move 5x faster 
-   * when you scroll quickly.
-   */
-  // Map scroll speed to a multiplier for the movement (non-negative)
-  const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 3], { clamp: true });
-
-  const scrollSpeed = useTransform(smoothVelocity, (v) => Math.abs(v));
-  const scale = useTransform(scrollSpeed, [0, 2000], [1, 0.98]);
-  const yOffset = useTransform(scrollSpeed, [0, 2000], [0, baseVelocity > 0 ? -10 : 10]);
-
-  // Bounded loop parameters
-  const RANGE = 50; // percent range for the seamless double-width loop
-
-  useAnimationFrame((t, delta) => {
-    // clamp delta to avoid large jumps on tab switches or throttling
-    const d = Math.min(delta, 48);
-    // percent movement per frame
-    let moveBy = baseVelocity * (d / 1000);
-
-    // apply a clamped velocity boost to avoid sudden large jumps
-    const vf = Math.max(Math.min(velocityFactor.get(), 3), 0);
-    moveBy += moveBy * vf;
-
-    const curr = baseX.get();
-    const next = curr + moveBy;
-    // map to [-RANGE, 0) to maintain a compact domain and avoid numeric growth
-    const wrapped = ((next + RANGE) % RANGE) - RANGE;
-
-    // If a wrap jump occurred, the spring-based display value will animate softly, removing any jerk.
-    baseX.set(wrapped);
+  const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 5], {
+    clamp: false
   });
 
-  // Smooth display value to ease wrap boundary transitions
-  const displayX = useSpring(baseX, { damping: 50, stiffness: 400 });
-  const x = useTransform(displayX, (v) => `${v}%`);
+  /**
+   * SEAMLESS LOOP REFACTOR:
+   * We use one motion.div with two sets of duplicate images.
+   * To loop perfectly, we wrap -50% to 0%.
+   */
+  const x = useTransform(baseX, (v) => `${((v % 50) - 50) % 50}%`);
+
+  const directionFactor = useRef<number>(1);
+  useAnimationFrame((t, delta) => {
+    let moveBy = directionFactor.current * baseVelocity * (delta / 1000);
+
+    if (velocityFactor.get() < 0) {
+      directionFactor.current = -1;
+    } else if (velocityFactor.get() > 0) {
+      directionFactor.current = 1;
+    }
+
+    moveBy += directionFactor.current * moveBy * velocityFactor.get();
+
+    baseX.set(baseX.get() + moveBy);
+  });
+
+  const allImages = [...images, ...images];
 
   return (
-    <motion.div
-      className={`flex flex-nowrap gap-4 ${className}`}
-      style={{ x, scale, y: yOffset, willChange: 'transform' as any }}
-    >
-      {images.map((src, i) => {
-        const isFramer = typeof src === 'string' && src.includes('framerusercontent.com');
-        return (
-          <div
+    <div className="flex whitespace-nowrap overflow-hidden">
+      <motion.div 
+        className="flex flex-nowrap gap-[2px]" 
+        style={{ x, willChange: 'transform' }}
+      >
+        {allImages.map((src, i) => (
+          <motion.div
             key={`${src}-${i}`}
-            className="relative h-[300px] w-[200px] md:h-[420px] md:w-[300px] shrink-0 overflow-hidden rounded-md bg-neutral-900"
+            className="group relative h-[350px] w-[240px] md:h-[500px] md:w-[350px] shrink-0 overflow-hidden bg-neutral-900"
+            whileHover={{ scale: 0.98 }}
+            transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
           >
-            <Image
+             <Image
               src={src}
               alt=""
               fill
-              className="object-cover"
-              priority={i < 6}
-              loading={i < 6 ? 'eager' : 'lazy'}
-              quality={60}
-              sizes="(max-width: 768px) 200px, 300px"
-              unoptimized={isFramer}
+              className="object-cover transition-all duration-1000 ease-[cubic-bezier(0.2,0,0,1)] group-hover:scale-110 saturate-[0.9] md:saturate-[0.3] group-hover:saturate-[1.1] grayscale-0 md:grayscale-[0.4] group-hover:grayscale-0 opacity-95 md:opacity-70 group-hover:opacity-100"
+              priority={i < 4}
+              quality={80}
+              sizes="(max-width: 768px) 240px, 350px"
             />
-          </div>
-        );
-      })}
-    </motion.div>
+            {/* Subtle Overlay Badge */}
+            <div className="absolute top-4 left-4 z-10">
+               <span className="text-[10px] text-white/40 font-mono uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                 {String((i % images.length) + 1).padStart(2, '0')}
+               </span>
+            </div>
+          </motion.div>
+        ))}
+      </motion.div>
+    </div>
   );
 }
 
 export default function ParallaxGallery() {
   const { scrollY } = useScroll();
 
-  const rotate = (arr: string[], n: number) => {
-    const len = arr.length;
-    if (len === 0) return arr;
-    const mod = ((n % len) + len) % len;
-    return arr.slice(mod).concat(arr.slice(0, mod));
-  };
-
   return (
-    <section id="gallery" className="relative overflow-hidden bg-black py-24 md:py-32">
-      <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-r from-black via-transparent to-black" />
+    <section id="gallery" className="relative overflow-hidden bg-black py-8 md:py-12">
+      {/* Intense DEEP Vignette Overlays */}
+      <div className="absolute inset-x-0 top-0 z-30 h-16 md:h-96 bg-gradient-to-b from-black via-black/80 md:via-black/80 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 z-30 h-16 md:h-96 bg-gradient-to-t from-black via-black/80 md:via-black/80 to-transparent pointer-events-none" />
+      <div className="absolute inset-y-0 left-0 z-30 w-8 md:w-64 bg-gradient-to-r from-black via-black/80 md:via-black/80 to-transparent pointer-events-none" />
+      <div className="absolute inset-y-0 right-0 z-30 w-8 md:w-64 bg-gradient-to-l from-black via-black/80 md:via-black/80 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 z-20 bg-black/40 pointer-events-none" />
 
-      <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-start">
-        <div className="container mx-auto px-6 md:px-24 pointer-events-auto">
-          <div className="max-w-xl">
-            <h2 className="mb-6 text-4xl font-light uppercase leading-[0.95] tracking-tighter text-white md:text-6xl">
-              Explore more <br /> masterpieces in <br /> the gallery
+      {/* Center Floating Text */}
+      <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center text-center">
+        <div className="max-w-2xl px-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            className="backdrop-blur-md bg-black/20 p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border border-white/5 shadow-2xl"
+          >
+            <h2 className="mb-6 text-3xl font-light uppercase leading-[0.9] tracking-tighter text-white md:text-7xl">
+              Explore <br className="hidden md:block" /> the gallery
             </h2>
-            <a
+            <Link 
               href="/gallery"
-              className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-white/80 transition-colors hover:text-white"
+              className="pointer-events-auto inline-flex items-center gap-4 px-8 py-3 bg-white text-black text-[10px] font-bold uppercase tracking-[0.3em] rounded-full hover:bg-neutral-200 transition-all duration-300"
             >
-              <span className="mr-2 h-px w-4 bg-white/40" />
-              Browse Gallery
-            </a>
-          </div>
+              Browse Archive
+            </Link>
+          </motion.div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 relative z-10 rotate-[-2deg] scale-105 origin-center">
-        {/**
-         * CHANGE 2: Increase baseVelocity.
-         * Changing -1.5 to -5 (or higher) increases the "idle" speed 
-         * when the user is not scrolling at all.
-         */}
+      {/* Marquee Rows */}
+      <div className="flex flex-col gap-[2px] relative z-10">
         <ParallaxRow 
-          images={rotate(DOUBLE_IMAGES, 0)} 
-          baseVelocity={-5} 
+          images={IMAGES.slice(0, 7)} 
+          baseVelocity={-0.8} 
           scrollY={scrollY} 
         />
         <ParallaxRow 
-          images={rotate(DOUBLE_IMAGES, 4)} 
-          baseVelocity={5} 
-          scrollY={scrollY} 
-          className="md:pl-24" 
-        />
-        <ParallaxRow 
-          images={rotate(DOUBLE_IMAGES, 8)} 
-          baseVelocity={-5} 
+          images={IMAGES.slice(7, 14)} 
+          baseVelocity={0.8} 
           scrollY={scrollY} 
         />
       </div>

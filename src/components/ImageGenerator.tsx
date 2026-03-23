@@ -1,28 +1,85 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-// Style selection removed — backend accepts text-only prompts and returns multiple images
+// --- Custom Icons ---
+const PlusIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12h14" />
+    <path d="M12 5v14" />
+  </svg>
+);
+
+const ArrowUpIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m5 12 7-7 7 7" />
+    <path d="M12 19V5" />
+  </svg>
+);
+
+const SparklesIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+    <path d="M5 3v4" />
+    <path d="M19 17v4" />
+    <path d="M3 5h4" />
+    <path d="M17 19h4" />
+  </svg>
+);
+
+const RatioIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="14" x="2" y="5" rx="2" />
+    <path d="M2 12h20" strokeDasharray="2 2" />
+    <path d="M12 5v14" strokeDasharray="2 2" />
+  </svg>
+);
+
+// --- Models & Ratios Mapping ---
+const MODELS = [
+  { id: 'nano-banana-pro', label: 'Imagen 4.0' },
+  { id: 'nano-banana', label: 'Gemini 2.5 Pro' },
+  { id: 'midjourney', label: 'Midjourney v6' },
+];
+
+const RATIOS = [
+  { id: '1:1', label: '1:1 Square' },
+  { id: '16:9', label: '16:9 Wide' },
+  { id: '9:16', label: '9:16 Portrait' },
+  { id: '4:3', label: '4:3 Classic' },
+  { id: '3:4', label: '3:4 Tall' },
+];
 
 export default function ImageGenerator() {
   const [prompt, setPrompt] = useState("");
-  const [ratio, setRatio] = useState<string>("1:1");
-  const [model, setModel] = useState<string>("midjourney");
+  const [ratio, setRatio] = useState<string>("16:9");
+  const [model, setModel] = useState<string>("nano-banana-pro");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [urls, setUrls] = useState<string[] | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
-  
-  // Simple polling state
-  const [pollingTaskUrl, setPollingTaskUrl] = useState<string | null>(null);
+
+  // UI States
+  const [isModelOpen, setIsModelOpen] = useState(false);
+  const [isRatioOpen, setIsRatioOpen] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
+  const ratioMenuRef = useRef<HTMLDivElement>(null);
+
+  // Polling & Generation Refs
   const pollTimerRef = useRef<any>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const pollCountRef = useRef<number>(0);
+  const [loadingMessage, setLoadingMessage] = useState<string>("Initializing...");
+  const [progress, setProgress] = useState<number>(0);
+  const messageTimerRef = useRef<any>(null);
+  const progressTimerRef = useRef<any>(null);
 
-  // Loading messages
   const LOADING_MESSAGES = [
     "Connecting to server…",
     "Creating variations…",
@@ -32,131 +89,65 @@ export default function ImageGenerator() {
     "Optimizing colors…",
     "Rendering at high quality…",
     "Preparing final touches…",
-    "Packaging image…",
-    "Bringing you the final product…",
   ];
-  const [loadingMessage, setLoadingMessage] = useState<string>(LOADING_MESSAGES[0]);
-  const [progress, setProgress] = useState<number>(0);
-  const messageTimerRef = useRef<number | null>(null);
-  const progressTimerRef = useRef<number | null>(null);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (pollTimerRef.current) clearTimeout(pollTimerRef.current as any);
-      if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
-      if (abortControllerRef.current) abortControllerRef.current.abort();
-    };
+  // --- HANDLERS ---
+
+  const clearTimers = useCallback(() => {
+    if (messageTimerRef.current) clearInterval(messageTimerRef.current);
+    if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
   }, []);
 
-  const canGenerate = useMemo(() => prompt.trim().length > 0 && !loading, [prompt, loading]);
-
-  // Download helper
-  const [downloading, setDownloading] = useState<Set<string>>(new Set());
-  async function downloadImage(srcUrl: string) {
-    try {
-      setDownloading((prev) => { const s = new Set(prev); s.add(srcUrl); return s; });
-      const safe = (prompt || "photogen").trim().slice(0, 40).replace(/[^a-z0-9-_]+/gi, "_") || "photogen";
-      const baseName = `${safe}-${ratio.replace(":", "x")}-${Date.now()}`;
-      
-      const proxyUrl = `/api/ai-image?image_url=${encodeURIComponent(srcUrl)}&filename=${encodeURIComponent(baseName)}`;
-      const a = document.createElement("a");
-      a.href = proxyUrl;
-      a.download = `${baseName}.png`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    } catch (e) {
-      setError((e as Error)?.message || "Failed to download image");
-    } finally {
-      setTimeout(() => {
-        setDownloading((prev) => { const s = new Set(prev); s.delete(srcUrl); return s; });
-      }, 1200);
-    }
-  }
-
-  // Start generation
-  async function handleGenerate(e?: React.FormEvent) {
-    e?.preventDefault();
-    if (!canGenerate) return;
-    
-    // Reset state
-    if (abortControllerRef.current) abortControllerRef.current.abort();
-    abortControllerRef.current = new AbortController();
-    
-    setLoading(true);
-    setError(null);
-    setImageUrl(null);
-    setUrls(null);
-    setSelectedIndex(0);
-    setImageLoaded(false);
-    setProgress(5);
-    pollCountRef.current = 0;
-    setPollingTaskUrl(null);
-    
-    // Start UI timers
-    if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
-    messageTimerRef.current = window.setInterval(() => {
-      setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
-    }, 1500);
-    
-    if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
-    progressTimerRef.current = window.setInterval(() => {
-      setProgress((p) => Math.min(90, p + Math.random() * 5));
-    }, 800);
-
-    try {
-      const q = new URLSearchParams({ text: prompt });
-      if (ratio) q.set("ratio", ratio);
-      if (model) q.set("model", model);
-      
-      const res = await fetch(`/api/ai-image?${q.toString()}`, { 
-        signal: abortControllerRef.current.signal,
-        cache: 'no-store'
-      });
-      
-      if (!res.ok) throw new Error(`Request failed (${res.status})`);
-      
-      const contentType = res.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        throw new Error("Unexpected response format from server");
-      }
-
-      const data = await res.json();
-      
-      // Case 1: Immediate result (unlikely but possible)
-      if (data.ok && data.urls && data.urls.length > 0) {
-        finishSuccess(data.urls);
-        return;
-      }
-      
-      // Case 2: Task queued (expected flow)
-      if (data.task_url || data.taskUrl) {
-        const taskUrl = data.task_url || data.taskUrl;
-        setPollingTaskUrl(taskUrl);
-        pollTask(taskUrl);
-        return;
-      }
-      
-      throw new Error(data.error || "No task URL returned");
-      
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
-      setError(err.message || "Something went wrong");
-      setLoading(false);
+  useEffect(() => {
+    return () => {
       clearTimers();
-    }
-  }
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, [clearTimers]);
 
-  // Poll the task URL
-  async function pollTask(taskUrl: string) {
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
+    }
+  }, [prompt]);
+
+  // Click outside listener
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (modelMenuRef.current && !modelMenuRef.current.contains(event.target as Node)) {
+        setIsModelOpen(false);
+      }
+      if (ratioMenuRef.current && !ratioMenuRef.current.contains(event.target as Node)) {
+        setIsRatioOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const finishSuccess = useCallback((resultUrls: string[]) => {
+    if (!resultUrls || resultUrls.length === 0) return;
+    setUrls(resultUrls);
+    setImageUrl(resultUrls[0]);
+    setLoading(false);
+    setProgress(100);
+    clearTimers();
+    // Preload
+    resultUrls.forEach(u => {
+      if (typeof u === 'string' && u.startsWith('http')) {
+        const img = new Image(); img.src = u;
+      }
+    });
+  }, [clearTimers]);
+
+  const pollTask = useCallback(async (taskUrl: string) => {
     if (!taskUrl || taskUrl === "undefined") return;
-    
     try {
-      // Poll 20 times with 10 sec gap
-      if (pollCountRef.current >= 20) {
-        throw new Error("Generation timed out after 20 attempts. Please try again.");
+      if (pollCountRef.current >= 40) {
+        throw new Error("Generation timed out. Please try again.");
       }
       pollCountRef.current++;
 
@@ -164,50 +155,14 @@ export default function ImageGenerator() {
         signal: abortControllerRef.current?.signal,
         cache: 'no-store'
       });
-      
-      // Sanitize and log the response as JSON for debugging each poll attempt
-      try {
-        const contentType = res.headers.get("content-type") || "";
-        let loggedBody: any = null;
-
-        if (contentType.includes("application/json")) {
-          loggedBody = await res.clone().json().catch(() => null);
-        } else {
-          // Avoid downloading binary payloads just to log; include content-length if available
-          loggedBody = { note: "non-json response", contentLength: res.headers.get("content-length") || null };
-        }
-
-        console.log("AI poll response:", JSON.stringify({
-          attempt: pollCountRef.current,
-          taskUrl,
-          status: res.status,
-          contentType,
-          body: loggedBody,
-        }));
-      } catch (logErr) {
-        // Best-effort logging only
-        try { console.log("AI poll response: (logging failed)", logErr); } catch (e) { /* noop */ }
-      }
 
       if (!res.ok) {
-        // If 5xx, retry. If 4xx, fail.
-        if (res.status >= 400 && res.status < 500) {
-          let errorMsg = `Polling failed (${res.status})`;
-          const contentType = res.headers.get("content-type") || "";
-          if (contentType.includes("application/json")) {
-            const errorData = await res.json().catch(() => ({}));
-            errorMsg = errorData.error || errorMsg;
-          }
-          throw new Error(errorMsg);
-        }
-        // Retry on 5xx or network error
-        pollTimerRef.current = window.setTimeout(() => pollTask(taskUrl), 10000);
+        if (res.status >= 400 && res.status < 500) throw new Error(`Polling failed (${res.status})`);
+        pollTimerRef.current = setTimeout(() => pollTask(taskUrl), 10000);
         return;
       }
-      
+
       const contentType = res.headers.get("content-type") || "";
-      
-      // If the response is an image, we're done!
       if (contentType.includes("image/")) {
         const blob = await res.blob();
         const objectUrl = URL.createObjectURL(blob);
@@ -216,286 +171,327 @@ export default function ImageGenerator() {
       }
 
       if (!contentType.includes("application/json")) {
-        // If it's not an image and not JSON, it might be an HTML error page
-        // We'll retry
-        pollTimerRef.current = window.setTimeout(() => pollTask(taskUrl), 10000);
+        pollTimerRef.current = setTimeout(() => pollTask(taskUrl), 10000);
         return;
       }
 
       const data = await res.json();
-      
-      // More robust check for completion
-      // Some APIs return 'completed', 'done', 'success', or just the urls
       const status = String(data.status || "").toLowerCase();
-      const isDone = status === "done" || 
-                     status === "completed" || 
-                     status === "success" || 
-                     (Array.isArray(data.urls) && data.urls.length > 0) || 
-                     (Array.isArray(data.images) && data.images.length > 0) ||
-                     !!data.url || 
-                     !!data.image_url;
-
-      const isFailed = status === "failed" || 
-                       status === "error" || 
-                       !!data.error || 
-                       (data.ok === false && status !== "pending");
+      const isDone = status === "done" || status === "completed" || status === "success" || (Array.isArray(data.urls) && data.urls.length > 0) || !!data.url;
+      const isFailed = status === "failed" || status === "error" || !!data.error;
 
       if (isDone) {
-        const rawUrls = Array.isArray(data.urls) ? data.urls : 
-                        (Array.isArray(data.images) ? data.images :
-                        (data.url ? [data.url] : 
-                        (data.image_url ? [data.image_url] : [])));
-        
-        // Filter out any non-string or invalid URLs to prevent /undefined 404s
-        const resultUrls = rawUrls.filter((u: any) => typeof u === 'string' && u.length > 0);
-        
-        if (resultUrls.length > 0) {
-          finishSuccess(resultUrls);
-        } else if (data.b64 || data.image_base64) {
-          const b64 = data.b64 || data.image_base64;
-          finishSuccess([`data:image/png;base64,${b64}`]);
-        } else {
-          throw new Error("Task completed but no images were found.");
-        }
+        const results = data.urls || (data.url ? [data.url] : []);
+        finishSuccess(results);
       } else if (isFailed) {
-        const errorMsg = data.error || data.message || data.reason || data.msg || "The image generation task failed.";
-        throw new Error(errorMsg);
+        throw new Error(data.error || "Generation task failed.");
       } else {
-        // Still processing (e.g., status: "processing", "queued", "pending")
-        // Update progress slightly to show movement
         setProgress(prev => Math.min(98, prev + 2));
-        pollTimerRef.current = window.setTimeout(() => pollTask(taskUrl), 10000);
+        pollTimerRef.current = setTimeout(() => pollTask(taskUrl), 10000);
       }
-      
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      setError(err.message || "Polling failed");
+      setError(err.message || "Something went wrong during polling.");
+      setLoading(false);
+      clearTimers();
+    }
+  }, [finishSuccess, clearTimers]);
+
+  async function handleGenerate(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!prompt.trim() || loading) return;
+
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    abortControllerRef.current = new AbortController();
+
+    setLoading(true);
+    setError(null);
+    setImageUrl(null);
+    setUrls(null);
+    setImageLoaded(false);
+    setProgress(5);
+    pollCountRef.current = 0;
+
+    messageTimerRef.current = setInterval(() => {
+      setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
+    }, 2000);
+
+    progressTimerRef.current = setInterval(() => {
+      setProgress((p) => Math.min(90, p + (Math.random() * 2)));
+    }, 1000);
+
+    try {
+      const q = new URLSearchParams({ text: prompt, ratio, model });
+      const res = await fetch(`/api/ai-image?${q.toString()}`, {
+        signal: abortControllerRef.current.signal,
+        cache: 'no-store'
+      });
+
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const data = await res.json();
+
+      if (data.ok && data.urls?.length > 0) {
+        finishSuccess(data.urls);
+      } else if (data.task_url || data.taskUrl) {
+        pollTask(data.task_url || data.taskUrl);
+      } else {
+        throw new Error(data.error || "No task ID returned");
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      setError(err.message || "Generation failed.");
       setLoading(false);
       clearTimers();
     }
   }
 
-  function finishSuccess(resultUrls: string[]) {
-    if (!resultUrls || resultUrls.length === 0) return;
-    setUrls(resultUrls);
-    setImageUrl(resultUrls[0]);
-    setLoading(false);
-    setProgress(100);
-    clearTimers();
-    // Preload
-    resultUrls.forEach(u => { 
-      if (typeof u === 'string' && u.startsWith('http')) {
-        const img = new Image(); 
-        img.src = u; 
-      }
-    });
-  }
+  // --- RENDER ---
 
-  function clearTimers() {
-    if (messageTimerRef.current) clearInterval(messageTimerRef.current as any);
-    if (progressTimerRef.current) clearInterval(progressTimerRef.current as any);
-    if (pollTimerRef.current) clearTimeout(pollTimerRef.current as any);
-  }
-
-  function handleClear() {
-    setPrompt("");
-    setImageUrl(null);
-    setUrls(null);
-    setSelectedIndex(0);
-    setError(null);
-    setLoading(false);
-    if (abortControllerRef.current) abortControllerRef.current.abort();
-    clearTimers();
-  }
+  const canGenerate = prompt.trim().length > 0 && !loading;
 
   return (
-    <div className="w-full">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
-          {/* Left: form and actions */}
-          <div className="order-1">
-            <form onSubmit={handleGenerate} className="bg-white/[0.03] border border-white/10 rounded-xl p-4 backdrop-blur-md shadow-2xl">
-              <div className="flex flex-col gap-3">
-                <input 
-                  type="text" 
-                  value={prompt} 
-                  onChange={(e) => setPrompt(e.target.value)} 
-                  placeholder="Describe your image..." 
-                  className="w-full rounded-xl px-4 py-3 bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:outline-none focus:border-white/50 focus:bg-white/10 focus:ring-1 focus:ring-white/20 transition-all duration-300" 
-                />
+    <div className="relative min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 font-sans text-white overflow-hidden selection:bg-white/20">
 
-                <div className="flex flex-col sm:flex-row gap-3 items-stretch">
-                  <select
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    className="rounded-xl px-4 py-3 border border-white/10 bg-white/5 text-white flex-1 focus:outline-none focus:border-white/50 focus:bg-white/10 transition-all duration-300 appearance-none cursor-pointer hover:bg-white/10"
-                    title="Generation Model"
-                  >
-                    <option value="midjourney" className="bg-neutral-900">Midjourney</option>
-                    <option value="nano-banana" className="bg-neutral-900">Nano Banana (Gemini 2.5)</option>
-                    <option value="nano-banana-pro" className="bg-neutral-900">Nano Banana Pro (Gemini 3)</option>
-                  </select>
+      {/* --- Background Elements --- */}
+      <div className="fixed inset-0 pointer-events-none -z-10 bg-[#080808]">
+        <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-[#111111] to-transparent z-10" />
 
-                  <select
-                    value={ratio}
-                    onChange={(e) => setRatio(e.target.value)}
-                    className="rounded-xl px-4 py-3 border border-white/10 bg-white/5 text-white sm:w-40 focus:outline-none focus:border-white/50 focus:bg-white/10 transition-all duration-300 appearance-none cursor-pointer hover:bg-white/10"
-                    title="Aspect Ratio"
-                  >
-                    <option value="16:9" className="bg-neutral-900">16:9 Landscape</option>
-                    <option value="1:1" className="bg-neutral-900">1:1 Square</option>
-                    <option value="9:16" className="bg-neutral-900">9:16 Portrait</option>
-                  </select>
+        {/* Animated colorful blurs */}
+        <div className={`absolute -top-[10%] -left-[10%] w-[60%] h-[60%] bg-[#3b82f6] rounded-full mix-blend-screen filter blur-[100px] sm:blur-[120px] transition-opacity duration-1000 ${loading ? 'opacity-10' : 'opacity-30 animate-pulse'}`} />
+        <div className={`absolute top-[10%] -right-[10%] w-[50%] h-[50%] bg-[#6366f1] rounded-full mix-blend-screen filter blur-[100px] sm:blur-[120px] transition-opacity duration-1000 ${loading ? 'opacity-10' : 'opacity-30'}`} />
+        <div className={`absolute -bottom-[20%] -left-[10%] w-[70%] h-[70%] bg-[#ec4899] rounded-full mix-blend-screen filter blur-[120px] sm:blur-[150px] transition-opacity duration-1000 ${loading ? 'opacity-10' : 'opacity-40'}`} />
+        <div className={`absolute -bottom-[20%] -right-[10%] w-[70%] h-[70%] bg-[#f43f5e] rounded-full mix-blend-screen filter blur-[120px] sm:blur-[150px] transition-opacity duration-1000 ${loading ? 'opacity-10' : 'opacity-40'}`} />
+      </div>
 
-                  <button type="submit" disabled={!canGenerate} className={`w-full sm:w-auto rounded-xl px-4 py-2 sm:px-5 sm:py-3 font-medium transition-all duration-300 shadow-lg hover:shadow-white/20 ${!canGenerate ? 'opacity-50 cursor-not-allowed bg-white/5 text-white/40' : 'bg-white text-black hover:scale-105 hover:bg-white active:scale-95'}`}>
-                    {loading ? "Generating…" : "Generate"}
-                  </button>
-                </div>
-              </div>
+      {/* --- Dim Overlay when Generating --- */}
+      <div className={`fixed inset-0 bg-black/30 backdrop-blur-[2px] transition-all duration-1000 ease-in-out pointer-events-none z-0 ${loading ? 'opacity-100' : 'opacity-0'}`} />
 
-              <div className="mt-4 text-[10px] uppercase tracking-[0.2em] text-white/30">
-                {error ? (
-                  <span className="text-red-400/80">{error}</span>
-                ) : loading ? (
-                  <span className="animate-pulse">{loadingMessage} ({Math.round(progress)}%)</span>
-                ) : (
-                  <span>Select ratio & describe your vision</span>
-                )}
-              </div>
-            </form>
-          </div>
+      {/* --- Main Content Area --- */}
+      <div className="relative z-10 w-full flex flex-col items-center gap-12">
 
-          {/* Right: preview or loader */}
-          <div className="order-2">
-            <div className="bg-white/[0.03] border border-white/10 rounded-xl p-2 backdrop-blur-md">
-              {imageUrl ? (
-                <div className="w-full overflow-hidden rounded-lg bg-black/40 flex items-center justify-center relative group/img">
-                  {!imageLoaded && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                      <div className="w-full h-full max-h-[70vh] bg-gradient-to-br from-white/5 to-white/10 animate-pulse" />
-                    </div>
-                  )}
-                  <a href={urls?.[selectedIndex] || imageUrl!} target="_blank" rel="noopener noreferrer" className="w-full">
-                    <img 
-                      src={urls?.[selectedIndex] || imageUrl} 
-                      alt="Generated" 
-                      className={`w-full h-auto max-h-[70vh] object-contain transition-all duration-700 ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}`}
-                      onLoad={() => setImageLoaded(true)}
-                      loading="eager"
-                      decoding="async"
-                    />
-                  </a>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const u = urls?.[selectedIndex] || imageUrl!;
-                      if (!downloading.has(u)) downloadImage(u);
-                    }}
-                    title="Download image"
-                    disabled={downloading.has((urls?.[selectedIndex] || imageUrl!) as string)}
-                    className={`absolute top-4 right-4 z-10 p-3 rounded-full border text-white shadow-2xl backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-all duration-300 ${downloading.has((urls?.[selectedIndex] || imageUrl!) as string) ? 'bg-black/70 border-white/20 cursor-wait' : 'bg-black/40 hover:bg-white hover:text-black border-white/10'}`}
-                  >
-                    {downloading.has((urls?.[selectedIndex] || imageUrl!) as string) ? (
-                      <svg width="20" height="20" viewBox="0 0 24 24" className="animate-spin" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.25" /><path d="M21 12a9 9 0 0 1-9 9" stroke="currentColor" strokeWidth="2" fill="none" /></svg>
-                    ) : (
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                    )}
-                  </button>
-                </div>
-              ) : (
-                <div className="mt-0">
-                  {error ? (
-                    <div className="aspect-video w-full rounded-lg border border-red-500/20 bg-red-500/5 flex items-center justify-center text-red-400 p-8 text-center">
-                      <span className="text-sm">{error}</span>
-                    </div>
-                  ) : loading ? (
-                    <div className="space-y-6 p-6">
-                      <div className="aspect-video w-full rounded-lg border border-white/5 bg-white/[0.02] animate-pulse flex items-center justify-center">
-                        <div className="w-12 h-12 border-2 border-white/10 border-t-white/40 rounded-full animate-spin" />
-                      </div>
-                      <div className="space-y-3" aria-live="polite">
-                        <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                          <div className="h-full bg-white transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] uppercase tracking-[0.2em] text-white/40">
-                          <span>{loadingMessage}</span>
-                          <span>{Math.round(progress)}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="aspect-video w-full rounded-lg border border-white/5 bg-white/[0.01] flex items-center justify-center text-white/20">
-                      <div className="text-center px-4">
-                        <div className="w-12 h-12 border border-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                        <span className="text-[10px] uppercase tracking-[0.2em]">Awaiting Input</span>
-                      </div>
-                    </div>
-                  )}
+        {/* --- Image Display Area --- */}
+        <AnimatePresence mode="wait">
+          {imageUrl && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              className="w-full max-w-[800px] aspect-video rounded-[32px] overflow-hidden bg-black/40 border border-white/5 shadow-2xl relative group"
+            >
+              <img
+                src={imageUrl}
+                alt="Generated"
+                className={`w-full h-full object-contain transition-opacity duration-1000 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={() => setImageLoaded(true)}
+              />
+              {!imageLoaded && (
+                <div className="absolute inset-0 bg-white/5 animate-pulse flex items-center justify-center">
+                  <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
                 </div>
               )}
+            </motion.div>
+          )}
+
+          {error && !imageUrl && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="w-full max-w-[680px] p-8 rounded-3xl border border-red-500/20 bg-red-500/5 text-center flex flex-col items-center gap-4"
+            >
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                <span className="text-red-500 text-xl font-bold">!</span>
+              </div>
+              <p className="text-red-400 text-sm leading-relaxed">{error}</p>
+              <button onClick={() => setError(null)} className="text-[10px] uppercase tracking-widest text-white/40 hover:text-white transition-colors">Dismiss</button>
+            </motion.div>
+          )}
+
+          {loading && !imageUrl && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="w-full max-w-[680px] p-12 text-center flex flex-col items-center gap-6"
+            >
+              <div className="w-16 h-16 relative">
+                <div className="absolute inset-0 border-4 border-white/10 rounded-full" />
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  className="absolute inset-0 border-4 border-white/40 border-t-transparent rounded-full"
+                />
+              </div>
+              <div className="space-y-2">
+                <p className="text-white/80 text-sm tracking-widest uppercase font-medium">{loadingMessage}</p>
+                <p className="text-white/20 text-[10px] font-mono">{Math.round(progress)}% COMPLETE</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* --- Main Input Container --- */}
+        <div className={`relative w-full max-w-[680px] p-[2px] rounded-[24px] sm:rounded-[32px] transition-all duration-700 ease-out ${loading
+            ? 'scale-[1.02] sm:scale-[1.04] shadow-[0_0_80px_-10px_rgba(255,255,255,0.15)] -translate-y-[10px]'
+            : isFocused
+              ? 'scale-100 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)]'
+              : 'scale-100 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]'
+          }`}>
+
+          {/* Traveling Glow Border Effect */}
+          {loading && (
+            <div className="absolute inset-0 rounded-[24px] sm:rounded-[32px] overflow-hidden pointer-events-none">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200%] aspect-square bg-[conic-gradient(from_0deg,transparent_70%,rgba(255,255,255,0.8)_100%)]"
+              />
             </div>
-            
-            {/* Thumbnails & Actions */}
-            {imageUrl && (
-              <div className="mt-4 space-y-4">
-                {urls && urls.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    {urls.map((u, i) => (
-                      <button
-                        key={u}
-                        onClick={() => { setSelectedIndex(i); setImageLoaded(false); }}
-                        className={`relative h-16 w-24 flex-shrink-0 rounded-lg overflow-hidden border transition-all duration-300 ${i === selectedIndex ? 'border-white ring-2 ring-white/20 scale-105' : 'border-white/10 opacity-40 hover:opacity-100'}`}
+          )}
+
+          {/* Static subtle border (visible when not generating) */}
+          {!loading && (
+            <div className={`absolute inset-0 rounded-[24px] sm:rounded-[32px] border pointer-events-none z-20 transition-colors duration-300 ${isFocused ? 'border-white/20' : 'border-white/10'}`} />
+          )}
+
+          {/* Content Box */}
+          <div className="relative w-full bg-[#1a1a1a]/90 sm:bg-[#1a1a1a]/95 backdrop-blur-3xl rounded-[22px] sm:rounded-[30px] p-3 sm:p-4 pt-4 sm:pt-5 flex flex-col gap-3 z-10">
+
+            <textarea
+              ref={textareaRef}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleGenerate();
+                }
+              }}
+              disabled={loading}
+              placeholder={loading ? "Synthesizing pixels..." : "Describe the image you want to create..."}
+              className="w-full bg-transparent text-white/95 placeholder:text-white/30 focus:outline-none resize-none min-h-[44px] max-h-[150px] sm:max-h-[200px] text-[15px] sm:text-[16px] leading-relaxed px-2 overflow-y-auto custom-scrollbar disabled:cursor-not-allowed transition-opacity duration-500"
+              rows={1}
+            />
+
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <button
+                  className="p-2 sm:p-2.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-full transition-all duration-200 disabled:opacity-20 active:scale-95"
+                  disabled={loading}
+                  aria-label="Add attachment"
+                >
+                  <PlusIcon />
+                </button>
+
+                {/* Model Select */}
+                <div className="relative" ref={modelMenuRef}>
+                  <button
+                    onClick={() => setIsModelOpen(!isModelOpen)}
+                    disabled={loading}
+                    className={`flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${isModelOpen ? 'bg-white/15 text-white shadow-inner' : 'text-white/50 hover:text-white/90 hover:bg-white/10'} disabled:opacity-50`}
+                  >
+                    <SparklesIcon />
+                    <span className="hidden xs:inline">{MODELS.find(m => m.id === model)?.label || 'Model'}</span>
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  <AnimatePresence>
+                    {isModelOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        className="absolute bottom-full left-0 mb-2 w-48 bg-[#2a2a2a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-1.5 z-50 transform origin-bottom-left"
                       >
-                        <img src={u} alt={`thumb-${i+1}`} className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const u = urls?.[selectedIndex] || imageUrl!;
-                      if (!downloading.has(u)) downloadImage(u);
-                    }}
-                    disabled={downloading.has((urls?.[selectedIndex] || imageUrl!) as string)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-white text-black px-4 py-3 rounded-xl font-medium transition-all hover:bg-white/90 active:scale-95 disabled:opacity-50"
-                  >
-                    {downloading.has((urls?.[selectedIndex] || imageUrl!) as string) ? (
-                      <svg width="18" height="18" viewBox="0 0 24 24" className="animate-spin"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.25" /><path d="M21 12a9 9 0 0 1-9 9" stroke="currentColor" strokeWidth="2" fill="none" /></svg>
-                    ) : (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                        {MODELS.map(m => (
+                          <button
+                            key={m.id}
+                            onClick={() => { setModel(m.id); setIsModelOpen(false); }}
+                            className={`w-full text-left px-4 py-2.5 text-[13px] sm:text-sm transition-colors ${model === m.id ? 'text-white font-medium bg-white/5' : 'text-white/60 hover:bg-white/5 hover:text-white/90'}`}
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </motion.div>
                     )}
-                    <span className="text-sm">Download</span>
-                  </button>
-                  
+                  </AnimatePresence>
+                </div>
+
+                {/* Ratio Select */}
+                <div className="relative" ref={ratioMenuRef}>
                   <button
-                    type="button"
-                    onClick={() => window.open(urls?.[selectedIndex] || imageUrl!, '_blank', 'noopener')}
-                    className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white px-5 py-3 rounded-xl font-medium transition-all backdrop-blur-md border border-white/10"
+                    onClick={() => setIsRatioOpen(!isRatioOpen)}
+                    disabled={loading}
+                    className={`flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${isRatioOpen ? 'bg-white/15 text-white shadow-inner' : 'text-white/50 hover:text-white/90 hover:bg-white/10'} disabled:opacity-50`}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                    <RatioIcon />
+                    <span className="hidden xs:inline">{ratio}</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={handleClear}
-                    className="flex items-center justify-center gap-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 text-white/40 px-5 py-3 rounded-xl font-medium transition-all border border-white/5"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                  </button>
+                  <AnimatePresence>
+                    {isRatioOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                        className="absolute bottom-full left-0 mb-2 w-36 bg-[#2a2a2a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-1.5 z-50 transform origin-bottom-left"
+                      >
+                        {RATIOS.map(r => (
+                          <button
+                            key={r.id}
+                            onClick={() => { setRatio(r.id); setIsRatioOpen(false); }}
+                            className={`w-full text-left px-4 py-2.5 text-[13px] sm:text-sm transition-colors ${ratio === r.id ? 'text-white font-medium bg-white/5' : 'text-white/60 hover:bg-white/5 hover:text-white/90'}`}
+                          >
+                            {r.label}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
-            )}
+
+              {/* Submit Button */}
+              <button
+                onClick={() => handleGenerate()}
+                disabled={!canGenerate}
+                className={`ml-2 p-2.5 sm:p-2 rounded-full flex items-center justify-center transition-all duration-300 ${loading
+                    ? 'bg-white text-black opacity-100 scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)]'
+                    : canGenerate
+                      ? 'bg-white text-black hover:bg-gray-200 shadow-[0_4px_14px_rgba(255,255,255,0.25)] transform hover:scale-105 active:scale-95'
+                      : 'bg-[#333] text-white/20'
+                  }`}
+              >
+                {loading ? (
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                ) : (
+                  <ArrowUpIcon />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    
+
+      {/* --- Global Styles --- */}
+      <style jsx global>{`
+        /* Extra small screen helper class for text truncation/hiding */
+        @media (min-width: 400px) { .xs\\:inline { display: inline; } }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+      `}</style>
+    </div>
   );
 }

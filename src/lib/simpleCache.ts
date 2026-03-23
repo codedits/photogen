@@ -1,10 +1,21 @@
 type CacheEntry<T> = { value: T; expiresAt: number };
 
 const store = new Map<string, CacheEntry<unknown>>();
+const MAX_CACHE_ENTRIES = 500;
+
+function enforceMaxEntries() {
+  // Evict oldest entries first; Map preserves insertion order.
+  while (store.size > MAX_CACHE_ENTRIES) {
+    const oldest = store.keys().next().value;
+    if (!oldest) break;
+    store.delete(oldest);
+  }
+}
 
 export function setCache<T>(key: string, value: T, ttlSeconds = 15) {
   const expiresAt = Date.now() + ttlSeconds * 1000;
   store.set(key, { value, expiresAt });
+  enforceMaxEntries();
 }
 
 export function getCache<T>(key: string): T | undefined {

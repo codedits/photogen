@@ -63,7 +63,7 @@ export default async function RootLayout({
   <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
       <body
-        className={`${dmSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
+        className={`${dmSans.variable} ${geistMono.variable} font-sans antialiased`}
       >
   <Nav />
   {children}

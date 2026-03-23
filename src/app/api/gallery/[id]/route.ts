@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import cloudinary from '../../../../lib/cloudinary';
+import { revalidatePath } from 'next/cache';
+import { isAdminRequest } from '../../../../lib/auth';
 import getDatabase from '../../../../lib/mongodb';
+import { delCachePrefix } from '../../../../lib/simpleCache';
 import type { GalleryDoc } from '../route';
 
 // Helper: Check if string is valid MongoDB ID
@@ -45,13 +48,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Check admin session
-    const sessionRes = await fetch(new URL('/api/admin/session', req.url), {
-      headers: { cookie: req.headers.get('cookie') || '' }
-    });
-    const session = await sessionRes.json();
-    
-    if (!session.ok) {
+    if (!isAdminRequest(req)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
@@ -102,6 +99,11 @@ export async function PUT(
     if (result.matchedCount === 0) {
       return NextResponse.json({ error: 'Gallery item not found' }, { status: 404 });
     }
+
+    delCachePrefix('gallery:list:');
+    delCachePrefix('gallery:count:');
+    revalidatePath('/gallery');
+    revalidatePath(`/gallery/${id}`);
     
     return NextResponse.json({
       success: true,
@@ -120,13 +122,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Check admin session
-    const sessionRes = await fetch(new URL('/api/admin/session', req.url), {
-      headers: { cookie: req.headers.get('cookie') || '' }
-    });
-    const session = await sessionRes.json();
-    
-    if (!session.ok) {
+    if (!isAdminRequest(req)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
@@ -153,6 +149,11 @@ export async function DELETE(
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Gallery item not found' }, { status: 404 });
     }
+
+    delCachePrefix('gallery:list:');
+    delCachePrefix('gallery:count:');
+    revalidatePath('/gallery');
+    revalidatePath(`/gallery/${id}`);
     
     // Then try to delete images from Cloudinary (non-blocking)
     if (galleryItem.images && galleryItem.images.length > 0) {

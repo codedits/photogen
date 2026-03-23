@@ -1,9 +1,9 @@
 "use client";
-import React, { useState, useEffect, useCallback, memo, createContext, useContext, Suspense, lazy } from "react";
+import React, { useState, useEffect, useCallback, useMemo, createContext, useContext, Suspense, lazy } from "react";
 import { usePresets } from '../../lib/usePresets';
 import AdminSidebar from './components/AdminSidebar';
 import AdminHeader from './components/AdminHeader';
-import { Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 // Lazy load heavy components
 const PresetsManagement = lazy(() => import('./PresetsManagement'));
@@ -35,19 +35,14 @@ export const useToast = () => useContext(ToastContext);
 
 function ToastContainer({ toasts, removeToast }: { toasts: Toast[]; removeToast: (id: string) => void }) {
   return (
-    <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
+    <div className="fixed bottom-4 right-4 z-[100] flex max-w-sm flex-col gap-2">
       {toasts.map(toast => (
         <div
           key={toast.id}
-          className={`
-            px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md border animate-in slide-in-from-right-5 fade-in duration-300
-            ${toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400/50 text-white' : ''}
-            ${toast.type === 'error' ? 'bg-red-500/90 border-red-400/50 text-white' : ''}
-            ${toast.type === 'info' ? 'bg-white/10 border-white/20 text-white' : ''}
-          `}
+          className={`rounded-md border px-3 py-2 text-sm shadow-xl ${toast.type === 'success' ? 'border-zinc-600 bg-zinc-900 text-zinc-100' : ''} ${toast.type === 'error' ? 'border-red-900 bg-red-950/50 text-red-200' : ''} ${toast.type === 'info' ? 'border-zinc-700 bg-zinc-900 text-zinc-200' : ''}`}
           onClick={() => removeToast(toast.id)}
         >
-          <p className="text-sm font-medium">{toast.message}</p>
+          <p>{toast.message}</p>
         </div>
       ))}
     </div>
@@ -74,6 +69,7 @@ export default function AdminPage() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   }, []);
   const removeToast = useCallback((id: string) => setToasts(prev => prev.filter(t => t.id !== id)), []);
+  const toastContextValue = useMemo(() => ({ addToast }), [addToast]);
 
   const { items: list, loading: listLoading, hasMore, loadMore, refresh } = usePresets({ 
     limit: 50, 
@@ -106,13 +102,13 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await fetch('/api/admin/logout', { method: 'POST' });
     setAuthed(false);
     addToast('Logged out successfully', 'info');
-  };
+  }, [addToast]);
 
-  const handleSavePreset = async (data: any) => {
+  const handleSavePreset = useCallback(async (data: any) => {
     const isEdit = view.type === 'edit-preset';
     const url = isEdit ? `/api/presets/${(view as any).preset.id}` : '/api/presets';
     const method = isEdit ? 'PATCH' : 'POST';
@@ -142,16 +138,16 @@ export default function AdminPage() {
     if (!res.ok) throw new Error(result.error || 'Failed to save preset');
     refresh();
     addToast('Preset saved successfully', 'success');
-  };
+  }, [addToast, refresh, view]);
 
-  const handleDeletePreset = async (preset: PresetRow) => {
+  const handleDeletePreset = useCallback(async (preset: PresetRow) => {
     const res = await fetch(`/api/presets/${preset.id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Delete failed');
     refresh();
     addToast('Preset deleted', 'info');
-  };
+  }, [addToast, refresh]);
 
-  const handleSaveGallery = async (data: any) => {
+  const handleSaveGallery = useCallback(async (data: any) => {
     const isEdit = view.type === 'edit-gallery';
     const url = isEdit ? `/api/gallery/${(view as any).item._id}` : '/api/gallery';
     const method = isEdit ? 'PUT' : 'POST';
@@ -166,36 +162,38 @@ export default function AdminPage() {
       throw new Error(result.error || 'Failed to save gallery item');
     }
     addToast('Gallery item saved successfully', 'success');
-  };
+  }, [addToast, view]);
 
-  const handleDeleteGallery = async (item: any) => {
+  const handleDeleteGallery = useCallback(async (item: any) => {
     const res = await fetch(`/api/gallery/${item._id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Delete failed');
     addToast('Gallery item deleted', 'info');
-  };
+  }, [addToast]);
+
+  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery') => {
+    setView({ type: 'list', tab });
+  }, []);
+
+  const openCreatePreset = useCallback(() => setView({ type: 'create-preset' }), []);
+  const openEditPreset = useCallback((preset: PresetRow) => setView({ type: 'edit-preset', preset }), []);
+  const openCreateGallery = useCallback(() => setView({ type: 'create-gallery' }), []);
+  const openEditGallery = useCallback((item: any) => setView({ type: 'edit-gallery', item }), []);
+  const backToPresets = useCallback(() => setView({ type: 'list', tab: 'presets' }), []);
+  const backToGallery = useCallback(() => setView({ type: 'list', tab: 'gallery' }), []);
 
   useEffect(() => { if (authed) { refresh(); } }, [authed, refresh]);
 
   if (authed === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black relative overflow-hidden">
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-pink-500/20 opacity-50" />
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-indigo-500/30 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl animate-pulse delay-1000" />
-        
-        <div className="relative z-10 w-full max-w-md px-4">
-          <form onSubmit={doLogin} className="bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-            {/* Logo/Brand */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mb-4 shadow-lg shadow-indigo-500/25">
-                <Sparkles className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold text-white">Photogen Admin</h1>
-              <p className="text-zinc-400 text-sm mt-1">Sign in to manage your content</p>
+      <div className="min-h-screen bg-zinc-950 px-4 py-10 sm:py-16">
+        <div className="mx-auto w-full max-w-md">
+          <form onSubmit={doLogin} className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-6 sm:p-7">
+            <div className="mb-6">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Photogen</p>
+              <h1 className="mt-1 text-xl font-semibold text-zinc-100">Admin Login</h1>
+              <p className="mt-1 text-sm text-zinc-500">Sign in to manage presets and gallery content.</p>
             </div>
 
-            {/* Password Input */}
             <div className="space-y-4">
               <div className="relative">
                 <input 
@@ -203,66 +201,48 @@ export default function AdminPage() {
                   value={pwd} 
                   onChange={(e)=>setPwd(e.target.value)} 
                   placeholder="Enter password" 
-                  className="w-full px-4 py-3.5 pr-12 rounded-xl bg-black/50 border border-white/10 text-white placeholder:text-zinc-500 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all" 
+                  className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 pr-11 text-sm text-zinc-100 outline-none focus:border-zinc-500" 
                   required 
                 />
                 <button
                   type="button"
                   onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-zinc-400 hover:text-white transition-colors"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-zinc-500 hover:text-zinc-200"
                 >
                   {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
 
-              {/* Remember Me */}
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div className="relative">
-                  <input 
-                    type="checkbox" 
-                    checked={remember} 
-                    onChange={(e)=>setRemember(e.target.checked)} 
-                    className="peer sr-only" 
-                  />
-                  <div className="w-5 h-5 rounded-md border border-white/20 bg-black/50 peer-checked:bg-indigo-500 peer-checked:border-indigo-500 transition-all flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
-                <span className="text-sm text-zinc-400 group-hover:text-zinc-300 transition-colors">Keep me logged in</span>
+              <label className="flex items-center gap-2 text-sm text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e)=>setRemember(e.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-700 bg-zinc-950"
+                />
+                Keep me logged in
               </label>
             </div>
 
-            {/* Error Message */}
             {authMsg && (
-              <div className="mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
-                <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+              <div className="mt-4 rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300">
                 {authMsg}
               </div>
             )}
 
-            {/* Submit Button */}
             <button 
               disabled={loginLoading}
-              className="mt-6 w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md border border-zinc-700 bg-zinc-100 px-4 py-2.5 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-50"
             >
               {loginLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Signing in...
+                  Signing in
                 </>
               ) : (
                 'Sign in'
               )}
             </button>
-
-            {/* Footer */}
-            <p className="mt-6 text-center text-xs text-zinc-500">
-              Protected area · Unauthorized access prohibited
-            </p>
           </form>
         </div>
       </div>
@@ -273,8 +253,8 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
-          <p className="text-zinc-400 text-sm">Checking session…</p>
+          <Loader2 className="w-8 h-8 text-zinc-300 animate-spin" />
+          <p className="text-zinc-400 text-sm">Checking session...</p>
         </div>
       </div>
     );
@@ -283,11 +263,11 @@ export default function AdminPage() {
   const activeTab = view.type === 'list' ? view.tab : (view.type.includes('preset') ? 'presets' : 'gallery');
 
   return (
-    <ToastContext.Provider value={{ addToast }}>
-      <div className="min-h-screen bg-black flex">
+    <ToastContext.Provider value={toastContextValue}>
+      <div className="min-h-screen bg-zinc-950 flex">
         <AdminSidebar 
           activeTab={activeTab} 
-          setActiveTab={(tab) => setView({ type: 'list', tab })} 
+          setActiveTab={handleSetActiveTab} 
           onLogout={handleLogout}
           isOpen={sidebarOpen}
           setIsOpen={setSidebarOpen}
@@ -305,11 +285,11 @@ export default function AdminPage() {
             ] : undefined}
           />
           
-          <main className="flex-1 overflow-y-auto bg-black/50">
-            <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
+          <main className="flex-1 overflow-y-auto bg-zinc-950">
+            <div className="mx-auto w-full max-w-[1400px] p-4 md:p-6">
               <Suspense fallback={
                 <div className="flex items-center justify-center h-64">
-                  <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                  <Loader2 className="w-8 h-8 text-zinc-300 animate-spin" />
                 </div>
               }>
                 {view.type === 'list' && view.tab === 'presets' && (
@@ -318,42 +298,42 @@ export default function AdminPage() {
                     listLoading={listLoading}
                     hasMore={hasMore}
                     loadMore={loadMore}
-                    onCreate={() => setView({ type: 'create-preset' })}
-                    onEdit={(preset) => setView({ type: 'edit-preset', preset })}
+                    onCreate={openCreatePreset}
+                    onEdit={openEditPreset}
                     onDelete={handleDeletePreset}
                   />
                 )}
                 {view.type === 'list' && view.tab === 'gallery' && (
                   <GalleryManagement 
-                    onCreate={() => setView({ type: 'create-gallery' })}
-                    onEdit={(item) => setView({ type: 'edit-gallery', item })}
+                    onCreate={openCreateGallery}
+                    onEdit={openEditGallery}
                     onDelete={handleDeleteGallery}
                   />
                 )}
                 {view.type === 'create-preset' && (
                   <PresetForm 
-                    onBack={() => setView({ type: 'list', tab: 'presets' })}
+                    onBack={backToPresets}
                     onSave={handleSavePreset}
                   />
                 )}
                 {view.type === 'edit-preset' && (
                   <PresetForm 
                     preset={view.preset}
-                    onBack={() => setView({ type: 'list', tab: 'presets' })}
+                    onBack={backToPresets}
                     onSave={handleSavePreset}
                     onDelete={handleDeletePreset}
                   />
                 )}
                 {view.type === 'create-gallery' && (
                   <GalleryForm 
-                    onBack={() => setView({ type: 'list', tab: 'gallery' })}
+                    onBack={backToGallery}
                     onSave={handleSaveGallery}
                   />
                 )}
                 {view.type === 'edit-gallery' && (
                   <GalleryForm 
                     item={view.item}
-                    onBack={() => setView({ type: 'list', tab: 'gallery' })}
+                    onBack={backToGallery}
                     onSave={handleSaveGallery}
                     onDelete={handleDeleteGallery}
                   />

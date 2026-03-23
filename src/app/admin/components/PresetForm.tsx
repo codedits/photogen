@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Upload, Save, ArrowLeft, Trash2, Plus, GripVertical, Image as ImageIcon, Link2, Info, Loader2 } from 'lucide-react';
+import { Upload, Save, ArrowLeft, Trash2, Image as ImageIcon, Link2, Info, Loader2, ArrowUp, ArrowDown, Star } from 'lucide-react';
 import ImageWithLqip from '../../../components/ImageWithLqip';
 
 type PresetRow = {
@@ -21,33 +21,50 @@ interface PresetFormProps {
   onDelete?: (preset: PresetRow) => Promise<void>;
 }
 
+type UploadItem = {
+  id: string;
+  previewUrl: string;
+  file?: File;
+  progress: number;
+  status: 'idle' | 'uploading' | 'done' | 'error' | 'cancelled';
+  error?: string;
+  public_id?: string;
+  xhr?: XMLHttpRequest | null;
+};
+
+function moveItem<T>(arr: T[], from: number, to: number): T[] {
+  if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return arr;
+  const next = [...arr];
+  const [picked] = next.splice(from, 1);
+  next.splice(to, 0, picked);
+  return next;
+}
+
 export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetFormProps) {
   const [name, setName] = useState(preset?.name || '');
   const [description, setDescription] = useState(preset?.description || '');
   const [tags, setTags] = useState((preset?.tags || []).join(', '));
   const [dngUrl, setDngUrl] = useState(preset?.dng?.url || '');
   const [imagesLocal, setImagesLocal] = useState(preset?.images || []);
-  const [uploadItems, setUploadItems] = useState<Array<{ 
-    id: string; 
-    preview: string; 
-    file?: File; 
-    progress: number; 
-    status: 'idle'|'uploading'|'done'|'error'|'cancelled'; 
-    error?: string;
-    public_id?: string; 
-    url?: string; 
-    xhr?: XMLHttpRequest | null 
-  }>>([]);
+  const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; dngUrl?: string }>({});
-  
-  const dragFrom = useRef<string | null>(null);
-  const dragOver = useRef<string | null>(null);
-  const dropRef = useRef<HTMLDivElement>(null);
 
-  // Drag & Drop handlers
+  const dropRef = useRef<HTMLDivElement>(null);
+  const uploadItemsRef = useRef<UploadItem[]>([]);
+
+  useEffect(() => {
+    uploadItemsRef.current = uploadItems;
+  }, [uploadItems]);
+
+  useEffect(() => {
+    return () => {
+      for (const it of uploadItemsRef.current) URL.revokeObjectURL(it.previewUrl);
+    };
+  }, []);
+
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -57,9 +74,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.currentTarget === dropRef.current) {
-      setIsDragging(false);
-    }
+    if (e.currentTarget === dropRef.current) setIsDragging(false);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -71,89 +86,101 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
     const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      handleFiles(files);
-    }
+    if (files && files.length > 0) handleFiles(files);
   }, []);
 
   const handleFiles = (files?: FileList | null) => {
     if (!files || !files.length) return;
-    const list = Array.from(files).filter(f => f.type.startsWith('image/')).slice(0, 8);
-    const readers = list.map((f) => new Promise<{ preview: string; file: File }>((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve({ preview: String(r.result), file: f });
-      r.readAsDataURL(f);
+    const list = Array.from(files).filter((f) => f.type.startsWith('image/')).slice(0, 8);
+    const items = list.map((file, i) => ({
+      id: `${Date.now()}_${i}`,
+      previewUrl: URL.createObjectURL(file),
+      file,
+      progress: 0,
+      status: 'idle' as const,
+      xhr: null,
     }));
-    Promise.all(readers).then((arr) => {
-      const items = arr.map((a, i) => ({ 
-        id: `${Date.now()}_${i}`, 
-        preview: a.preview, 
-        file: a.file, 
-        progress: 0, 
-        status: 'idle' as const, 
-        xhr: null 
-      }));
-      setUploadItems((prev) => [...prev, ...items]);
-      items.forEach((it, idx) => setTimeout(() => startUpload(it), idx * 120));
-    });
+    setUploadItems((prev) => [...prev, ...items]);
+    items.forEach((it, idx) => setTimeout(() => startUpload(it), idx * 120));
   };
 
-  const startUpload = (item: { id: string; preview: string; file?: File }) => {
+  const startUpload = async (item: UploadItem) => {
     if (!item.file) return;
-    const form = new FormData();
-    form.append('image', item.file, item.file.name);
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/upload-image');
-    xhr.upload.onprogress = (ev) => {
-      if (!ev.lengthComputable) return;
-      const pct = Math.round((ev.loaded / ev.total) * 100);
-      setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, progress: pct } : p));
-    };
-    xhr.onload = () => {
-      try {
-        const data = JSON.parse(xhr.responseText || '{}');
-        if (xhr.status >= 200 && xhr.status < 300 && data?.ok) {
-          setUploadItems((prev) => prev.map((p) => p.id === item.id ? { 
-            ...p, 
-            status: 'done', 
-            progress: 100, 
-            public_id: data.public_id, 
-            url: data.url, 
-            xhr: null 
-          } : p));
-          setImagesLocal((prev) => [...prev, { url: data.url, public_id: data.public_id }]);
-        } else {
-          const errMsg = data?.error || (xhr.status === 413 ? 'File too large for server' : 'Upload failed');
-          setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', error: errMsg, xhr: null } : p));
-        }
-      } catch {
-        const errMsg = xhr.status === 413 ? 'File too large for server' : 'Upload failed';
-        setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', error: errMsg, xhr: null } : p));
+    try {
+      const signatureRes = await fetch('/api/admin/cloudinary-signature', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ folder: 'photogen/presets' }),
+      });
+      const signatureData = await signatureRes.json();
+      if (!signatureRes.ok || !signatureData?.ok) {
+        throw new Error(signatureData?.error || 'Failed to initialize upload');
       }
-    };
-    xhr.onerror = () => {
-      setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'error', error: 'Network error', xhr: null } : p));
-    };
-    setUploadItems((prev) => prev.map((p) => p.id === item.id ? { ...p, status: 'uploading', xhr } : p));
-    xhr.send(form);
+
+      const form = new FormData();
+      form.append('file', item.file, item.file.name);
+      form.append('api_key', signatureData.apiKey);
+      form.append('timestamp', String(signatureData.timestamp));
+      form.append('signature', signatureData.signature);
+      form.append('folder', signatureData.folder);
+      form.append('resource_type', signatureData.resourceType || 'image');
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/${signatureData.resourceType || 'image'}/upload`);
+
+      xhr.upload.onprogress = (ev) => {
+        if (!ev.lengthComputable) return;
+        const pct = Math.round((ev.loaded / ev.total) * 100);
+        setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct } : p)));
+      };
+
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText || '{}');
+          if (xhr.status >= 200 && xhr.status < 300 && data?.secure_url && data?.public_id) {
+            URL.revokeObjectURL(item.previewUrl);
+            setUploadItems((prev) => prev.filter((p) => p.id !== item.id));
+            setImagesLocal((prev) => [...prev, { url: data.secure_url, public_id: data.public_id }]);
+          } else {
+            const errMsg = data?.error?.message || 'Upload failed';
+            setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: 'error', error: errMsg, xhr: null } : p)));
+          }
+        } catch {
+          setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: 'error', error: 'Upload failed', xhr: null } : p)));
+        }
+      };
+
+      xhr.onerror = () => {
+        setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: 'error', error: 'Network error', xhr: null } : p)));
+      };
+
+      setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: 'uploading', xhr } : p)));
+      xhr.send(form);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: 'error', error: message, xhr: null } : p)));
+    }
   };
 
   const cancelUpload = async (id: string) => {
     const it = uploadItems.find((u) => u.id === id);
     if (!it) return;
-    if (it.xhr) try { it.xhr.abort(); } catch {}
-    if (it.public_id) {
+    if (it.xhr) {
       try {
-        await fetch('/api/upload-image', { 
-          method: 'DELETE', 
-          body: JSON.stringify({ public_id: it.public_id }), 
-          headers: { 'content-type': 'application/json' } 
-        });
+        it.xhr.abort();
       } catch {}
     }
+    URL.revokeObjectURL(it.previewUrl);
     setUploadItems((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const moveImage = (index: number, nextIndex: number) => {
+    setImagesLocal((prev) => moveItem(prev, index, nextIndex));
+  };
+
+  const setCover = (index: number) => {
+    setImagesLocal((prev) => moveItem(prev, index, 0));
   };
 
   const handleDeleteImage = async (pid: string) => {
@@ -161,14 +188,14 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
     setDeleting((s) => [...s, pid]);
     const prev = imagesLocal;
     setImagesLocal((list) => list.filter((i) => i.public_id !== pid));
-    
+
     if (preset) {
       try {
         const form = new FormData();
         form.append('removePublicIds', pid);
         const res = await fetch(`/api/presets/${preset.id}`, { method: 'PATCH', body: form });
         if (!res.ok) throw new Error('Failed to delete image');
-      } catch (err) {
+      } catch {
         setImagesLocal(prev);
         alert('Failed to delete image');
       } finally {
@@ -191,16 +218,16 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
+
     setBusy(true);
     try {
       const data = {
         name,
         description,
-        tags: tags.split(',').map(s => s.trim()).filter(Boolean),
+        tags: tags.split(',').map((s) => s.trim()).filter(Boolean),
         dngUrl: dngUrl.trim(),
-        imageUrls: imagesLocal.map(img => JSON.stringify(img)),
-        orderPublicIds: imagesLocal.map(i => i.public_id),
+        imageUrls: imagesLocal.map((img) => JSON.stringify(img)),
+        orderPublicIds: imagesLocal.map((i) => i.public_id),
       };
       await onSave(data);
       onBack();
@@ -212,267 +239,227 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+    <div className="mx-auto max-w-6xl space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={onBack}
-            className="p-2.5 rounded-xl hover:bg-white/5 text-zinc-400 hover:text-white transition-colors border border-transparent hover:border-white/10"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+            aria-label="Go back"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={16} />
           </button>
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white">
-              {preset ? 'Edit Preset' : 'Create New Preset'}
-            </h2>
-            <p className="text-sm text-zinc-500 mt-0.5 hidden sm:block">
-              {preset ? 'Update your preset details and images' : 'Add a new Lightroom preset to your collection'}
-            </p>
+            <h2 className="text-lg font-semibold text-zinc-100">{preset ? 'Edit Preset' : 'Create Preset'}</h2>
+            <p className="text-sm text-zinc-500">Clean metadata, clear previews, and ordered image set.</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3">
+
+        <div className="flex items-center gap-2">
           {preset && onDelete && (
             <button
               onClick={() => {
-                if (confirm(`Delete preset "${preset.name}"?`)) {
-                  onDelete(preset).then(onBack);
-                }
+                if (confirm(`Delete preset "${preset.name}"?`)) onDelete(preset).then(onBack);
               }}
-              className="px-3 sm:px-4 py-2 rounded-xl text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors border border-red-500/20"
+              className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300 hover:bg-red-950"
             >
-              <span className="hidden sm:inline">Delete Preset</span>
-              <Trash2 size={16} className="sm:hidden" />
+              Delete
             </button>
           )}
           <button
             onClick={handleSubmit}
             disabled={busy}
-            className="flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold hover:from-indigo-600 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            className="inline-flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-60"
           >
-            {busy ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                <span className="hidden sm:inline">Saving...</span>
-              </>
-            ) : (
-              <>
-                <Save size={16} />
-                <span className="hidden sm:inline">Save Changes</span>
-                <span className="sm:hidden">Save</span>
-              </>
-            )}
+            {busy ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            {busy ? 'Saving' : 'Save'}
           </button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Basic Info Card */}
-          <div className="bg-zinc-900/30 border border-white/[0.06] rounded-2xl p-5 sm:p-6 space-y-5">
-            <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <section className="space-y-5 lg:col-span-2">
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 flex items-center gap-2">
               <Info size={14} />
-              Basic Information
+              Preset Details
             </h3>
-            
+
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Preset Name <span className="text-red-400">*</span>
-              </label>
-              <input 
-                className={`w-full px-4 py-3 rounded-xl bg-black/50 border text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 transition-all ${
-                  errors.name 
-                    ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' 
-                    : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/20'
-                }`}
+              <label className="mb-1.5 block text-sm text-zinc-300">Name</label>
+              <input
                 value={name}
-                onChange={(e) => { setName(e.target.value); if (errors.name) setErrors(prev => ({ ...prev, name: undefined })); }}
-                placeholder="e.g. Summer Haze"
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                }}
+                placeholder="e.g. Golden Portrait"
+                className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
               />
-              {errors.name && <p className="mt-1.5 text-xs text-red-400">{errors.name}</p>}
+              {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name}</p>}
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Description</label>
-              <textarea 
-                className="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/10 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all min-h-[120px] resize-none"
+              <label className="mb-1.5 block text-sm text-zinc-300">Description</label>
+              <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe the look and feel of this preset..."
+                className="min-h-[100px] w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+                placeholder="Describe this preset look"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">Tags</label>
-              <input 
-                className="w-full px-4 py-3 rounded-xl bg-black/50 border border-white/10 text-white placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              <label className="mb-1.5 block text-sm text-zinc-300">Tags</label>
+              <input
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                placeholder="dreamy, warm, portrait (comma separated)"
+                placeholder="portrait, warm, indoor"
+                className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
               />
-              <p className="mt-1.5 text-xs text-zinc-600">Separate tags with commas</p>
             </div>
           </div>
 
-          {/* Images Card */}
-          <div className="bg-zinc-900/30 border border-white/[0.06] rounded-2xl p-5 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 flex items-center gap-2">
                 <ImageIcon size={14} />
                 Preview Images
               </h3>
-              <span className="text-xs text-zinc-600">{imagesLocal.length} images</span>
+              <span className="text-xs text-zinc-500">{imagesLocal.length} images</span>
             </div>
 
-            {/* Drag & Drop Zone */}
             <div
               ref={dropRef}
               onDragEnter={handleDragEnter}
               onDragLeave={handleDragLeave}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-all ${
-                isDragging 
-                  ? 'border-indigo-500 bg-indigo-500/10' 
-                  : 'border-white/10 hover:border-white/20'
-              }`}
+              className={`relative rounded-md border border-dashed p-6 text-center ${isDragging ? 'border-zinc-400 bg-zinc-800' : 'border-zinc-700 bg-zinc-950'}`}
             >
-              <input 
-                type="file" 
-                multiple 
-                accept="image/*" 
-                onChange={(e) => handleFiles(e.target.files)} 
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => handleFiles(e.target.files)}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
-              <div className="flex flex-col items-center gap-3">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
-                  isDragging ? 'bg-indigo-500/20 text-indigo-400' : 'bg-white/5 text-zinc-500'
-                }`}>
-                  <Upload size={24} />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-zinc-300">
-                    {isDragging ? 'Drop images here' : 'Drop images here or click to upload'}
-                  </p>
-                  <p className="text-xs text-zinc-600 mt-1">PNG, JPG up to 10MB each</p>
-                </div>
-              </div>
+              <Upload size={18} className="mx-auto mb-2 text-zinc-500" />
+              <p className="text-sm text-zinc-300">Drop or click to upload</p>
+              <p className="text-xs text-zinc-500 mt-1">Direct upload to Cloudinary</p>
             </div>
 
-            {/* Image Grid */}
             {(imagesLocal.length > 0 || uploadItems.length > 0) && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                 {imagesLocal.map((img, idx) => (
-                  <div 
-                    key={img.public_id}
-                    className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group bg-zinc-800"
-                  >
-                    <ImageWithLqip src={img.url} alt="preset" fill className="object-cover" transformOpts={{ w: 300, h: 300, fit: 'cover' }} />
-                    {idx === 0 && (
-                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-indigo-500 text-white text-[10px] font-semibold uppercase">
-                        Cover
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteImage(img.public_id)}
-                      disabled={deleting.includes(img.public_id)}
-                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 backdrop-blur-sm text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 disabled:opacity-50"
-                    >
-                      {deleting.includes(img.public_id) ? (
-                        <Loader2 size={14} className="animate-spin" />
-                      ) : (
-                        <Trash2 size={14} />
-                      )}
-                    </button>
-                  </div>
-                ))}
-                {uploadItems.map((it) => (
-                  <div key={it.id} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 bg-zinc-800">
-                    <img src={it.preview} alt="upload" className="object-cover w-full h-full opacity-50" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      {it.status === 'uploading' && (
-                        <div className="w-3/4">
-                          <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
-                            <div 
-                              className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full transition-all duration-300" 
-                              style={{ width: `${it.progress}%` }} 
-                            />
-                          </div>
-                          <p className="text-xs text-center text-white mt-2">{it.progress}%</p>
-                        </div>
-                      )}
-                      {it.status === 'error' && (
-                        <div className="text-center p-2">
-                          <p className="text-xs text-red-400 font-medium">{it.error || 'Upload failed'}</p>
-                          <button
-                            type="button"
-                            onClick={() => cancelUpload(it.id)}
-                            className="mt-2 text-[10px] px-2 py-1 rounded bg-white/10 text-zinc-300 hover:text-white hover:bg-white/20 transition-colors"
-                          >
-                            Remove
-                          </button>
-                        </div>
+                  <div key={img.public_id} className="rounded-md border border-zinc-800 bg-zinc-950 overflow-hidden">
+                    <div className="relative aspect-square">
+                      <ImageWithLqip src={img.url} alt="preset" fill className="object-cover" transformOpts={{ w: 300, h: 300, fit: 'cover' }} />
+                      {idx === 0 && (
+                        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-900">
+                          <Star size={10} /> Cover
+                        </span>
                       )}
                     </div>
+                    <div className="grid grid-cols-2 gap-1 p-1.5">
+                      <button
+                        type="button"
+                        onClick={() => moveImage(idx, idx - 1)}
+                        disabled={idx === 0}
+                        className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300 disabled:opacity-40"
+                        title="Move up"
+                      >
+                        <ArrowUp size={12} className="mx-auto" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveImage(idx, idx + 1)}
+                        disabled={idx === imagesLocal.length - 1}
+                        className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300 disabled:opacity-40"
+                        title="Move down"
+                      >
+                        <ArrowDown size={12} className="mx-auto" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCover(idx)}
+                        disabled={idx === 0}
+                        className="col-span-1 rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 disabled:opacity-40"
+                      >
+                        Cover
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteImage(img.public_id)}
+                        disabled={deleting.includes(img.public_id)}
+                        className="col-span-1 rounded border border-red-900 bg-red-950/40 px-2 py-1 text-[11px] text-red-300 disabled:opacity-40"
+                      >
+                        {deleting.includes(img.public_id) ? '...' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {uploadItems.map((it) => (
+                  <div key={it.id} className="rounded-md border border-zinc-800 bg-zinc-950 overflow-hidden">
+                    <div className="relative aspect-square">
+                      <img src={it.previewUrl} alt="upload" className="h-full w-full object-cover opacity-50" />
+                      <div className="absolute inset-0 flex items-center justify-center p-3">
+                        {it.status === 'uploading' && (
+                          <div className="w-full space-y-1">
+                            <div className="h-1.5 w-full rounded-full bg-zinc-800">
+                              <div className="h-full rounded-full bg-zinc-300" style={{ width: `${it.progress}%` }} />
+                            </div>
+                            <p className="text-center text-[11px] text-zinc-200">{it.progress}%</p>
+                          </div>
+                        )}
+                        {it.status === 'error' && <p className="text-xs text-red-400 text-center">{it.error || 'Upload failed'}</p>}
+                      </div>
+                    </div>
+                    {(it.status === 'uploading' || it.status === 'error') && (
+                      <button
+                        type="button"
+                        onClick={() => cancelUpload(it.id)}
+                        className="w-full border-t border-zinc-800 px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Download URL Card */}
-          <div className="bg-zinc-900/30 border border-white/[0.06] rounded-2xl p-5 sm:p-6">
-            <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2 mb-4">
+        <aside className="space-y-5">
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 flex items-center gap-2">
               <Link2 size={14} />
-              Download Settings
+              Download
             </h3>
-            
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                DNG Download URL <span className="text-red-400">*</span>
-              </label>
-              <input 
+              <label className="mb-1.5 block text-sm text-zinc-300">DNG URL</label>
+              <input
                 type="url"
-                className={`w-full px-4 py-3 rounded-xl bg-black/50 border text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 transition-all text-sm ${
-                  errors.dngUrl 
-                    ? 'border-red-500/50 focus:border-red-500 focus:ring-red-500/20' 
-                    : 'border-white/10 focus:border-indigo-500/50 focus:ring-indigo-500/20'
-                }`}
                 value={dngUrl}
-                onChange={(e) => { setDngUrl(e.target.value); if (errors.dngUrl) setErrors(prev => ({ ...prev, dngUrl: undefined })); }}
+                onChange={(e) => {
+                  setDngUrl(e.target.value);
+                  if (errors.dngUrl) setErrors((prev) => ({ ...prev, dngUrl: undefined }));
+                }}
                 placeholder="https://..."
+                className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
               />
-              {errors.dngUrl && <p className="mt-1.5 text-xs text-red-400">{errors.dngUrl}</p>}
-              <p className="mt-2 text-xs text-zinc-600">
-                This link will be used when users download the preset file.
-              </p>
+              {errors.dngUrl && <p className="mt-1 text-xs text-red-400">{errors.dngUrl}</p>}
             </div>
           </div>
 
-          {/* Tips Card */}
-          <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-2xl p-5 sm:p-6">
-            <h4 className="text-sm font-semibold text-indigo-400 mb-3">💡 Pro Tips</h4>
-            <ul className="space-y-2 text-xs text-zinc-400">
-              <li className="flex items-start gap-2">
-                <span className="w-1 h-1 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
-                Use high-quality preview images to showcase your preset
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-1 h-1 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
-                Include before/after comparisons when possible
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="w-1 h-1 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0" />
-                Add relevant tags to help users find your preset
-              </li>
-            </ul>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 text-xs text-zinc-400 space-y-2">
+            <p className="font-semibold uppercase tracking-wide text-zinc-500">Tips</p>
+            <p>Use 4 to 8 preview images and place the strongest image as cover.</p>
+            <p>Reorder controls define the exact public gallery sequence.</p>
           </div>
-        </div>
+        </aside>
       </form>
     </div>
   );

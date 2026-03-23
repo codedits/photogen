@@ -5,6 +5,7 @@ import { uploadImages } from "../../../../lib/cloudinary";
 import cloudinary from "../../../../lib/cloudinary";
 import { clearCache } from '../../../../lib/simpleCache';
 import { ObjectId } from "mongodb";
+import { revalidatePath } from 'next/cache';
 import type { UploadApiOptions, UploadApiResponse } from 'cloudinary';
 
 type PresetDoc = {
@@ -125,6 +126,9 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
           try { await cloudinary.uploader.destroy(existing.dng.public_id, { resource_type: 'raw' }); } catch {}
         }
         await coll.updateOne({ _id }, { $set: { dng: { url: newDngUrl, public_id: existing.dng?.public_id || '' }, images } });
+        revalidatePath('/');
+        revalidatePath('/presets');
+        revalidatePath(`/presets/${id}`);
         return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
       } catch {}
     }
@@ -133,6 +137,9 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
   const cover = images.length ? images[0].url : null;
   await coll.updateOne({ _id }, { $set: { name, description, prompt, tags, images, image: cover } });
     try { clearCache(); } catch {}
+    revalidatePath('/');
+    revalidatePath('/presets');
+    revalidatePath(`/presets/${id}`);
     return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -184,6 +191,9 @@ export async function DELETE(req: Request, { params }: { params?: { id: string }
     await coll.deleteOne({ _id });
     // clear in-memory cache so list endpoints reflect deletion immediately
     try { clearCache(); } catch {}
+    revalidatePath('/');
+    revalidatePath('/presets');
+    revalidatePath(`/presets/${id}`);
     return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
   } catch (_err: unknown) {
     const message = _err instanceof Error ? _err.message : String(_err);

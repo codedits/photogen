@@ -7,24 +7,27 @@ interface PresetsSectionProps {
 
 export default function PresetsSection({ presets }: PresetsSectionProps) {
   return (
-    <section className="py-24 bg-black">
-      <div className="container mx-auto px-6">
+    <section className="py-24 bg-[#050505] border-t border-white/[0.06]">
+      <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16">
         <div className="flex justify-between items-end mb-12">
           <div>
-            <h2 className="text-3xl font-light tracking-tight text-white mb-2 font-sans">Featured Presets</h2>
-            <p className="text-white/40 text-sm uppercase tracking-widest">Professional Lightroom Collections</p>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-white/30 mb-3 flex items-center gap-2">
+              <span className="w-4 h-px bg-white/20" />
+              Collection
+            </p>
+            <h2 className="text-2xl font-normal tracking-tight text-white">Featured Presets</h2>
           </div>
           <Link 
             href="/presets" 
-            className="text-white/60 hover:text-white text-sm uppercase tracking-widest transition-colors border-b border-white/10 pb-1"
+            className="text-[11px] uppercase tracking-[0.15em] text-white/40 hover:text-white transition-colors duration-300"
           >
-            View All
+            View All →
           </Link>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {presets.map((preset, index) => (
-            <Link key={preset.id} href={`/presets/${preset.id}`} className="group inline-block rounded-2xl">
+            <Link key={preset.id} href={`/presets/${preset.id}`} className="group inline-block rounded-sm overflow-hidden">
               <PresetCard preset={preset} priority={index === 0} />
             </Link>
           ))}

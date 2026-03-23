@@ -14,49 +14,46 @@ interface AdminHeaderProps {
 
 export default function AdminHeader({ title, onMenuClick, breadcrumb }: AdminHeaderProps) {
   return (
-    <header className="h-16 flex items-center justify-between px-4 md:px-6 border-b border-white/[0.06] bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-30">
+    <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-zinc-800 bg-zinc-950 sticky top-0 z-30">
       <div className="flex items-center gap-3 min-w-0">
         <button 
           onClick={onMenuClick}
-          className="md:hidden p-2 -ml-2 text-zinc-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+          className="md:hidden p-2 -ml-2 text-zinc-500 hover:text-zinc-100 rounded-md hover:bg-zinc-900"
         >
           <Menu size={20} />
         </button>
         
-        {/* Desktop Title with Breadcrumb */}
         <div className="hidden md:flex items-center gap-2 min-w-0">
           {breadcrumb ? (
-            <nav className="flex items-center gap-1.5 text-sm">
+            <nav className="flex items-center gap-1.5 text-sm text-zinc-400">
               {breadcrumb.map((item, idx) => (
                 <React.Fragment key={idx}>
-                  {idx > 0 && <ChevronRight size={14} className="text-zinc-600" />}
+                  {idx > 0 && <ChevronRight size={14} className="text-zinc-700" />}
                   {item.onClick ? (
                     <button 
                       onClick={item.onClick}
-                      className="text-zinc-400 hover:text-white transition-colors"
+                      className="hover:text-zinc-100"
                     >
                       {item.label}
                     </button>
                   ) : (
-                    <span className="text-white font-medium">{item.label}</span>
+                    <span className="text-zinc-100 font-medium">{item.label}</span>
                   )}
                 </React.Fragment>
               ))}
             </nav>
           ) : (
-            <h1 className="text-lg font-semibold text-white capitalize">{title}</h1>
+            <h1 className="text-base font-semibold text-zinc-100 capitalize">{title}</h1>
           )}
         </div>
         
-        {/* Mobile Title */}
-        <h1 className="md:hidden text-base font-semibold text-white capitalize truncate">{title}</h1>
+        <h1 className="md:hidden text-base font-semibold text-zinc-100 capitalize truncate">{title}</h1>
       </div>
       
-      {/* Right Side - could add notifications, search, etc. */}
-      <div className="flex items-center gap-2">
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/[0.06]">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs text-zinc-400">System Online</span>
+      <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-md border border-zinc-800 bg-zinc-900">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span>Online</span>
         </div>
       </div>
     </header>

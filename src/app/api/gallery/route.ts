@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
+import { isAdminRequest } from '../../../lib/auth';
 import getDatabase, { ensureGalleryIndexes } from '../../../lib/mongodb';
+import { delCachePrefix, getCache, setCache } from '../../../lib/simpleCache';
+import { revalidatePath } from 'next/cache';
 
 // Gallery document type
 export type GalleryDoc = {
@@ -28,8 +31,7 @@ export type GalleryDoc = {
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
-    console.log('GET /api/gallery', url.search);
-    
+
     await ensureGalleryIndexes();
     const db = await getDatabase();
     const coll = db.collection<GalleryDoc>('gallery');
@@ -59,25 +61,57 @@ export async function GET(req: NextRequest) {
       filter.$text = { $search: search };
     }
     
+    const listCacheEligible = visibility === 'public' && !search;
+    const listCacheKey = `gallery:list:${JSON.stringify({ category: category || null, featured: featured || null, visibility, skip, limit })}`;
+    if (listCacheEligible) {
+      const cached = getCache<{ success: boolean; items: GalleryDoc[]; total: number; pagination: { total: number; skip: number; limit: number; hasMore: boolean } }>(listCacheKey);
+      if (cached) {
+        const response = NextResponse.json(cached);
+        response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+        response.headers.set('Vary', 'Accept-Encoding');
+        return response;
+      }
+    }
+
     // Execute query with pagination
     const cursor = coll.find(filter)
       .sort({ uploadDate: -1 })
       .skip(skip)
       .limit(limit);
-      
+
     const items = await cursor.toArray();
-    const total = await coll.countDocuments(filter);
+    const countCacheEligible = !search;
+    const countCacheKey = `gallery:count:${JSON.stringify({ category: category || null, featured: featured || null, visibility })}`;
+    let total: number;
+    if (countCacheEligible) {
+      const cachedTotal = getCache<number>(countCacheKey);
+      if (typeof cachedTotal === 'number') {
+        total = cachedTotal;
+      } else {
+        total = await coll.countDocuments(filter);
+        setCache(countCacheKey, total, 30);
+      }
+    } else {
+      total = await coll.countDocuments(filter);
+    }
     
-    const response = NextResponse.json({ 
-      success: true, 
+    const payload = {
+      success: true,
       items,
+      total,
       pagination: {
         total,
         skip,
         limit,
         hasMore: skip + limit < total
       }
-    });
+    };
+
+    const response = NextResponse.json(payload);
+
+    if (listCacheEligible) {
+      setCache(listCacheKey, payload, 30);
+    }
 
     // Cache public requests for 60 seconds
     if (visibility === 'public') {
@@ -95,13 +129,7 @@ export async function GET(req: NextRequest) {
 // POST: Create new gallery entry (Admin only)
 export async function POST(req: NextRequest) {
   try {
-    // Check admin session (reuse existing auth pattern)
-    const sessionRes = await fetch(new URL('/api/admin/session', req.url), {
-      headers: { cookie: req.headers.get('cookie') || '' }
-    });
-    const session = await sessionRes.json();
-    
-    if (!session.ok) {
+    if (!isAdminRequest(req)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
     
@@ -145,6 +173,10 @@ export async function POST(req: NextRequest) {
     };
     
     const result = await coll.insertOne(galleryDoc);
+
+    delCachePrefix('gallery:list:');
+    delCachePrefix('gallery:count:');
+    revalidatePath('/gallery');
     
     return NextResponse.json({
       ok: true,

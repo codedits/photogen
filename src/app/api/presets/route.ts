@@ -6,6 +6,7 @@ import { ObjectId, Document } from 'mongodb';
 import type { CloudinaryUploaded } from '../../../lib/cloudinary';
 import type { Filter } from 'mongodb';
 import { getCache, setCache } from '../../../lib/simpleCache';
+import { revalidatePath } from 'next/cache';
 
 type PresetDoc = {
   _id: ObjectId;
@@ -243,6 +244,9 @@ export async function POST(req: Request) {
 
   const res = await coll.insertOne(doc);
   try { const { clearCache } = await import('../../../lib/simpleCache'); clearCache(); } catch {}
+  revalidatePath('/');
+  revalidatePath('/presets');
+  revalidatePath(`/presets/${res.insertedId.toString()}`);
     return NextResponse.json({ ok: true, id: res.insertedId.toString(), images: doc.images });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

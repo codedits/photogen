@@ -55,7 +55,7 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
 
                 <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
                    <span className="text-[10px] uppercase tracking-[0.4em] font-mono text-white/60">
-                     {String(originalIndex + 1).padStart(2, '0')} / {images.length}
+                     {/* Numbering removed */}
                    </span>
                 </div>
               </div>
@@ -87,7 +87,7 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
 
                 <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
                    <span className="text-[10px] uppercase tracking-[0.4em] font-mono text-white/60">
-                     {String(originalIndex + 1).padStart(2, '0')} / {images.length}
+                     {/* Numbering removed */}
                    </span>
                 </div>
               </div>

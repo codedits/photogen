@@ -93,7 +93,7 @@ const GalleryCard = React.memo(({ item, index, onQuickView }: { item: GalleryIte
                      
                      {/* Tags / Metadata */}
                      <div className="flex items-center justify-between mt-2">
-                        <p className="text-[10px] text-white/50 font-mono uppercase tracking-widest truncate max-w-[80%]">
+                        <p className="text-[10px] text-white/70 font-mono uppercase tracking-[0.2em] truncate max-w-[80%]">
                            {item.category} / {dateStr}
                         </p>
                         
@@ -320,7 +320,7 @@ export default function GalleryGrid({ filters }: GalleryGridProps) {
             {!loading && items.length === 0 && !error && (
                <div className="text-center py-20">
                   <Camera className="w-12 h-12 mx-auto mb-6 text-white/5" />
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-white/30 font-light italic">No frames found in this category</p>
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-light">No frames found in this category</p>
                </div>
             )}
          </div>

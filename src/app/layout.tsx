@@ -65,11 +65,11 @@ export default async function RootLayout({
       <body
         className={`${dmSans.variable} ${geistMono.variable} font-sans antialiased`}
       >
-  <Nav />
-  {children}
-  <LazyChatWidget />
-  <Footer />
-  <VercelAnalytics />
+        <Nav />
+        {children}
+        <LazyChatWidget />
+        <Footer />
+        <VercelAnalytics />
       </body>
     </html>
   );

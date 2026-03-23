@@ -154,7 +154,7 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
 
               {/* Editorial Logos */}
               <div className="flex items-center gap-6 opacity-30 grayscale flex-wrap pointer-events-none">
-                <div className="font-bold text-xl tracking-tighter italic">LUMINA</div>
+                <div className="font-bold text-xl tracking-tighter">LUMINA</div>
                 <div className="font-bold text-xl tracking-tighter">STUDIO</div>
                 <div className="font-bold text-xl tracking-widest uppercase text-sm">Vogue</div>
                 <div className="font-bold text-xl tracking-tighter">KINFORK</div>
@@ -164,7 +164,7 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
               <div className="mt-8 flex flex-col gap-6">
                 <div>
                   <h3 className="text-white font-bold text-[17px] mb-3">About this series.</h3>
-                  <p className="text-[#a1a1aa] text-[15px] leading-relaxed max-w-[95%] font-light">
+                  <p className="text-zinc-300 text-[15px] leading-relaxed max-w-[95%] font-light">
                     This collection was curated to showcase the intersection of environmental context and human narrative. 
                     {item.location && ` Captured in ${item.location}. `}
                     {item.photographer && ` Produced by ${item.photographer}.`}

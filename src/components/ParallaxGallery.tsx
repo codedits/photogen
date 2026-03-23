@@ -97,10 +97,10 @@ function ParallaxRow({
               quality={80}
               sizes="(max-width: 768px) 240px, 350px"
             />
-            {/* Subtle Overlay Badge */}
+            {/* Brightened Indicator */}
             <div className="absolute top-4 left-4 z-10">
-               <span className="text-[10px] text-white/40 font-mono uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                 {String((i % images.length) + 1).padStart(2, '0')}
+               <span className="text-[10px] text-white/70 font-mono uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                 {/* Index numbering removed */}
                </span>
             </div>
           </motion.div>

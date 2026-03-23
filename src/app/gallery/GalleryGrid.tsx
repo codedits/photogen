@@ -17,6 +17,8 @@ interface GalleryGridProps {
       featured: boolean;
       search: string;
    };
+   initialItems?: GalleryItem[];
+   initialTotal?: number;
 }
 
 interface GalleryItem extends Omit<GalleryDoc, '_id'> {
@@ -33,10 +35,10 @@ const GalleryCard = React.memo(({ item, index, onQuickView }: { item: GalleryIte
 
    return (
       <motion.div
-         initial={{ opacity: 0, y: 20 }}
+         initial={{ opacity: 0, y: 8 }}
          whileInView={{ opacity: 1, y: 0 }}
          viewport={{ once: true, margin: "-50px" }}
-         transition={{ duration: 1, delay: (index % 3) * 0.1, ease: [0.16, 1, 0.3, 1] }}
+         transition={{ duration: 0.5, delay: index < 6 ? 0 : (index % 3) * 0.05, ease: [0.16, 1, 0.3, 1] }}
          className="w-full"
       >
          <motion.article 
@@ -62,8 +64,9 @@ const GalleryCard = React.memo(({ item, index, onQuickView }: { item: GalleryIte
                         src={item.images[0].url}
                         alt={item.name}
                         fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className="object-cover transition-all duration-700 opacity-80 group-hover:opacity-100" 
-                        transformOpts={{ w: 1000, q: 'auto:best' }}
+                        transformOpts={{ w: 600, q: 'auto:good' }}
                         noBlur={true}
                      />
                   </motion.div>
@@ -211,12 +214,13 @@ const Lightbox = ({ item, onClose }: { item: GalleryItem; onClose: () => void })
 
 // --- MAIN COMPONENT ---
 
-export default function GalleryGrid({ filters }: GalleryGridProps) {
-   const [items, setItems] = useState<GalleryItem[]>([]);
-   const [loading, setLoading] = useState(true);
+export default function GalleryGrid({ filters, initialItems, initialTotal }: GalleryGridProps) {
+   const hasInitialData = !!(initialItems && initialItems.length > 0);
+   const [items, setItems] = useState<GalleryItem[]>(initialItems || []);
+   const [loading, setLoading] = useState(!hasInitialData);
    const [error, setError] = useState<string | null>(null);
-   const [hasMore, setHasMore] = useState(true);
-   const [page, setPage] = useState(0);
+   const [hasMore, setHasMore] = useState(hasInitialData ? (initialTotal ? initialItems!.length < initialTotal : true) : true);
+   const [page, setPage] = useState(hasInitialData ? 1 : 0);
    const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
 
    const observerRef = useRef<HTMLDivElement>(null);
@@ -236,7 +240,7 @@ export default function GalleryGrid({ filters }: GalleryGridProps) {
          if (filters?.featured) params.set('featured', 'true');
          if (filters?.search) params.set('q', filters.search);
 
-         const res = await fetch(`/api/gallery?${params}`, { cache: 'no-store' });
+         const res = await fetch(`/api/gallery?${params}`);
          const data = await res.json();
          if (!res.ok) throw new Error(data.error);
 
@@ -256,8 +260,10 @@ export default function GalleryGrid({ filters }: GalleryGridProps) {
       }
    }, [page, filters]);
 
-   // Initial Load
+   // Initial Load — skip if we have server-provided initial data and no filters active
+   const isDefaultFilters = !filters?.category && !filters?.featured && !filters?.search;
    useEffect(() => {
+      if (hasInitialData && isDefaultFilters) return;
       setItems([]);
       setPage(0);
       fetchItems(true);

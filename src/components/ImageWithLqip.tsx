@@ -4,6 +4,12 @@ import Image from 'next/image';
 import useBlurDataUrl from '../lib/useBlurDataUrl';
 import { thumbUrl } from '../lib/cloudinaryUrl';
 
+// Wrapper that conditionally uses the blur hook
+function useOptionalBlur(src: string | undefined, opts: { w: number; h: number; fit: 'cover' | 'crop' | 'fill' | 'scale' | 'contain' }, skip: boolean) {
+  // Always call the hook (React rules), but pass undefined src to skip the work
+  return useBlurDataUrl(skip ? undefined : src, opts);
+}
+
 export default function ImageWithLqip({
   src,
   alt,
@@ -31,7 +37,8 @@ export default function ImageWithLqip({
   onLoad?: () => void;
   noBlur?: boolean;
 }) {
-  const blur = useBlurDataUrl(src, { w: Math.min(transformOpts?.w || width || 400, 24), h: Math.min(transformOpts?.h || height || 300, 24), fit: transformOpts?.fit || 'cover' });
+  // Skip blur fetches entirely when noBlur is true (saves 14+ network requests on gallery page)
+  const blur = useOptionalBlur(src, { w: Math.min(transformOpts?.w || width || 400, 24), h: Math.min(transformOpts?.h || height || 300, 24), fit: transformOpts?.fit || 'cover' }, noBlur);
   
   if (!src || src === "undefined") {
     return <div className={className} style={{ width, height, position: fill ? 'absolute' : 'relative', inset: fill ? 0 : undefined, backgroundColor: 'rgba(255,255,255,0.05)' }} />;
@@ -46,7 +53,6 @@ export default function ImageWithLqip({
   const objectFit: 'cover' | 'contain' = hasObjectContain ? 'contain' : hasObjectCover ? 'cover' : (fill ? 'contain' : 'cover');
 
   if (fill) {
-    // When using `fill`, pass objectFit via style to Next/Image to prevent stretching
     return <Image src={url} alt={alt || ''} fill style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={blur} priority={priority} sizes={sizes} loading={loading} onLoad={onLoad} />;
   }
 

@@ -10,9 +10,17 @@ interface AdminHeaderProps {
   title: string;
   onMenuClick: () => void;
   breadcrumb?: BreadcrumbItem[];
+  onRevalidate?: () => void;
+  revalidating?: boolean;
 }
 
-export default function AdminHeader({ title, onMenuClick, breadcrumb }: AdminHeaderProps) {
+export default function AdminHeader({ 
+  title, 
+  onMenuClick, 
+  breadcrumb, 
+  onRevalidate, 
+  revalidating 
+}: AdminHeaderProps) {
   return (
     <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-zinc-800 bg-zinc-950 sticky top-0 z-30">
       <div className="flex items-center gap-3 min-w-0">
@@ -50,11 +58,15 @@ export default function AdminHeader({ title, onMenuClick, breadcrumb }: AdminHea
         <h1 className="md:hidden text-base font-semibold text-zinc-100 capitalize truncate">{title}</h1>
       </div>
       
-      <div className="flex items-center gap-2 text-xs text-zinc-500">
-        <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-md border border-zinc-800 bg-zinc-900">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-          <span>Online</span>
-        </div>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onRevalidate}
+          disabled={revalidating}
+          className="flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 disabled:opacity-50 transition-colors"
+        >
+          <div className={`h-1.5 w-1.5 rounded-full ${revalidating ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+          {revalidating ? 'Syncing...' : 'Sync Content'}
+        </button>
       </div>
     </header>
   );

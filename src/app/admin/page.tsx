@@ -185,6 +185,24 @@ export default function AdminPage() {
   const backToPresets = useCallback(() => setView({ type: 'list', tab: 'presets' }), []);
   const backToGallery = useCallback(() => setView({ type: 'list', tab: 'gallery' }), []);
 
+  const [revalidating, setRevalidating] = useState(false);
+  const handleManualRevalidate = useCallback(async () => {
+    setRevalidating(true);
+    try {
+      const res = await fetch('/api/admin/revalidate', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}) // Default revalidates core paths
+      });
+      if (!res.ok) throw new Error('Refresh failed');
+      addToast('Content refreshed successfully', 'success');
+    } catch (err) {
+      addToast('Failed to refresh content', 'error');
+    } finally {
+      setRevalidating(false);
+    }
+  }, [addToast]);
+
   useEffect(() => { if (authed) { refresh(); } }, [authed, refresh]);
 
   if (authed === false) {
@@ -283,6 +301,8 @@ export default function AdminPage() {
           <AdminHeader 
             title={view.type === 'list' ? activeTab : (view.type.includes('preset') ? 'Edit Preset' : 'Edit Gallery')} 
             onMenuClick={() => setSidebarOpen(true)}
+            onRevalidate={handleManualRevalidate}
+            revalidating={revalidating}
             breadcrumb={view.type !== 'list' ? [
               { label: view.type.includes('preset') ? 'Presets' : 'Gallery', onClick: () => setView({ type: 'list', tab: view.type.includes('preset') ? 'presets' : 'gallery' }) },
               { label: view.type.includes('create') ? 'Create New' : 'Editing' }

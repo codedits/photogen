@@ -5,7 +5,7 @@ import { PageContainer, FullBleed } from "../components/layout/Primitives";
 import getDatabase from "../lib/mongodb";
 import { Preset } from "../components/PresetCard";
 
-export const revalidate = 300;
+export const revalidate = false; // On-demand revalidation only
 
 async function getFeaturedPresets(): Promise<Preset[]> {
   try {

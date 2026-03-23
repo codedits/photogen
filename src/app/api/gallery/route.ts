@@ -27,12 +27,22 @@ export type GalleryDoc = {
   };
 };
 
+// Ensure indexes only once per server lifecycle (not per request)
+let indexesEnsured: Promise<void> | null = null;
+function ensureIndexesOnce() {
+  if (!indexesEnsured) {
+    indexesEnsured = ensureGalleryIndexes().catch(() => { indexesEnsured = null; });
+  }
+  return indexesEnsured;
+}
+
 // GET: List gallery items with filtering
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
 
-    await ensureGalleryIndexes();
+    // Non-blocking index check (only runs once)
+    ensureIndexesOnce();
     const db = await getDatabase();
     const coll = db.collection<GalleryDoc>('gallery');
     
@@ -67,7 +77,7 @@ export async function GET(req: NextRequest) {
       const cached = getCache<{ success: boolean; items: GalleryDoc[]; total: number; pagination: { total: number; skip: number; limit: number; hasMore: boolean } }>(listCacheKey);
       if (cached) {
         const response = NextResponse.json(cached);
-        response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+        response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
         response.headers.set('Vary', 'Accept-Encoding');
         return response;
       }
@@ -89,7 +99,7 @@ export async function GET(req: NextRequest) {
         total = cachedTotal;
       } else {
         total = await coll.countDocuments(filter);
-        setCache(countCacheKey, total, 30);
+        setCache(countCacheKey, total, 120);
       }
     } else {
       total = await coll.countDocuments(filter);
@@ -110,12 +120,12 @@ export async function GET(req: NextRequest) {
     const response = NextResponse.json(payload);
 
     if (listCacheEligible) {
-      setCache(listCacheKey, payload, 30);
+      setCache(listCacheKey, payload, 120);
     }
 
-    // Cache public requests for 60 seconds
+    // Cache public requests for 120 seconds
     if (visibility === 'public') {
-      response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+      response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
       response.headers.set('Vary', 'Accept-Encoding');
     }
 

@@ -34,7 +34,7 @@ async function getPreset(id: string) {
 }
 
 // --- SSG / ISR CONFIG ---
-export const revalidate = 3600; // Revalidate every hour
+export const revalidate = false; // On-demand revalidation only
 
 export async function generateStaticParams() {
   try {

@@ -43,10 +43,11 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
                 <ImageWithLqip 
                   src={img.url} 
                   alt={`${userName} - Plate ${originalIndex + 1}`} 
-                  width={1200}
-                  height={1600}
+                  width={800}
+                  height={1067}
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   className="w-full h-auto object-cover transition-transform duration-[2s] ease-out group-hover:scale-[1.03]"
-                  transformOpts={{ w: 1200, q: 'auto:best' }}
+                  transformOpts={{ w: 800, q: 'auto:good' }}
                   priority={idx === 0}
                   noBlur={true}
                 />
@@ -76,10 +77,11 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
                 <ImageWithLqip 
                   src={img.url} 
                   alt={`${userName} - Plate ${originalIndex + 1}`} 
-                  width={1200}
-                  height={1600}
+                  width={800}
+                  height={1067}
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   className="w-full h-auto object-cover transition-transform duration-[2s] ease-out group-hover:scale-[1.03]"
-                  transformOpts={{ w: 1200, q: 'auto:best' }}
+                  transformOpts={{ w: 800, q: 'auto:good' }}
                   noBlur={true}
                 />
 

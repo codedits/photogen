@@ -126,12 +126,20 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
               </div>
 
               {/* Main Description */}
-              <h2 className="text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight">
-                {item.description?.split(' ').map((word, i) => (
-                  <span key={i} className={i > 5 ? 'text-[#888888]' : 'text-white'}>
-                    {word}{' '}
-                  </span>
-                )) || "Capturing visual stories through light and shadow."}
+              <h2 className="text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight text-[#888888]">
+                {item.description ? (
+                  item.description.split(/('[^']+')/g).map((part, i) => {
+                    const isQuoted = part.startsWith("'") && part.endsWith("'");
+                    const content = isQuoted ? part.slice(1, -1) : part;
+                    return (
+                      <span key={i} className={isQuoted ? 'text-white font-medium' : ''}>
+                        {content}
+                      </span>
+                    );
+                  })
+                ) : (
+                  "Capturing visual stories through light and shadow."
+                )}
               </h2>
 
               {/* Availability & Action */}

@@ -116,10 +116,11 @@ export default function ParallaxGallery() {
   return (
     <section id="gallery" className="relative overflow-hidden bg-black py-8 md:py-12">
       {/* Intense DEEP Vignette Overlays */}
-      <div className="absolute inset-x-0 top-0 z-30 h-16 md:h-96 bg-gradient-to-b from-black via-black/80 md:via-black/80 to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 z-30 h-16 md:h-96 bg-gradient-to-t from-black via-black/80 md:via-black/80 to-transparent pointer-events-none" />
-      <div className="absolute inset-y-0 left-0 z-30 w-8 md:w-64 bg-gradient-to-r from-black via-black/80 md:via-black/80 to-transparent pointer-events-none" />
-      <div className="absolute inset-y-0 right-0 z-30 w-8 md:w-64 bg-gradient-to-l from-black via-black/80 md:via-black/80 to-transparent pointer-events-none" />
+      {/* Intense DEEP Vignette Overlays - Shortened for "longness" reduction */}
+      <div className="absolute inset-x-0 top-0 z-30 h-16 md:h-64 bg-gradient-to-b from-black via-black/60 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 z-30 h-16 md:h-64 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
+      <div className="absolute inset-y-0 left-0 z-30 w-8 md:w-40 bg-gradient-to-r from-black via-black/60 to-transparent pointer-events-none" />
+      <div className="absolute inset-y-0 right-0 z-30 w-8 md:w-40 bg-gradient-to-l from-black via-black/60 to-transparent pointer-events-none" />
       <div className="absolute inset-0 z-20 bg-black/40 pointer-events-none" />
 
       {/* Center Floating Text */}

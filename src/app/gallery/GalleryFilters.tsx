@@ -41,16 +41,14 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
   }, [isFeatured, searchQuery, onFiltersChange]);
 
   const toggleFeatured = useCallback(() => {
-    setIsFeatured(prev => {
-      const nextFeatured = !prev;
-      onFiltersChange({
-        category: activeCategory === 'All' ? '' : activeCategory,
-        featured: nextFeatured,
-        search: searchQuery
-      });
-      return nextFeatured;
+    const nextFeatured = !isFeatured;
+    setIsFeatured(nextFeatured);
+    onFiltersChange({
+      category: activeCategory === 'All' ? '' : activeCategory,
+      featured: nextFeatured,
+      search: searchQuery
     });
-  }, [activeCategory, searchQuery, onFiltersChange]);
+  }, [isFeatured, activeCategory, searchQuery, onFiltersChange]);
 
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;

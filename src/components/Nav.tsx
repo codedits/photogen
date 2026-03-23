@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: '/presets', label: 'Presets', count: '03' },
   { href: '/studio', label: 'Studio', count: '01' },
   { href: '/gallery', label: 'Gallery', count: '12' },
+  { href: '/contact', label: 'Contact', count: '04' },
 ];
 
 export default function Nav() {
@@ -24,7 +25,7 @@ export default function Nav() {
   if (isPresetDetail) return null;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[100] pointer-events-none mix-blend-difference">
+    <header className="fixed top-0 left-0 right-0 z-[999] pointer-events-none">
       <div className="pointer-events-auto w-full">
         <nav className="w-full px-6 sm:px-10 lg:px-16 py-6 flex items-center justify-between">
           {/* Brand */}

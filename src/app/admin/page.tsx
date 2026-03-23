@@ -10,6 +10,7 @@ const PresetsManagement = lazy(() => import('./PresetsManagement'));
 const GalleryManagement = lazy(() => import('./GalleryManagement'));
 const PresetForm = lazy(() => import('./components/PresetForm'));
 const GalleryForm = lazy(() => import('./components/GalleryForm'));
+const SettingsManagement = lazy(() => import('./SettingsManagement'));
 
 type PresetRow = {
   id: string;
@@ -22,7 +23,7 @@ type PresetRow = {
 };
 
 export type AdminView = 
-  | { type: 'list'; tab: 'presets' | 'gallery' }
+  | { type: 'list'; tab: 'presets' | 'gallery' | 'contact' }
   | { type: 'create-preset' }
   | { type: 'edit-preset'; preset: PresetRow }
   | { type: 'create-gallery' }
@@ -174,7 +175,7 @@ export default function AdminPage() {
     addToast('Gallery item deleted', 'info');
   }, [addToast]);
 
-  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery') => {
+  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'contact') => {
     setView({ type: 'list', tab });
   }, []);
 
@@ -282,7 +283,7 @@ export default function AdminPage() {
     );
   }
 
-  const activeTab = view.type === 'list' ? view.tab : (view.type.includes('preset') ? 'presets' : 'gallery');
+  const activeTab = view.type === 'list' ? view.tab : (view.type.includes('preset') ? 'presets' : (view.type.includes('gallery') ? 'gallery' : 'contact'));
 
   return (
     <ToastContext.Provider value={toastContextValue}>
@@ -299,7 +300,7 @@ export default function AdminPage() {
         
         <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
           <AdminHeader 
-            title={view.type === 'list' ? activeTab : (view.type.includes('preset') ? 'Edit Preset' : 'Edit Gallery')} 
+            title={view.type === 'list' ? (activeTab === 'presets' ? 'Presets' : activeTab === 'gallery' ? 'Gallery' : 'Contact Page') : (view.type.includes('preset') ? 'Edit Preset' : 'Edit Gallery')} 
             onMenuClick={() => setSidebarOpen(true)}
             onRevalidate={handleManualRevalidate}
             revalidating={revalidating}
@@ -333,6 +334,9 @@ export default function AdminPage() {
                     onEdit={openEditGallery}
                     onDelete={handleDeleteGallery}
                   />
+                )}
+                {view.type === 'list' && (activeTab as string) === 'contact' && (
+                  <SettingsManagement />
                 )}
                 {view.type === 'create-preset' && (
                   <PresetForm 

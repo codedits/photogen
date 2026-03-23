@@ -29,9 +29,9 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-[2px]">
         {/* Left Column */}
-        <div className="flex flex-col gap-2 lg:gap-3">
+        <div className="flex flex-col gap-[2px]">
           {leftColImages.map((img, idx) => {
             const originalIndex = idx * 2;
             return (
@@ -65,7 +65,7 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
         </div>
 
         {/* Right Column */}
-        <div className="flex flex-col gap-2 lg:gap-3 lg:mt-20">
+        <div className="flex flex-col gap-[2px] lg:mt-20">
           {rightColImages.map((img, idx) => {
             const originalIndex = idx * 2 + 1;
             return (

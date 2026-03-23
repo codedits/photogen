@@ -118,10 +118,11 @@ export async function GET(req: NextRequest) {
   let upstream: string;
   const ratio = ratioRaw.trim();
   
-  if (model === "nano-banana" || model === "nano-banana-pro") {
-    const url = new URL("https://api.paxsenix.org/ai-image/nano-banana");
-    url.searchParams.set("prompt", text);
-    url.searchParams.set("model", model);
+  if (model === "nano-banana" || model === "nano-banana-pro" || model === "nano-banana-2") {
+    // Upstream usually expects the model name in the path for these endpoints
+    // Standardizing on 'text' param which is widely supported by Paxsenix
+    const url = new URL(`https://api.paxsenix.org/ai-image/${model}`);
+    url.searchParams.set("text", text);
     if (ratio) url.searchParams.set("ratio", ratio);
     upstream = url.toString();
   } else {
@@ -156,19 +157,20 @@ export async function GET(req: NextRequest) {
 
     // If upstream returns JSON error, forward as JSON
     const contentType = res.headers.get("content-type") || "";
-      if (!res.ok) {
-        if (contentType.includes("application/json")) {
-         const data = await res.json().catch(() => null) as unknown;
-         if (typeof data === "object" && data !== null) {
-           const d = data as Record<string, unknown>;
-           const errMsg = typeof d["error"] === "string" ? d["error"] : `Upstream error ${res.status}`;
-           return NextResponse.json({ ok: false, error: errMsg }, { status: res.status });
-         }
-         return NextResponse.json({ ok: false, error: `Upstream error ${res.status}` }, { status: res.status });
+    if (!res.ok) {
+      if (contentType.includes("application/json")) {
+        const data = await res.json().catch(() => null) as any;
+        if (data && typeof data === "object") {
+          // Special handling for quota errors
+          if (data.error === "image_quota_exceeded" || (data.message && data.message.includes("quota"))) {
+            return NextResponse.json({ ok: false, error: "Daily image generation limit reached. Please try again tomorrow." }, { status: 429 });
+          }
+          const errMsg = data.error || data.message || `Upstream error ${res.status}`;
+          return NextResponse.json({ ok: false, error: errMsg }, { status: res.status });
         }
-        // Otherwise forward status with a generic message
-        return NextResponse.json({ ok: false, error: `Upstream error ${res.status}` }, { status: res.status });
       }
+      return NextResponse.json({ ok: false, error: `Upstream error ${res.status}` }, { status: res.status });
+    }
 
     // Handle possible JSON success payloads (single url, multiple urls, base64, or job/task reference)
     if (contentType.includes("application/json")) {

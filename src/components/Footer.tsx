@@ -38,6 +38,7 @@ export default function Footer() {
                 { href: '/presets', label: 'Presets' },
                 { href: '/studio', label: 'Studio' },
                 { href: '/gallery', label: 'Gallery' },
+                { href: '/contact', label: 'Contact' },
               ].map(link => (
                 <li key={link.href}>
                   <Link href={link.href} className="text-[12px] text-white/50 hover:text-white transition-colors duration-300">

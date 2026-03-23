@@ -8,7 +8,7 @@ import type { GalleryDoc } from '../api/gallery/route';
 import { cn } from '../../lib/utils';
 
 import Link from 'next/link';
-
+import GalleryCard from '../../components/GalleryCard';
 // --- TYPES ---
 
 interface GalleryGridProps {
@@ -24,94 +24,6 @@ interface GalleryGridProps {
 interface GalleryItem extends Omit<GalleryDoc, '_id'> {
    _id: string;
 }
-
-// --- SUB-COMPONENT: GALLERY CARD ---
-const GalleryCard = React.memo(({ item, index, onQuickView }: { item: GalleryItem; index: number; onQuickView: (e: React.MouseEvent) => void }) => {
-   const dateStr = item.uploadDate ? new Date(item.uploadDate).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-   }) : '';
-
-   return (
-      <motion.div
-         initial={{ opacity: 0, y: 8 }}
-         whileInView={{ opacity: 1, y: 0 }}
-         viewport={{ once: true, margin: "-50px" }}
-         transition={{ duration: 0.5, delay: index < 6 ? 0 : (index % 3) * 0.05, ease: [0.16, 1, 0.3, 1] }}
-         className="w-full"
-      >
-         <motion.article 
-            initial="rest"
-            whileHover="hover"
-            animate="rest"
-            className="group relative w-full bg-neutral-950 border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden"
-         >
-            <Link href={`/gallery/${item._id}`} className="block">
-               {/* ASPECT RATIO CONTAINER - 3:2 for "Large Cinematic Width" */}
-               <div className="relative aspect-[3/2] overflow-hidden w-full">
-                  
-                  {/* --- IMAGE LAYER --- */}
-                  <motion.div 
-                     className="w-full h-full relative"
-                     variants={{
-                        rest: { scale: 1 },
-                        hover: { scale: 1.05 }
-                     }}
-                     transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
-                  >
-                     <ImageWithLqip
-                        src={item.images[0].url}
-                        alt={item.name}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        className="object-cover transition-all duration-700 opacity-80 group-hover:opacity-100" 
-                        transformOpts={{ w: 600, q: 'auto:good' }}
-                        noBlur={true}
-                     />
-                  </motion.div>
-
-                  {/* --- OVERLAY GRADIENT (Cinematic fade) --- */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90 pointer-events-none" />
-                  
-                  {/* --- BOTTOM CONTENT AREA --- */}
-                  <div className="absolute bottom-0 left-0 right-0 p-5 z-20">
-                     
-                     {/* Decorative Line that fills on hover */}
-                     <div className="w-full h-[1px] bg-white/20 mb-3 overflow-hidden">
-                        <motion.div 
-                           className="h-full bg-white w-full origin-left"
-                           variants={{ rest: { scaleX: 0 }, hover: { scaleX: 1 }}}
-                           transition={{ duration: 0.4 }}
-                        />
-                     </div>
-
-                     {/* Title & Arrow */}
-                     <div className="flex justify-between items-start mb-1">
-                        <h2 className="text-xl md:text-2xl font-light text-white uppercase tracking-tighter leading-none">
-                           {item.name}
-                        </h2>
-                        <ArrowUpRight className="w-4 h-4 text-white/50 group-hover:text-white group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
-                     </div>
-                     
-                     {/* Tags / Metadata */}
-                     <div className="flex items-center justify-between mt-2">
-                        <p className="text-[10px] text-white/70 font-mono uppercase tracking-[0.2em] truncate max-w-[80%]">
-                           {item.category} / {dateStr}
-                        </p>
-                        
-                        {/* Fake ID/Ref number for "Technical" look */}
-                        <span className="text-[9px] text-white/20 font-mono">
-                           {item._id.substring(0, 4).toUpperCase()}
-                        </span>
-                     </div>
-                  </div>
-               </div>
-            </Link>
-         </motion.article>
-      </motion.div>
-   );
-});
 
 // --- SUB-COMPONENT: LIGHTBOX ---
 const Lightbox = ({ item, onClose }: { item: GalleryItem; onClose: () => void }) => {

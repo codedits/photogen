@@ -1,13 +1,13 @@
 "use client";
 
 import React from 'react';
-import { LayoutGrid, Image, LogOut, Home, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutGrid, Image, LogOut, Home, X, ChevronLeft, ChevronRight, Settings, Mail } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import Link from 'next/link';
 
 interface AdminSidebarProps {
-  activeTab: 'presets' | 'gallery';
-  setActiveTab: (tab: 'presets' | 'gallery') => void;
+  activeTab: 'presets' | 'gallery' | 'contact';
+  setActiveTab: (tab: 'presets' | 'gallery' | 'contact') => void;
   onLogout: () => void;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
@@ -27,6 +27,7 @@ export default function AdminSidebar({
   const navItems = [
     { id: 'presets', label: 'Presets', icon: LayoutGrid },
     { id: 'gallery', label: 'Gallery', icon: Image },
+    { id: 'contact', label: 'Contact Page', icon: Mail },
   ] as const;
 
   return (

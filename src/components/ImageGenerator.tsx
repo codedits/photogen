@@ -40,6 +40,7 @@ const RatioIcon = () => (
 // --- Models & Ratios Mapping ---
 const MODELS = [
   { id: 'nano-banana-pro', label: 'Imagen 4.0' },
+  { id: 'nano-banana-2', label: 'Gemini 2.0 Flash' },
   { id: 'nano-banana', label: 'Gemini 2.5 Pro' },
   { id: 'midjourney', label: 'Midjourney v6' },
 ];
@@ -227,8 +228,10 @@ export default function ImageGenerator() {
         cache: 'no-store'
       });
 
-      if (!res.ok) throw new Error(`Request failed (${res.status})`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({ ok: false, error: "Cloud connection failed" }));
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || `Request failed (${res.status})`);
+      }
 
       if (data.ok && data.urls?.length > 0) {
         finishSuccess(data.urls);

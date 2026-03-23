@@ -24,6 +24,12 @@ export async function POST(req: Request) {
     if (typeof file.size === 'number' && file.size > maxBytes) {
       return NextResponse.json({ ok: false, error: `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max 10MB.` }, { status: 413 });
     }
+
+    const config = cloudinary.config();
+    if (!config.api_key || !config.api_secret || !config.cloud_name) {
+      return NextResponse.json({ ok: false, error: 'Cloudinary credentials are missing on server.' }, { status: 500 });
+    }
+
     const buf = Buffer.from(await file.arrayBuffer());
     
     // Use upload_stream for better performance and to avoid base64 overhead
@@ -57,7 +63,13 @@ export async function DELETE(req: Request) {
     const public_id = body?.public_id;
     const resource_type = body?.resource_type;
     if (!public_id) return NextResponse.json({ ok: false, error: 'Missing public_id' }, { status: 400 });
-  const opts: Record<string, unknown> = { invalidate: true };
+
+    const config = cloudinary.config();
+    if (!config.api_key || !config.api_secret || !config.cloud_name) {
+      return NextResponse.json({ ok: false, error: 'Cloudinary credentials are missing on server.' }, { status: 500 });
+    }
+
+    const opts: Record<string, unknown> = { invalidate: true };
   if (resource_type) opts.resource_type = resource_type;
   const res = await cloudinary.uploader.destroy(public_id, opts as unknown as Record<string, unknown>);
     return NextResponse.json({ ok: true, result: res });

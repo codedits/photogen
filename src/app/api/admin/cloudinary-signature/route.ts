@@ -15,13 +15,17 @@ export async function POST(req: Request) {
     const folder = requestedFolder.startsWith('photogen/') ? requestedFolder : DEFAULT_FOLDER;
 
     const timestamp = Math.floor(Date.now() / 1000);
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    
+    // Retrieve configuration directly from initialized cloudinary instance.
+    // This allows the Cloudinary SDK to handle CLOUDINARY_URL parsing natively.
+    const cloudinaryConfig = cloudinary.config();
+    const apiKey = cloudinaryConfig.api_key || process.env.CLOUDINARY_API_KEY;
+    const apiSecret = cloudinaryConfig.api_secret || process.env.CLOUDINARY_API_SECRET;
+    const cloudName = cloudinaryConfig.cloud_name || process.env.CLOUDINARY_CLOUD_NAME;
 
     if (!apiKey || !apiSecret || !cloudName) {
       return NextResponse.json(
-        { ok: false, error: 'Cloudinary credentials are missing on server.' },
+        { ok: false, error: 'Cloudinary credentials are missing on server. Set CLOUDINARY_URL or individual CLOUDINARY_API_* variables in .env.local.' },
         { status: 500 }
       );
     }
@@ -29,7 +33,6 @@ export async function POST(req: Request) {
     const paramsToSign = {
       folder,
       timestamp,
-      resource_type: 'image',
     };
 
     const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);

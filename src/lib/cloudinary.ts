@@ -11,10 +11,10 @@ if (process.env.CLOUDINARY_CLOUD_NAME) config.cloud_name = process.env.CLOUDINAR
 if (process.env.CLOUDINARY_API_KEY) config.api_key = process.env.CLOUDINARY_API_KEY;
 if (process.env.CLOUDINARY_API_SECRET) config.api_secret = process.env.CLOUDINARY_API_SECRET;
 
-cloudinary.config(config);
+const resolvedConfig = cloudinary.config(config) as any;
 
-if (!process.env.CLOUDINARY_URL && !process.env.CLOUDINARY_API_KEY) {
-  console.warn('Cloudinary credentials not set. Set CLOUDINARY_URL or CLOUDINARY_API_KEY in .env.local');
+if (!resolvedConfig.cloud_name || !resolvedConfig.api_key || !resolvedConfig.api_secret) {
+  console.warn('⚠️ Cloudinary credentials not fully set. Image uploads will fail. Set CLOUDINARY_URL or CLOUDINARY_API_KEY/SECRET/CLOUD_NAME in .env.local');
 }
 
 export type CloudinaryUploaded = { url: string; public_id: string; width?: number; height?: number; format?: string };

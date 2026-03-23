@@ -96,6 +96,20 @@ export async function PUT(
       { $set: updateDoc }
     );
     
+    // Process removals from Cloudinary
+    if (Array.isArray(body.removePublicIds) && body.removePublicIds.length > 0) {
+      setTimeout(async () => {
+        try {
+          for (const pid of body.removePublicIds) {
+            await cloudinary.uploader.destroy(pid);
+            console.log(`Deleted removed image from Cloudinary: ${pid}`);
+          }
+        } catch (e) {
+          console.error('Failed to cleanup Cloudinary images for gallery:', e);
+        }
+      }, 0);
+    }
+    
     if (result.matchedCount === 0) {
       return NextResponse.json({ error: 'Gallery item not found' }, { status: 404 });
     }

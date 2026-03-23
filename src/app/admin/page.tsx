@@ -132,6 +132,10 @@ export default function AdminPage() {
     if (data.orderPublicIds) {
       data.orderPublicIds.forEach((pid: string) => form.append('orderPublicIds', pid));
     }
+    
+    if (data.removePublicIds) {
+      data.removePublicIds.forEach((pid: string) => form.append('removePublicIds', pid));
+    }
 
     const res = await fetch(url, { method, body: form });
     const result = await res.json();

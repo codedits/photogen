@@ -49,6 +49,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
   const [uploadItems, setUploadItems] = useState<UploadItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState<string[]>([]);
+  const [removePublicIds, setRemovePublicIds] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; dngUrl?: string }>({});
 
@@ -186,24 +187,28 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
   const handleDeleteImage = async (pid: string) => {
     if (deleting.includes(pid)) return;
     setDeleting((s) => [...s, pid]);
-    const prev = imagesLocal;
-    setImagesLocal((list) => list.filter((i) => i.public_id !== pid));
-
-    if (preset) {
-      try {
-        const form = new FormData();
-        form.append('removePublicIds', pid);
-        const res = await fetch(`/api/presets/${preset.id}`, { method: 'PATCH', body: form });
-        if (!res.ok) throw new Error('Failed to delete image');
-      } catch {
-        setImagesLocal(prev);
-        alert('Failed to delete image');
-      } finally {
-        setDeleting((s) => s.filter((x) => x !== pid));
-      }
+    
+    // Check if it's an existing image from DB
+    const isExisting = preset?.images?.some((i: any) => i.public_id === pid);
+    
+    if (!isExisting) {
+       // Newly uploaded during this session, delete immediately from Cloudinary
+       try {
+         await fetch('/api/upload-image', { 
+           method: 'DELETE', 
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ public_id: pid })
+         });
+       } catch (err) {
+         console.error('Failed to instantly delete unsaved image', err);
+       }
     } else {
-      setDeleting((s) => s.filter((x) => x !== pid));
+       // It's an existing image, queue it for server-side Cloudinary destruction on save
+       setRemovePublicIds(prev => [...prev, pid]);
     }
+    
+    setImagesLocal((list: any) => list.filter((i: any) => i.public_id !== pid));
+    setDeleting((s) => s.filter((x) => x !== pid));
   };
 
   const validateForm = () => {
@@ -228,6 +233,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
         dngUrl: dngUrl.trim(),
         imageUrls: imagesLocal.map((img) => JSON.stringify(img)),
         orderPublicIds: imagesLocal.map((i) => i.public_id),
+        removePublicIds,
       };
       await onSave(data);
       onBack();

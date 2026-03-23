@@ -64,6 +64,8 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
   const [busy, setBusy] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [errors, setErrors] = useState<{ name?: string }>({});
+  const [deleting, setDeleting] = useState<string[]>([]);
+  const [removePublicIds, setRemovePublicIds] = useState<string[]>([]);
 
   const dropRef = useRef<HTMLDivElement>(null);
   const uploadItemsRef = useRef<UploadItem[]>([]);
@@ -203,6 +205,33 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleDeleteImage = async (pid: string) => {
+    if (deleting.includes(pid)) return;
+    setDeleting((s) => [...s, pid]);
+    
+    // Check if it's an existing image from DB
+    const isExisting = item?.images?.some((i: any) => i.public_id === pid);
+    
+    if (!isExisting) {
+       // Newly uploaded during this session, delete immediately from Cloudinary
+       try {
+         await fetch('/api/upload-image', { 
+           method: 'DELETE', 
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ public_id: pid })
+         });
+       } catch (err) {
+         console.error('Failed to instantly delete unsaved image', err);
+       }
+    } else {
+       // It's an existing image, queue it for server-side Cloudinary destruction on save
+       setRemovePublicIds(prev => [...prev, pid]);
+    }
+    
+    setImagesLocal((list: any) => list.filter((i: any) => i.public_id !== pid));
+    setDeleting((s) => s.filter((x) => x !== pid));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -218,6 +247,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
         ...formData,
         tags: formData.tags.split(',').map((t: string) => t.trim()).filter(Boolean),
         images: imagesLocal,
+        removePublicIds,
         metadata: {
           ...formData.metadata,
           iso: formData.metadata.iso ? parseInt(formData.metadata.iso, 10) : undefined,
@@ -411,10 +441,11 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
                       </button>
                       <button
                         type="button"
-                        onClick={() => setImagesLocal((prev: any) => prev.filter((i: any) => i.public_id !== img.public_id))}
-                        className="rounded border border-red-900 bg-red-950/40 px-2 py-1 text-[11px] text-red-300"
+                        onClick={() => handleDeleteImage(img.public_id)}
+                        disabled={deleting.includes(img.public_id)}
+                        className="rounded border border-red-900 bg-red-950/40 px-2 py-1 text-[11px] text-red-300 disabled:opacity-40"
                       >
-                        Delete
+                        {deleting.includes(img.public_id) ? '...' : 'Delete'}
                       </button>
                     </div>
                   </div>

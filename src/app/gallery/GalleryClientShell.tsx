@@ -42,11 +42,22 @@ export default function GalleryClientShell({ initialItems, totalCount }: Gallery
 
   // Handle scroll for sticky header effect
   useEffect(() => {
+    let rafId = 0;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        const next = window.scrollY > 50;
+        setIsScrolled((prev) => (prev === next ? prev : next));
+        rafId = 0;
+      });
     };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    handleScroll();
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   // Memoize filters to prevent unnecessary re-renders

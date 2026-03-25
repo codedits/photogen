@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { memo } from 'react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
@@ -28,6 +28,33 @@ interface GalleryCardProps {
   parallax?: boolean;
 }
 
+const ParallaxMedia = memo(function ParallaxMedia({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"],
+  });
+
+  const scrollScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
+  const scale = useSpring(scrollScale, { stiffness: 100, damping: 30 });
+
+  return (
+    <div ref={containerRef} className="w-full h-full relative">
+      <motion.div
+        className="w-full h-full relative"
+        style={{ scale }}
+        transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
+});
+
 const GalleryCard = ({ 
   item, 
   index, 
@@ -39,15 +66,7 @@ const GalleryCard = ({
   parallax = false,
   height
 }: GalleryCardProps) => {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start end", "end start"]
-  });
-
-  const scrollScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
-  const scale = useSpring(scrollScale, { stiffness: 100, damping: 30 });
+  const enableEntranceAnimation = index < 12;
 
   const dateStr = item.uploadDate ? new Date(item.uploadDate).toLocaleDateString('en-US', {
     month: 'short',
@@ -79,10 +98,9 @@ const GalleryCard = ({
 
   return (
     <motion.div
-      ref={containerRef}
-      initial={{ opacity: 0, y: 8 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
+      initial={enableEntranceAnimation ? { opacity: 0, y: 8 } : false}
+      whileInView={enableEntranceAnimation ? { opacity: 1, y: 0 } : undefined}
+      viewport={enableEntranceAnimation ? { once: true, margin: "-50px" } : undefined}
       transition={{ duration: 0.5, delay: index < 6 ? 0 : (index % 3) * 0.05, ease: [0.16, 1, 0.3, 1] }}
       className={cn("w-full font-sans", className)}
     >
@@ -101,26 +119,40 @@ const GalleryCard = ({
             }}
           >
             
-            <motion.div 
-              className="w-full h-full relative"
-              style={{ scale: parallax ? scale : undefined }}
-              variants={!parallax ? {
-                rest: { scale: 1 },
-                hover: { scale: 1.05 }
-              } : undefined}
-              transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
-            >
-              <ImageWithLqip
-                src={item.images[0]?.url}
-                alt={item.name}
-                fill
-                sizes={sizes}
-                priority={priority}
-                className="object-cover transition-all duration-700 opacity-80 group-hover:opacity-100" 
-                transformOpts={transformOpts}
-                noBlur={true}
-              />
-            </motion.div>
+            {parallax ? (
+              <ParallaxMedia>
+                <ImageWithLqip
+                  src={item.images[0]?.url}
+                  alt={item.name}
+                  fill
+                  sizes={sizes}
+                  priority={priority}
+                  className="object-cover transition-all duration-700 opacity-80 group-hover:opacity-100"
+                  transformOpts={transformOpts}
+                  noBlur={true}
+                />
+              </ParallaxMedia>
+            ) : (
+              <motion.div
+                className="w-full h-full relative"
+                variants={{
+                  rest: { scale: 1 },
+                  hover: { scale: 1.05 },
+                }}
+                transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
+              >
+                <ImageWithLqip
+                  src={item.images[0]?.url}
+                  alt={item.name}
+                  fill
+                  sizes={sizes}
+                  priority={priority}
+                  className="object-cover transition-all duration-700 opacity-80 group-hover:opacity-100"
+                  transformOpts={transformOpts}
+                  noBlur={true}
+                />
+              </motion.div>
+            )}
 
             {/* --- OVERLAY GRADIENT (Cinematic fade) --- */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90 pointer-events-none" />
@@ -164,4 +196,4 @@ const GalleryCard = ({
   );
 };
 
-export default React.memo(GalleryCard);
+export default memo(GalleryCard);

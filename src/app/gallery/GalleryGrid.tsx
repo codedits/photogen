@@ -1,13 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { MapPin, Camera, X, ChevronLeft, ChevronRight, Maximize2, ArrowUpRight, Image as ImageIcon } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import ImageWithLqip from '../../components/ImageWithLqip';
+import { Camera } from 'lucide-react';
+import { motion } from 'framer-motion';
 import type { GalleryDoc } from '../api/gallery/route';
-import { cn } from '../../lib/utils';
-
-import Link from 'next/link';
 import GalleryCard from '../../components/GalleryCard';
 // --- TYPES ---
 
@@ -33,15 +29,27 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
    const [loading, setLoading] = useState(!hasInitialData);
    const [error, setError] = useState<string | null>(null);
    const [hasMore, setHasMore] = useState(hasInitialData ? (initialTotal ? initialItems!.length < initialTotal : true) : true);
-   const [page, setPage] = useState(hasInitialData ? 1 : 0);
+   const [, setPage] = useState(hasInitialData ? 1 : 0);
 
    const observerRef = useRef<HTMLDivElement>(null);
+   const pageRef = useRef(hasInitialData ? 1 : 0);
+   const hasMoreRef = useRef(hasInitialData ? (initialTotal ? initialItems!.length < initialTotal : true) : true);
+   const loadingRef = useRef(false);
+   const abortRef = useRef<AbortController | null>(null);
    const ITEMS_PER_PAGE = 14; // Even number for better grid fit
 
    const fetchItems = useCallback(async (reset = false) => {
+      if (loadingRef.current && !reset) return;
+      if (!reset && !hasMoreRef.current) return;
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       try {
+         loadingRef.current = true;
          setLoading(true);
-         const skip = reset ? 0 : page * ITEMS_PER_PAGE;
+         const skip = reset ? 0 : pageRef.current * ITEMS_PER_PAGE;
          const params = new URLSearchParams({
             limit: ITEMS_PER_PAGE.toString(),
             skip: skip.toString(),
@@ -52,25 +60,34 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
          if (filters?.featured) params.set('featured', 'true');
          if (filters?.search) params.set('q', filters.search);
 
-         const res = await fetch(`/api/gallery?${params}`);
+         const res = await fetch(`/api/gallery?${params}`, { signal: controller.signal });
          const data = await res.json();
          if (!res.ok) throw new Error(data.error);
 
          if (reset) {
             setItems(data.items || []);
             setPage(1);
+            pageRef.current = 1;
          } else {
             setItems(prev => [...prev, ...(data.items || [])]);
-            setPage(prev => prev + 1);
+            setPage(prev => {
+               const nextPage = prev + 1;
+               pageRef.current = nextPage;
+               return nextPage;
+            });
          }
-         setHasMore(data.pagination?.hasMore || false);
+         const nextHasMore = data.pagination?.hasMore || false;
+         hasMoreRef.current = nextHasMore;
+         setHasMore(nextHasMore);
          setError(null);
       } catch (err) {
+         if ((err as Error)?.name === 'AbortError') return;
          setError(err instanceof Error ? err.message : 'Error');
       } finally {
+         loadingRef.current = false;
          setLoading(false);
       }
-   }, [page, filters]);
+   }, [filters]);
 
    // Initial Load — skip if we have server-provided initial data and no filters active
    const isDefaultFilters = !filters?.category && !filters?.featured && !filters?.search;
@@ -78,8 +95,14 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
       if (hasInitialData && isDefaultFilters) return;
       setItems([]);
       setPage(0);
+      pageRef.current = 0;
+      hasMoreRef.current = true;
+      setHasMore(true);
       fetchItems(true);
-   }, [filters]);
+      return () => {
+         abortRef.current?.abort();
+      };
+   }, [filters, fetchItems, hasInitialData, isDefaultFilters]);
 
    // Infinite Scroll
    useEffect(() => {

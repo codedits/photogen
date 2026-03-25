@@ -36,27 +36,19 @@ const IMAGES = [
 function ParallaxRow({
   images,
   baseVelocity = 100,
-  scrollY,
+  velocityFactor,
   isActive,
   prefersReducedMotion,
   priorityCount = 1,
 }: {
   images: string[];
   baseVelocity: number;
-  scrollY: MotionValue<number>;
+  velocityFactor: MotionValue<number>;
   isActive: boolean;
   prefersReducedMotion: boolean;
   priorityCount?: number;
 }) {
   const baseX = useMotionValue(0);
-  const scrollVelocity = useVelocity(scrollY);
-  const smoothVelocity = useSpring(scrollVelocity, {
-    damping: 44,
-    stiffness: 280,
-  });
-  const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 5], {
-    clamp: false,
-  });
 
   /**
    * SEAMLESS LOOP REFACTOR:
@@ -117,14 +109,14 @@ function ParallaxRow({
               src={src}
               alt=""
               fill
-              className="object-cover transition-all duration-1000 ease-[cubic-bezier(0.2,0,0,1)] group-hover:scale-110 saturate-[0.9] md:saturate-[0.3] group-hover:saturate-[1.1] grayscale-0 md:grayscale-[0.4] group-hover:grayscale-0 opacity-95 md:opacity-70 group-hover:opacity-100"
+              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.2,0,0,1)] group-hover:scale-105 opacity-90 md:opacity-80 group-hover:opacity-100"
               priority={i < priorityCount}
               quality={80}
               sizes="(max-width: 768px) 240px, 350px"
             />
             {/* Brightened Indicator */}
             <div className="absolute top-4 left-4 z-10">
-               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+               <span className="text-[10px] text-white/70 font-mono uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
                  {/* Index numbering removed */}
                </span>
             </div>
@@ -151,6 +143,14 @@ export default function ParallaxGallery() {
 
   const isActive = isInView && isTabVisible;
   const { scrollY } = useScroll();
+  const scrollVelocity = useVelocity(scrollY);
+  const smoothVelocity = useSpring(scrollVelocity, {
+    damping: 44,
+    stiffness: 280,
+  });
+  const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 5], {
+    clamp: false,
+  });
 
   return (
     <section ref={sectionRef} id="gallery" className="relative overflow-hidden bg-background py-8 md:py-12">
@@ -170,14 +170,14 @@ export default function ParallaxGallery() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, amount: 0.4 }}
             transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            className="backdrop-blur-md bg-background/20 p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border border-border shadow-2xl"
+            className="backdrop-blur-md bg-background/20 p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border border-white/5 shadow-2xl"
           >
-            <h2 className="mb-6 text-3xl font-light uppercase leading-[0.9] tracking-tighter text-foreground md:text-7xl">
+            <h2 className="mb-6 text-3xl font-light uppercase leading-[0.9] tracking-tighter text-white md:text-7xl">
               Explore <br className="hidden md:block" /> the gallery
             </h2>
             <Link 
               href="/gallery"
-              className="pointer-events-auto inline-flex items-center gap-4 px-8 py-3 bg-primary text-primary-foreground text-[10px] font-normal uppercase tracking-[0.3em] rounded-full hover:bg-primary/90 transition-all duration-300"
+              className="pointer-events-auto inline-flex items-center gap-4 px-8 py-3 bg-white text-black text-[10px] font-normal uppercase tracking-[0.3em] rounded-full hover:bg-neutral-200 transition-all duration-300"
             >
               Browse Archive
             </Link>
@@ -190,7 +190,7 @@ export default function ParallaxGallery() {
         <ParallaxRow 
           images={IMAGES.slice(0, 7)} 
           baseVelocity={-0.8} 
-          scrollY={scrollY}
+          velocityFactor={velocityFactor}
           isActive={isActive}
           prefersReducedMotion={!!prefersReducedMotion}
           priorityCount={1}
@@ -198,7 +198,7 @@ export default function ParallaxGallery() {
         <ParallaxRow 
           images={IMAGES.slice(7, 14)} 
           baseVelocity={0.8} 
-          scrollY={scrollY}
+          velocityFactor={velocityFactor}
           isActive={isActive}
           prefersReducedMotion={!!prefersReducedMotion}
           priorityCount={0}

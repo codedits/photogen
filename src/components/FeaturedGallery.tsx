@@ -77,7 +77,7 @@ export default function FeaturedGallery({ items }: FeaturedGalleryProps) {
               aspectRatio="4/5"
               className="w-full"
               sizes="(max-width: 768px) 100vw, 50vw"
-              parallax={true}
+              parallax={false}
             />
           ))}
         </div>

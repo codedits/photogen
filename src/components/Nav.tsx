@@ -45,11 +45,22 @@ export default function Nav() {
   }, [pathname]);
 
   useEffect(() => {
+    let rafId = 0;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        const next = window.scrollY > 20;
+        setIsScrolled((prev) => (prev === next ? prev : next));
+        rafId = 0;
+      });
     };
+
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    handleScroll();
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, []);
 
   if (pathname.startsWith("/admin")) return null;

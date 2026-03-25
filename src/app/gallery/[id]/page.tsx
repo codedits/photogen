@@ -126,21 +126,13 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
               </div>
 
               {/* Main Description */}
-              <h2 className="text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight text-[#888888]">
+              <div className="text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight text-[#888888] prose-strong:text-white prose-strong:font-medium">
                 {item.description ? (
-                  item.description.split(/('[^']+')/g).map((part, i) => {
-                    const isQuoted = part.startsWith("'") && part.endsWith("'");
-                    const content = isQuoted ? part.slice(1, -1) : part;
-                    return (
-                      <span key={i} className={isQuoted ? 'text-white font-medium' : ''}>
-                        {content}
-                      </span>
-                    );
-                  })
+                  <div dangerouslySetInnerHTML={{ __html: item.description }} />
                 ) : (
-                  "Capturing visual stories through light and shadow."
+                  <p>Capturing visual stories through light and shadow.</p>
                 )}
-              </h2>
+              </div>
 
               {/* Availability & Action */}
               <div className="flex flex-col items-start gap-6">

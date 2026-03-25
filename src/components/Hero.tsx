@@ -6,9 +6,22 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowDownRight } from "lucide-react";
 
-const HERO_IMAGE = "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?scale-down-to=1024";
+interface HeroProps {
+  settings?: {
+    introText: string;
+    mainHeadline: string;
+    image: {
+      url: string;
+      public_id: string;
+    };
+  };
+}
 
-export default function Hero() {
+export default function Hero({ settings }: HeroProps) {
+  const introText = settings?.introText || "It's about emotion and clarity. It is the balance between structure and imagination.";
+  const mainHeadline = settings?.mainHeadline || "Art Director from Pakistan, working across brand, and campaign. My work is a dialogue between order and chaos.";
+  const heroImage = settings?.image?.url || "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?scale-down-to=1024";
+
   return (
     <section className="relative min-h-screen w-full flex flex-col justify-end selection:bg-white selection:text-black overflow-hidden">
 
@@ -21,24 +34,24 @@ export default function Hero() {
           <div className="lg:col-span-6 xl:col-span-7 flex flex-col justify-end">
 
             {/* Subtle Intro */}
-            <motion.p
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground mb-8 flex items-center gap-3"
+              className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground mb-8 flex items-center gap-3 [&>p]:inline-block"
             >
               <span className="w-8 h-px bg-foreground/30" />
-              It&apos;s about emotion and clarity. It is the balance between structure and imagination.
-            </motion.p>
+              <span dangerouslySetInnerHTML={{ __html: introText }} />
+            </motion.div>
 
             {/* Main Headline */}
             <motion.h1
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 0.4 }}
-              className="text-[clamp(2rem,5vw,3.5rem)] font-normal leading-[1.1] tracking-tight text-foreground"
+              className="text-[clamp(2rem,5vw,3.5rem)] font-normal leading-[1.1] tracking-tight text-foreground prose-strong:font-semibold prose-strong:text-foreground [&>p]:inline"
             >
-              Art Director from Pakistan, working across brand, and campaign. My work is a dialogue between order and chaos.
+              <span dangerouslySetInnerHTML={{ __html: mainHeadline }} />
             </motion.h1>
 
             {/* CTA */}
@@ -74,7 +87,7 @@ export default function Hero() {
           >
             <div className="relative aspect-[3/4] w-full max-w-md lg:max-w-none ml-auto overflow-hidden rounded-sm">
               <Image
-                src={HERO_IMAGE}
+                src={heroImage}
                 alt="Featured editorial photograph"
                 fill
                 className="object-cover"

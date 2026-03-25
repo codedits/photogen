@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, memo } from 'react';
 import { Search, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -24,41 +24,43 @@ interface GalleryFiltersProps {
   }) => void;
 }
 
-export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps) {
+function useDebouncedValue<T>(value: T, delay = 220) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(id);
+  }, [value, delay]);
+
+  return debounced;
+}
+
+function GalleryFilters({ onFiltersChange }: GalleryFiltersProps) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [isFeatured, setIsFeatured] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 250);
+
+  useEffect(() => {
+    onFiltersChange({
+      category: activeCategory === 'All' ? '' : activeCategory,
+      featured: isFeatured,
+      search: debouncedSearchQuery,
+    });
+  }, [activeCategory, isFeatured, debouncedSearchQuery, onFiltersChange]);
 
   const handleCategoryChange = useCallback((category: string) => {
-    const nextCategory = category === 'All' ? '' : category;
     setActiveCategory(category);
-    onFiltersChange({
-      category: nextCategory,
-      featured: isFeatured,
-      search: searchQuery
-    });
-  }, [isFeatured, searchQuery, onFiltersChange]);
+  }, []);
 
   const toggleFeatured = useCallback(() => {
-    const nextFeatured = !isFeatured;
-    setIsFeatured(nextFeatured);
-    onFiltersChange({
-      category: activeCategory === 'All' ? '' : activeCategory,
-      featured: nextFeatured,
-      search: searchQuery
-    });
-  }, [isFeatured, activeCategory, searchQuery, onFiltersChange]);
+    setIsFeatured((prev) => !prev);
+  }, []);
 
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    onFiltersChange({
-      category: activeCategory === 'All' ? '' : activeCategory,
-      featured: isFeatured,
-      search: query
-    });
-  }, [activeCategory, isFeatured, onFiltersChange]);
+    setSearchQuery(e.target.value);
+  }, []);
 
   return (
     <div className="flex items-center justify-between w-full">
@@ -128,4 +130,6 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
     </div>
   );
 }
+
+export default memo(GalleryFilters);
 

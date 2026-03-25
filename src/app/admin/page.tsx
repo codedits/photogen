@@ -208,12 +208,12 @@ export default function AdminPage() {
 
   if (authed === false) {
     return (
-      <div className="min-h-screen bg-zinc-950 px-4 py-10 sm:py-16">
+      <div className="min-h-screen bg-background px-4 py-10 sm:py-16">
         <div className="mx-auto w-full max-w-md">
           <form onSubmit={doLogin} className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-6 sm:p-7">
             <div className="mb-6">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Photogen</p>
-              <h1 className="mt-1 text-xl font-semibold text-zinc-100">Admin Login</h1>
+              <p className="text-xs font-normal uppercase tracking-wide text-zinc-500">Photogen</p>
+              <h1 className="mt-1 text-xl font-normal text-zinc-100">Admin Login</h1>
               <p className="mt-1 text-sm text-zinc-500">Sign in to manage presets and gallery content.</p>
             </div>
 
@@ -224,7 +224,7 @@ export default function AdminPage() {
                   value={pwd} 
                   onChange={(e)=>setPwd(e.target.value)} 
                   placeholder="Enter password" 
-                  className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 pr-11 text-sm text-zinc-100 outline-none focus:border-zinc-500" 
+                  className="w-full rounded-md border border-zinc-700 bg-background px-3 py-2.5 pr-11 text-sm text-zinc-100 outline-none focus:border-zinc-500" 
                   required 
                 />
                 <button
@@ -241,7 +241,7 @@ export default function AdminPage() {
                   type="checkbox"
                   checked={remember}
                   onChange={(e)=>setRemember(e.target.checked)}
-                  className="h-4 w-4 rounded border-zinc-700 bg-zinc-950"
+                  className="h-4 w-4 rounded border-zinc-700 bg-background"
                 />
                 Keep me logged in
               </label>
@@ -274,7 +274,7 @@ export default function AdminPage() {
 
   if (authed === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 text-zinc-300 animate-spin" />
           <p className="text-zinc-400 text-sm">Checking session...</p>
@@ -287,7 +287,7 @@ export default function AdminPage() {
 
   return (
     <ToastContext.Provider value={toastContextValue}>
-      <div className="min-h-screen bg-zinc-950 flex">
+      <div className="min-h-screen bg-background flex">
         <AdminSidebar 
           activeTab={activeTab} 
           setActiveTab={handleSetActiveTab} 
@@ -310,7 +310,7 @@ export default function AdminPage() {
             ] : undefined}
           />
           
-          <main className="flex-1 overflow-y-auto bg-zinc-950">
+          <main className="flex-1 overflow-y-auto bg-background">
             <div className="mx-auto w-full max-w-[1400px] p-4 md:p-6">
               <Suspense fallback={
                 <div className="flex items-center justify-center h-64">

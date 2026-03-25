@@ -79,7 +79,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
   // --- 404 STATE ---
   if (!preset) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#050505] text-white space-y-6">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-white space-y-6">
         <div className="relative">
           <Layers className="w-16 h-16 text-neutral-800" />
           <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
@@ -91,7 +91,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
           </p>
           <Link 
             href="/presets" 
-            className="px-6 py-3 border border-white/20 hover:bg-white hover:text-black hover:border-transparent text-xs font-bold uppercase tracking-[0.2em] transition-all"
+            className="px-6 py-3 border border-white/20 hover:bg-white hover:text-black hover:border-transparent text-xs font-normal uppercase tracking-[0.2em] transition-all"
           >
             Return to Index
           </Link>
@@ -104,7 +104,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
   const images = Array.isArray(preset.images) ? preset.images : [];
 
   return (
-    <main className="min-h-screen bg-[#050505] text-[#e1e1e1] selection:bg-white/20">
+    <main className="min-h-screen bg-background text-[#e1e1e1] selection:bg-white/20">
       
       {/* Global Grain Texture */}
       <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay" 
@@ -117,7 +117,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
           className="group flex items-center gap-2 px-4 py-2 bg-black/50 backdrop-blur-md border border-white/10 rounded-full hover:bg-white hover:text-black transition-all"
         >
           <ArrowLeft className="w-3 h-3 transition-transform group-hover:-translate-x-1" />
-          <span className="text-[10px] uppercase tracking-widest font-bold">Back</span>
+          <span className="text-[10px] uppercase tracking-widest font-normal">Back</span>
         </Link>
       </nav>
 
@@ -130,7 +130,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
         </div>
 
         {/* RIGHT: DETAILS SIDEBAR (35% width) */}
-        <aside className="w-full lg:w-[35%] xl:w-[30%] bg-[#050505] border-l-0 lg:border-l border-white/10 flex flex-col relative z-20">
+        <aside className="w-full lg:w-[35%] xl:w-[30%] bg-background border-l-0 lg:border-l border-white/10 flex flex-col relative z-20">
           
           <div className="p-8 lg:p-12 flex-grow">
             
@@ -153,7 +153,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
 
             {/* Description */}
             <div className="mb-12">
-              <h3 className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/40 mb-3 font-mono">
+              <h3 className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/60 mb-3 font-mono">
                 <Info className="w-3 h-3" /> Info
               </h3>
               <p className="text-sm leading-7 text-white/70 font-light">
@@ -165,7 +165,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
 
             {/* Tags */}
             <div className="mb-12">
-              <h3 className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/40 mb-3 font-mono">
+              <h3 className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/60 mb-3 font-mono">
                 <Hash className="w-3 h-3" /> Attributes
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -179,7 +179,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
                     </span>
                   ))
                 ) : (
-                  <span className="text-[10px] text-white/20 font-mono">NULL</span>
+                  <span className="text-[10px] text-white/45 font-mono">NULL</span>
                 )}
               </div>
             </div>
@@ -187,18 +187,18 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
             {/* Metadata (Visual Filler) */}
             <div className="grid grid-cols-2 gap-4 pt-8 border-t border-white/10">
                <div>
-                  <span className="block text-[9px] uppercase tracking-widest text-white/30 mb-1">ID</span>
+                  <span className="block text-[9px] uppercase tracking-widest text-white/50 mb-1">ID</span>
                   <span className="font-mono text-[10px] text-white/60">{preset._id.toString().slice(-6).toUpperCase()}</span>
                </div>
                <div>
-                  <span className="block text-[9px] uppercase tracking-widest text-white/30 mb-1">Type</span>
+                  <span className="block text-[9px] uppercase tracking-widest text-white/50 mb-1">Type</span>
                   <span className="font-mono text-[10px] text-white/60">DIGITAL ASSET</span>
                </div>
             </div>
           </div>
 
           {/* Sticky Bottom Actions */}
-          <div className="sticky bottom-0 p-8 bg-[#050505]/90 backdrop-blur-lg border-t border-white/10">
+          <div className="sticky bottom-0 p-8 bg-background/90 backdrop-blur-lg border-t border-white/10">
             {preset.dng?.url ? (
               <a
                 href={preset.dng.url}
@@ -206,18 +206,18 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
                 rel="noopener noreferrer"
                 className="group relative w-full flex items-center justify-center gap-3 py-4 bg-white text-black hover:bg-neutral-200 transition-colors"
               >
-                <span className="text-xs font-bold uppercase tracking-[0.2em]">Download Asset</span>
+                <span className="text-xs font-normal uppercase tracking-[0.2em]">Download Asset</span>
                 <Download className="w-4 h-4" />
                 {/* Hover Effect Line */}
                 <div className="absolute bottom-0 left-0 h-[2px] w-0 bg-black transition-all duration-300 group-hover:w-full" />
               </a>
             ) : (
-              <button disabled className="w-full flex items-center justify-center gap-2 py-4 bg-white/5 text-white/20 cursor-not-allowed border border-white/5">
+              <button disabled className="w-full flex items-center justify-center gap-2 py-4 bg-white/5 text-white/45 cursor-not-allowed border border-white/5">
                 <AlertCircle className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-[0.2em]">Unavailable</span>
+                <span className="text-xs font-normal uppercase tracking-[0.2em]">Unavailable</span>
               </button>
             )}
-            <p className="text-center mt-3 text-[9px] text-white/30 uppercase tracking-widest">
+            <p className="text-center mt-3 text-[9px] text-white/50 uppercase tracking-widest">
               Commercial License Included
             </p>
           </div>

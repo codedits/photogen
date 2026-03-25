@@ -22,7 +22,7 @@ export default function AdminHeader({
   revalidating 
 }: AdminHeaderProps) {
   return (
-    <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-zinc-800 bg-zinc-950 sticky top-0 z-30">
+    <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-zinc-800 bg-background sticky top-0 z-30">
       <div className="flex items-center gap-3 min-w-0">
         <button 
           onClick={onMenuClick}
@@ -51,11 +51,11 @@ export default function AdminHeader({
               ))}
             </nav>
           ) : (
-            <h1 className="text-base font-semibold text-zinc-100 capitalize">{title}</h1>
+            <h1 className="text-base font-normal text-zinc-100 capitalize">{title}</h1>
           )}
         </div>
         
-        <h1 className="md:hidden text-base font-semibold text-zinc-100 capitalize truncate">{title}</h1>
+        <h1 className="md:hidden text-base font-normal text-zinc-100 capitalize truncate">{title}</h1>
       </div>
       
       <div className="flex items-center gap-3">

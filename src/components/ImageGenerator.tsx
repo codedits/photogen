@@ -1,8 +1,19 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+
+const LOADING_MESSAGES = [
+  "Connecting to server…",
+  "Creating variations…",
+  "Composing the scene…",
+  "Refining details…",
+  "Applying style…",
+  "Optimizing colors…",
+  "Rendering at high quality…",
+  "Preparing final touches…",
+];
 
 // --- Custom Icons ---
 const PlusIcon = () => (
@@ -73,24 +84,14 @@ export default function ImageGenerator() {
   const ratioMenuRef = useRef<HTMLDivElement>(null);
 
   // Polling & Generation Refs
-  const pollTimerRef = useRef<any>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const pollCountRef = useRef<number>(0);
   const [loadingMessage, setLoadingMessage] = useState<string>("Initializing...");
   const [progress, setProgress] = useState<number>(0);
-  const messageTimerRef = useRef<any>(null);
-  const progressTimerRef = useRef<any>(null);
-
-  const LOADING_MESSAGES = [
-    "Connecting to server…",
-    "Creating variations…",
-    "Composing the scene…",
-    "Refining details…",
-    "Applying style…",
-    "Optimizing colors…",
-    "Rendering at high quality…",
-    "Preparing final touches…",
-  ];
+  const messageTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
 
   // --- HANDLERS ---
 
@@ -98,14 +99,25 @@ export default function ImageGenerator() {
     if (messageTimerRef.current) clearInterval(messageTimerRef.current);
     if (progressTimerRef.current) clearInterval(progressTimerRef.current);
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    messageTimerRef.current = null;
+    progressTimerRef.current = null;
+    pollTimerRef.current = null;
+  }, []);
+
+  const clearObjectUrl = useCallback(() => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
   }, []);
 
   useEffect(() => {
     return () => {
       clearTimers();
+      clearObjectUrl();
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [clearTimers]);
+  }, [clearTimers, clearObjectUrl]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -166,7 +178,9 @@ export default function ImageGenerator() {
       const contentType = res.headers.get("content-type") || "";
       if (contentType.includes("image/")) {
         const blob = await res.blob();
+        clearObjectUrl();
         const objectUrl = URL.createObjectURL(blob);
+        objectUrlRef.current = objectUrl;
         finishSuccess([objectUrl]);
         return;
       }
@@ -196,7 +210,7 @@ export default function ImageGenerator() {
       setLoading(false);
       clearTimers();
     }
-  }, [finishSuccess, clearTimers]);
+  }, [finishSuccess, clearObjectUrl, clearTimers]);
 
   async function handleGenerate(e?: React.FormEvent) {
     if (e) e.preventDefault();
@@ -207,19 +221,23 @@ export default function ImageGenerator() {
 
     setLoading(true);
     setError(null);
+    clearObjectUrl();
     setImageUrl(null);
     setUrls(null);
     setImageLoaded(false);
     setProgress(5);
     pollCountRef.current = 0;
+    clearTimers();
 
     messageTimerRef.current = setInterval(() => {
+      if (document.hidden) return;
       setLoadingMessage(LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)]);
-    }, 2000);
+    }, 2500);
 
     progressTimerRef.current = setInterval(() => {
+      if (document.hidden) return;
       setProgress((p) => Math.min(90, p + (Math.random() * 2)));
-    }, 1000);
+    }, 1200);
 
     try {
       const q = new URLSearchParams({ text: prompt, ratio, model });
@@ -302,10 +320,10 @@ export default function ImageGenerator() {
               className="w-full max-w-[680px] p-8 rounded-3xl border border-red-500/20 bg-red-500/5 text-center flex flex-col items-center gap-4"
             >
               <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
-                <span className="text-red-500 text-xl font-bold">!</span>
+                <span className="text-red-500 text-xl font-normal">!</span>
               </div>
               <p className="text-red-400 text-sm leading-relaxed">{error}</p>
-              <button onClick={() => setError(null)} className="text-[10px] uppercase tracking-widest text-white/40 hover:text-white transition-colors">Dismiss</button>
+              <button onClick={() => setError(null)} className="text-[10px] uppercase tracking-widest text-white/60 hover:text-white transition-colors">Dismiss</button>
             </motion.div>
           )}
 
@@ -325,7 +343,7 @@ export default function ImageGenerator() {
               </div>
               <div className="space-y-2">
                 <p className="text-white/80 text-sm tracking-widest uppercase font-medium">{loadingMessage}</p>
-                <p className="text-white/20 text-[10px] font-mono">{Math.round(progress)}% COMPLETE</p>
+                <p className="text-white/45 text-[10px] font-mono">{Math.round(progress)}% COMPLETE</p>
               </div>
             </motion.div>
           )}
@@ -372,14 +390,14 @@ export default function ImageGenerator() {
               }}
               disabled={loading}
               placeholder={loading ? "Synthesizing pixels..." : "Describe the image you want to create..."}
-              className="w-full bg-transparent text-white/95 placeholder:text-white/30 focus:outline-none resize-none min-h-[44px] max-h-[150px] sm:max-h-[200px] text-[15px] sm:text-[16px] leading-relaxed px-2 overflow-y-auto custom-scrollbar disabled:cursor-not-allowed transition-opacity duration-500"
+              className="w-full bg-transparent text-white/95 placeholder:text-white/50 focus:outline-none resize-none min-h-[44px] max-h-[150px] sm:max-h-[200px] text-[15px] sm:text-[16px] leading-relaxed px-2 overflow-y-auto custom-scrollbar disabled:cursor-not-allowed transition-opacity duration-500"
               rows={1}
             />
 
             <div className="flex items-center justify-between pt-1">
               <div className="flex items-center gap-1 sm:gap-2">
                 <button
-                  className="p-2 sm:p-2.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-full transition-all duration-200 disabled:opacity-20 active:scale-95"
+                  className="p-2 sm:p-2.5 text-white/60 hover:text-white/80 hover:bg-white/10 rounded-full transition-all duration-200 disabled:opacity-20 active:scale-95"
                   disabled={loading}
                   aria-label="Add attachment"
                 >
@@ -462,7 +480,7 @@ export default function ImageGenerator() {
                     ? 'bg-white text-black opacity-100 scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)]'
                     : canGenerate
                       ? 'bg-white text-black hover:bg-gray-200 shadow-[0_4px_14px_rgba(255,255,255,0.25)] transform hover:scale-105 active:scale-95'
-                      : 'bg-[#333] text-white/20'
+                      : 'bg-[#333] text-white/45'
                   }`}
               >
                 {loading ? (

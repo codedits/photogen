@@ -112,7 +112,7 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
                   placeholder="FILTER BY NAME"
                   value={searchQuery}
                   onChange={handleSearch}
-                  className="bg-transparent border-b border-white/20 text-[11px] tracking-widest uppercase w-full py-1 focus:outline-none focus:border-white transition-all placeholder:text-white/30"
+                  className="bg-transparent border-b border-white/20 text-[11px] tracking-widest uppercase w-full py-1 focus:outline-none focus:border-white transition-all placeholder:text-white/50"
                 />
               </motion.div>
             )}

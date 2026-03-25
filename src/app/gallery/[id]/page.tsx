@@ -72,13 +72,13 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
 
   if (!item || item.visibility === 'private') {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#050505] text-white space-y-6">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-white space-y-6">
         <Camera className="w-16 h-16 text-neutral-800" />
         <div className="text-center">
           <h2 className="text-xl font-light tracking-tighter uppercase mb-2">Item Not Found</h2>
           <Link 
             href="/gallery" 
-            className="px-6 py-3 border border-white/20 hover:bg-white hover:text-black text-xs font-bold uppercase tracking-[0.2em] transition-all"
+            className="px-6 py-3 border border-white/20 hover:bg-white hover:text-black text-xs font-normal uppercase tracking-[0.2em] transition-all"
           >
             Return to Gallery
           </Link>
@@ -88,7 +88,7 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
   }
   
   return (
-    <main className="min-h-screen bg-[#0d0d0d] text-white font-sans selection:bg-white/20">
+    <main className="min-h-screen bg-background text-white font-sans selection:bg-white/20">
       <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-10 pt-28 md:pt-32 pb-4 md:pb-8 lg:pb-10">
         
         {/* Main Layout Grid */}
@@ -120,7 +120,7 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
                   />
                 </div>
                 <div>
-                  <h1 className="text-white font-semibold text-[17px] tracking-tight leading-tight">{item.name}</h1>
+                  <h1 className="text-white font-normal text-[17px] tracking-tight leading-tight">{item.name}</h1>
                   <p className="text-[#a1a1aa] text-[14px] uppercase tracking-widest mt-1 opacity-60">{item.category}</p>
                 </div>
               </div>
@@ -151,7 +151,7 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
                 
                 <Link 
                   href="/contact"
-                  className="bg-white text-black font-semibold text-[14px] uppercase tracking-widest px-8 py-3.5 rounded-full hover:bg-neutral-200 transition-all duration-300 hover:scale-105 active:scale-95"
+                  className="bg-white text-black font-normal text-[14px] uppercase tracking-widest px-8 py-3.5 rounded-full hover:bg-neutral-200 transition-all duration-300 hover:scale-105 active:scale-95"
                 >
                   Inquiry
                 </Link>
@@ -162,16 +162,16 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
 
               {/* Editorial Logos */}
               <div className="flex items-center gap-6 opacity-30 grayscale flex-wrap pointer-events-none">
-                <div className="font-bold text-xl tracking-tighter">LUMINA</div>
-                <div className="font-bold text-xl tracking-tighter">STUDIO</div>
-                <div className="font-bold text-xl tracking-widest uppercase text-sm">Vogue</div>
-                <div className="font-bold text-xl tracking-tighter">KINFORK</div>
+                <div className="font-normal text-xl tracking-tighter">LUMINA</div>
+                <div className="font-normal text-xl tracking-tighter">STUDIO</div>
+                <div className="font-normal text-xl tracking-widest uppercase text-sm">Vogue</div>
+                <div className="font-normal text-xl tracking-tighter">KINFORK</div>
               </div>
 
               {/* Technical Details */}
               <div className="mt-8 flex flex-col gap-6">
                 <div>
-                  <h3 className="text-white font-bold text-[17px] mb-3">About this series.</h3>
+                  <h3 className="text-white font-normal text-[17px] mb-3">About this series.</h3>
                   <p className="text-zinc-300 text-[15px] leading-relaxed max-w-[95%] font-light">
                     This collection was curated to showcase the intersection of environmental context and human narrative. 
                     {item.location && ` Captured in ${item.location}. `}
@@ -181,12 +181,12 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
                 
                 <div className="grid grid-cols-2 gap-8">
                   <div>
-                    <span className="text-white font-semibold text-sm block mb-1">{item.images.length}+ Assets</span>
+                    <span className="text-white font-normal text-sm block mb-1">{item.images.length}+ Assets</span>
                     <span className="text-[#a1a1aa] text-[13px] uppercase tracking-wider">High-Res Plates</span>
                   </div>
                   {item.equipment && (
                     <div>
-                      <span className="text-white font-bold text-sm block mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                      <span className="text-white font-normal text-sm block mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
                         {item.equipment.split(' ')[0]}
                       </span>
                       <span className="text-[#a1a1aa] text-[13px] uppercase tracking-wider">Primary Optic</span>
@@ -209,11 +209,11 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
       <div className="fixed bottom-8 right-8 flex flex-col items-end gap-3 z-50 pointer-events-none hidden md:flex">
         <Link 
           href="/contact"
-          className="pointer-events-auto bg-white text-black font-bold text-[11px] uppercase tracking-widest px-6 py-3 rounded-full shadow-2xl hover:bg-neutral-200 transition-transform hover:scale-105 active:scale-95"
+          className="pointer-events-auto bg-white text-black font-normal text-[11px] uppercase tracking-widest px-6 py-3 rounded-full shadow-2xl hover:bg-neutral-200 transition-transform hover:scale-105 active:scale-95"
         >
           Book a Session
         </Link>
-        <button className="pointer-events-auto bg-[#1a1a1a]/80 backdrop-blur-xl text-white/40 font-bold text-[10px] uppercase tracking-widest px-6 py-3 rounded-full border border-white/5 shadow-2xl hover:text-white transition-all">
+        <button className="pointer-events-auto bg-[#1a1a1a]/80 backdrop-blur-xl text-white/60 font-normal text-[10px] uppercase tracking-widest px-6 py-3 rounded-full border border-white/5 shadow-2xl hover:text-white transition-all">
           Shared with PhotoGen
         </button>
       </div>

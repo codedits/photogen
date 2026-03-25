@@ -256,7 +256,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
             <ArrowLeft size={16} />
           </button>
           <div>
-            <h2 className="text-lg font-semibold text-zinc-100">{preset ? 'Edit Preset' : 'Create Preset'}</h2>
+            <h2 className="text-lg font-normal text-zinc-100">{preset ? 'Edit Preset' : 'Create Preset'}</h2>
             <p className="text-sm text-zinc-500">Clean metadata, clear previews, and ordered image set.</p>
           </div>
         </div>
@@ -286,7 +286,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <section className="space-y-5 lg:col-span-2">
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 flex items-center gap-2">
+            <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
               <Info size={14} />
               Preset Details
             </h3>
@@ -328,7 +328,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 flex items-center gap-2">
+              <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
                 <ImageIcon size={14} />
                 Preview Images
               </h3>
@@ -362,7 +362,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
                     <div className="relative aspect-square">
                       <ImageWithLqip src={img.url} alt="preset" fill className="object-cover" transformOpts={{ w: 300, h: 300, fit: 'cover' }} />
                       {idx === 0 && (
-                        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-900">
+                        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-normal text-zinc-900">
                           <Star size={10} /> Cover
                         </span>
                       )}
@@ -440,7 +440,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
 
         <aside className="space-y-5">
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 flex items-center gap-2">
+            <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
               <Link2 size={14} />
               Download
             </h3>
@@ -461,7 +461,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
           </div>
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 text-xs text-zinc-400 space-y-2">
-            <p className="font-semibold uppercase tracking-wide text-zinc-500">Tips</p>
+            <p className="font-normal uppercase tracking-wide text-zinc-500">Tips</p>
             <p>Use 4 to 8 preview images and place the strongest image as cover.</p>
             <p>Reorder controls define the exact public gallery sequence.</p>
           </div>

@@ -10,22 +10,22 @@ const HERO_IMAGE = "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO
 
 export default function Hero() {
   return (
-    <section className="relative min-h-screen w-full flex flex-col justify-end bg-black selection:bg-white selection:text-black overflow-hidden">
-      
+    <section className="relative min-h-screen w-full flex flex-col justify-end selection:bg-white selection:text-black overflow-hidden">
+
       {/* Content */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 pb-16 md:pb-24 pt-32">
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-end">
-          
+
           {/* Left: Editorial Text */}
           <div className="lg:col-span-6 xl:col-span-7 flex flex-col justify-end">
-            
+
             {/* Subtle Intro */}
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-[11px] uppercase tracking-[0.3em] text-white/40 mb-8 flex items-center gap-3"
+              className="text-[11px] uppercase tracking-[0.3em] text-white/60 mb-8 flex items-center gap-3"
             >
               <span className="w-8 h-px bg-white/20" />
               It&apos;s about emotion and clarity. It is the balance between structure and imagination.
@@ -95,11 +95,11 @@ export default function Hero() {
         transition={{ delay: 1.5 }}
         className="absolute bottom-8 right-8 z-20 hidden md:block"
       >
-        <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-white/30 transition-all cursor-pointer">
+        <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:border-white/30 transition-all cursor-pointer">
           <ArrowDownRight className="w-4 h-4" />
         </div>
       </motion.div>
 
     </section>
   );
-}
+}

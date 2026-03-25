@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   motion,
@@ -10,6 +10,9 @@ import {
   useMotionValue,
   useVelocity,
   useAnimationFrame,
+  useInView,
+  useReducedMotion,
+  type MotionValue,
 } from "framer-motion";
 import Link from "next/link";
 
@@ -30,25 +33,29 @@ const IMAGES = [
   "https://framerusercontent.com/images/yqa8LtbxWvlsHn9yYkxT7qrKZdY.jpeg?width=960&height=1200",
 ];
 
-const DOUBLE_IMAGES = [...IMAGES, ...IMAGES];
-
 function ParallaxRow({
   images,
   baseVelocity = 100,
   scrollY,
+  isActive,
+  prefersReducedMotion,
+  priorityCount = 1,
 }: {
   images: string[];
   baseVelocity: number;
-  scrollY: any;
+  scrollY: MotionValue<number>;
+  isActive: boolean;
+  prefersReducedMotion: boolean;
+  priorityCount?: number;
 }) {
   const baseX = useMotionValue(0);
   const scrollVelocity = useVelocity(scrollY);
   const smoothVelocity = useSpring(scrollVelocity, {
-    damping: 50,
-    stiffness: 400
+    damping: 44,
+    stiffness: 280,
   });
   const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 5], {
-    clamp: false
+    clamp: false,
   });
 
   /**
@@ -59,8 +66,26 @@ function ParallaxRow({
   const x = useTransform(baseX, (v) => `${((v % 50) - 50) % 50}%`);
 
   const directionFactor = useRef<number>(1);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
+
   useAnimationFrame((t, delta) => {
+    if (!isActive || prefersReducedMotion) return;
+
     let moveBy = directionFactor.current * baseVelocity * (delta / 1000);
+
+    if (isMobileViewport) {
+      baseX.set(baseX.get() + moveBy * 1.6);
+      return;
+    }
 
     if (velocityFactor.get() < 0) {
       directionFactor.current = -1;
@@ -73,7 +98,7 @@ function ParallaxRow({
     baseX.set(baseX.get() + moveBy);
   });
 
-  const allImages = [...images, ...images];
+  const allImages = useMemo(() => [...images, ...images], [images]);
 
   return (
     <div className="flex whitespace-nowrap overflow-hidden">
@@ -85,7 +110,7 @@ function ParallaxRow({
           <motion.div
             key={`${src}-${i}`}
             className="group relative h-[350px] w-[240px] md:h-[500px] md:w-[350px] shrink-0 overflow-hidden bg-neutral-900"
-            whileHover={{ scale: 0.98 }}
+            whileHover={isMobileViewport ? undefined : { scale: 0.98 }}
             transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
           >
              <Image
@@ -93,7 +118,7 @@ function ParallaxRow({
               alt=""
               fill
               className="object-cover transition-all duration-1000 ease-[cubic-bezier(0.2,0,0,1)] group-hover:scale-110 saturate-[0.9] md:saturate-[0.3] group-hover:saturate-[1.1] grayscale-0 md:grayscale-[0.4] group-hover:grayscale-0 opacity-95 md:opacity-70 group-hover:opacity-100"
-              priority={i < 4}
+              priority={i < priorityCount}
               quality={80}
               sizes="(max-width: 768px) 240px, 350px"
             />
@@ -111,17 +136,31 @@ function ParallaxRow({
 }
 
 export default function ParallaxGallery() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const isInView = useInView(sectionRef, { margin: "200px 0px 200px 0px" });
+  const prefersReducedMotion = useReducedMotion();
+  const [isTabVisible, setIsTabVisible] = useState(true);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const handleVisibility = () => setIsTabVisible(!document.hidden);
+    handleVisibility();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
+
+  const isActive = isInView && isTabVisible;
   const { scrollY } = useScroll();
 
   return (
-    <section id="gallery" className="relative overflow-hidden bg-black py-8 md:py-12">
+    <section ref={sectionRef} id="gallery" className="relative overflow-hidden bg-background py-8 md:py-12">
       {/* Intense DEEP Vignette Overlays */}
       {/* Intense DEEP Vignette Overlays - Shortened for "longness" reduction */}
-      <div className="absolute inset-x-0 top-0 z-30 h-16 md:h-64 bg-gradient-to-b from-black via-black/60 to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 z-30 h-16 md:h-64 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
-      <div className="absolute inset-y-0 left-0 z-30 w-8 md:w-40 bg-gradient-to-r from-black via-black/60 to-transparent pointer-events-none" />
-      <div className="absolute inset-y-0 right-0 z-30 w-8 md:w-40 bg-gradient-to-l from-black via-black/60 to-transparent pointer-events-none" />
-      <div className="absolute inset-0 z-20 bg-black/40 pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 z-30 h-16 md:h-64 bg-gradient-to-b from-background via-background/60 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 z-30 h-16 md:h-64 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
+      <div className="absolute inset-y-0 left-0 z-30 w-8 md:w-40 bg-gradient-to-r from-background via-background/60 to-transparent pointer-events-none" />
+      <div className="absolute inset-y-0 right-0 z-30 w-8 md:w-40 bg-gradient-to-l from-background via-background/60 to-transparent pointer-events-none" />
+      <div className="absolute inset-0 z-20 bg-background/40 pointer-events-none" />
 
       {/* Center Floating Text */}
       <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center text-center">
@@ -129,15 +168,16 @@ export default function ParallaxGallery() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, amount: 0.4 }}
             transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            className="backdrop-blur-md bg-black/20 p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border border-white/5 shadow-2xl"
+            className="backdrop-blur-md bg-background/20 p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border border-white/5 shadow-2xl"
           >
             <h2 className="mb-6 text-3xl font-light uppercase leading-[0.9] tracking-tighter text-white md:text-7xl">
               Explore <br className="hidden md:block" /> the gallery
             </h2>
             <Link 
               href="/gallery"
-              className="pointer-events-auto inline-flex items-center gap-4 px-8 py-3 bg-white text-black text-[10px] font-bold uppercase tracking-[0.3em] rounded-full hover:bg-neutral-200 transition-all duration-300"
+              className="pointer-events-auto inline-flex items-center gap-4 px-8 py-3 bg-white text-black text-[10px] font-normal uppercase tracking-[0.3em] rounded-full hover:bg-neutral-200 transition-all duration-300"
             >
               Browse Archive
             </Link>
@@ -150,12 +190,18 @@ export default function ParallaxGallery() {
         <ParallaxRow 
           images={IMAGES.slice(0, 7)} 
           baseVelocity={-0.8} 
-          scrollY={scrollY} 
+          scrollY={scrollY}
+          isActive={isActive}
+          prefersReducedMotion={!!prefersReducedMotion}
+          priorityCount={1}
         />
         <ParallaxRow 
           images={IMAGES.slice(7, 14)} 
           baseVelocity={0.8} 
-          scrollY={scrollY} 
+          scrollY={scrollY}
+          isActive={isActive}
+          prefersReducedMotion={!!prefersReducedMotion}
+          priorityCount={0}
         />
       </div>
     </section>

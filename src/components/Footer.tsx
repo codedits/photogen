@@ -9,7 +9,7 @@ export default function Footer() {
   if (pathname.startsWith('/admin')) return null;
 
   return (
-    <footer className="bg-[#050505] text-white border-t border-white/[0.06]">
+    <footer className="relative pt-24 pb-12 overflow-hidden bg-background text-white border-t border-white/[0.06]">
       <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16">
         
         {/* Main Grid */}
@@ -18,7 +18,7 @@ export default function Footer() {
           {/* Brand & Description */}
           <div className="md:col-span-5">
             <h4 className="text-sm font-medium tracking-tight mb-5 uppercase">PhotoGen</h4>
-            <p className="text-[13px] text-white/40 leading-relaxed max-w-sm">
+            <p className="text-[13px] text-white/60 leading-relaxed max-w-sm">
               The intersection of artificial intelligence and professional photography. Elevating visual storytelling through intelligent tools.
             </p>
             <a 
@@ -70,8 +70,8 @@ export default function Footer() {
         
         {/* Bottom Bar */}
         <div className="py-6 border-t border-white/[0.04] flex flex-col sm:flex-row justify-between items-center gap-2">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-white/20">© 2025 PhotoGen</p>
-          <p className="text-[10px] uppercase tracking-[0.15em] text-white/20">Built by _visualsbytalha</p>
+          <p className="text-[10px] uppercase tracking-[0.15em] text-white/45">© 2025 PhotoGen</p>
+          <p className="text-[10px] uppercase tracking-[0.15em] text-white/45">Built by _visualsbytalha</p>
         </div>
       </div>
     </footer>

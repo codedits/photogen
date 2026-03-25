@@ -53,7 +53,7 @@ export default function GalleryClientShell({ initialItems, totalCount }: Gallery
   const memoizedFilters = useMemo(() => filters, [filters.category, filters.featured, filters.search]);
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white selection:bg-white/20">
+    <main className="min-h-screen text-white selection:bg-white/20">
       {/* Minimal Header */}
       <section className="pt-24 pb-12 px-6 md:px-12">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -72,7 +72,7 @@ export default function GalleryClientShell({ initialItems, totalCount }: Gallery
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 1 }}
-              className="text-[11px] font-mono text-white/40 uppercase tracking-widest"
+              className="text-[11px] font-mono text-white/60 uppercase tracking-widest"
             >
               Index_{totalCount.toString().padStart(3, '0')}
             </motion.span>
@@ -86,16 +86,16 @@ export default function GalleryClientShell({ initialItems, totalCount }: Gallery
         <div className={cn(
           "sticky top-0 z-40 w-full transition-all duration-700 border-b",
           isScrolled 
-            ? "bg-black/90 backdrop-blur-2xl border-white/10 py-6" 
-            : "bg-[#050505] border-white/5 py-8"
+            ? "bg-background/90 backdrop-blur-2xl border-white/10 py-6" 
+            : "border-white/5 py-8"
         )}>
           <div className="max-w-7xl mx-auto px-6 md:px-12">
             <GalleryFilters onFiltersChange={setFilters} />
           </div>
         </div>
         
-        {/* Grid Container */}
-        <div className="max-w-[1600px] mx-auto px-4 md:px-8 mt-8 md:mt-12">
+        {/* Full-Bleed Grid Container */}
+        <div className="max-w-[100vw] mx-auto px-0 mt-8 md:mt-12">
           <GalleryGrid 
             filters={memoizedFilters} 
             initialItems={initialItems} 

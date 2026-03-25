@@ -42,14 +42,14 @@ export default function ContactPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-zinc-500 animate-spin" />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-black font-sans selection:bg-white selection:text-black overflow-x-hidden relative">
+    <main className="min-h-screen bg-background font-sans selection:bg-white selection:text-black overflow-x-hidden relative">
       {/* Cinematic Background Image */}
       <div className="fixed inset-0 z-0">
         <motion.div 
@@ -65,10 +65,10 @@ export default function ContactPage() {
           />
         </motion.div>
         {/* Gradients for depth and readability */}
-        <div className="absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-black via-black/40 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-96 bg-gradient-to-t from-black via-black/60 to-transparent" />
-        <div className="absolute inset-y-0 left-0 w-full lg:w-1/2 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
+        <div className="absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-background via-background/40 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-96 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="absolute inset-y-0 left-0 w-full lg:w-1/2 bg-gradient-to-r from-background/80 via-background/40 to-transparent" />
+        <div className="absolute inset-0 bg-background/30 backdrop-blur-[2px]" />
       </div>
 
       {/* Background Decor */}
@@ -86,7 +86,7 @@ export default function ContactPage() {
               <motion.h1 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-6xl md:text-8xl font-bold tracking-tighter text-white leading-[0.9]"
+                className="text-6xl md:text-8xl font-normal tracking-tighter text-white leading-[0.9]"
               >
                 Let&apos;s <br />
                 <span className="text-zinc-600">Connect.</span>
@@ -108,7 +108,7 @@ export default function ContactPage() {
                     <Mail size={20} className="text-zinc-400" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-600 mb-1">Email</p>
+                    <p className="text-xs font-normal uppercase tracking-widest text-zinc-600 mb-1">Email</p>
                     <a href={`mailto:${settings?.email}`} className="text-lg text-white hover:text-zinc-400 transition-colors">
                       {settings?.email}
                     </a>
@@ -120,7 +120,7 @@ export default function ContactPage() {
                     <Phone size={20} className="text-zinc-400" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-600 mb-1">Phone</p>
+                    <p className="text-xs font-normal uppercase tracking-widest text-zinc-600 mb-1">Phone</p>
                     <p className="text-lg text-white">{settings?.phone}</p>
                   </div>
                 </div>
@@ -130,7 +130,7 @@ export default function ContactPage() {
                     <MapPin size={20} className="text-zinc-400" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-600 mb-1">Studio</p>
+                    <p className="text-xs font-normal uppercase tracking-widest text-zinc-600 mb-1">Studio</p>
                     <p className="text-lg text-white whitespace-pre-line">{settings?.address}</p>
                   </div>
                 </div>
@@ -172,13 +172,13 @@ export default function ContactPage() {
                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-zinc-100 text-zinc-900">
                   <CheckCircle size={40} />
                 </div>
-                <h2 className="text-3xl font-bold text-white tracking-tight">Message Sent!</h2>
+                <h2 className="text-3xl font-normal text-white tracking-tight">Message Sent!</h2>
                 <p className="text-zinc-400 max-w-xs mx-auto">
                   Thank you for reaching out. We&apos;ll get back to you within 24 hours.
                 </p>
                 <button 
                   onClick={() => setStatus('idle')}
-                  className="px-8 py-3 bg-zinc-800 text-white rounded-full hover:bg-zinc-700 transition-colors text-sm font-semibold uppercase tracking-widest"
+                  className="px-8 py-3 bg-zinc-800 text-white rounded-full hover:bg-zinc-700 transition-colors text-sm font-normal uppercase tracking-widest"
                 >
                   Send Another
                 </button>
@@ -187,7 +187,7 @@ export default function ContactPage() {
               <form onSubmit={handleSubmit} className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Full Name</label>
+                    <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-zinc-500">Full Name</label>
                     <input 
                       required
                       type="text" 
@@ -198,7 +198,7 @@ export default function ContactPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Email Address</label>
+                    <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-zinc-500">Email Address</label>
                     <input 
                       required
                       type="email" 
@@ -211,7 +211,7 @@ export default function ContactPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Subject</label>
+                  <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-zinc-500">Subject</label>
                   <input 
                     required
                     type="text" 
@@ -223,7 +223,7 @@ export default function ContactPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Message</label>
+                  <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-zinc-500">Message</label>
                   <textarea 
                     required
                     rows={4}
@@ -236,7 +236,7 @@ export default function ContactPage() {
 
                 <button 
                   disabled={status === 'sending'}
-                  className="w-full py-5 bg-white text-black text-xs font-bold uppercase tracking-[0.3em] rounded-xl hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  className="w-full py-5 bg-white text-black text-xs font-normal uppercase tracking-[0.3em] rounded-xl hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
                   {status === 'sending' ? (
                     <Loader2 size={18} className="animate-spin" />

@@ -25,105 +25,6 @@ interface GalleryItem extends Omit<GalleryDoc, '_id'> {
    _id: string;
 }
 
-// --- SUB-COMPONENT: LIGHTBOX ---
-const Lightbox = ({ item, onClose }: { item: GalleryItem; onClose: () => void }) => {
-   const [index, setIndex] = useState(0);
-   const [isLoaded, setIsLoaded] = useState(false);
-
-   const next = (e?: React.MouseEvent) => { e?.stopPropagation(); setIsLoaded(false); setIndex((prev) => (prev + 1) % item.images.length); };
-   const prev = (e?: React.MouseEvent) => { e?.stopPropagation(); setIsLoaded(false); setIndex((prev) => (prev - 1 + item.images.length) % item.images.length); };
-
-   useEffect(() => {
-      const handleKey = (e: KeyboardEvent) => {
-         if (e.key === 'Escape') onClose();
-         if (e.key === 'ArrowRight') next();
-         if (e.key === 'ArrowLeft') prev();
-      };
-      window.addEventListener('keydown', handleKey);
-      document.body.style.overflow = 'hidden';
-      return () => {
-         window.removeEventListener('keydown', handleKey);
-         document.body.style.overflow = '';
-      };
-   }, []);
-
-   return (
-      <motion.div
-         initial={{ opacity: 0 }}
-         animate={{ opacity: 1 }}
-         exit={{ opacity: 0 }}
-         className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-2xl flex flex-col"
-      >
-         {/* Top Toolbar */}
-         <div className="flex items-center justify-between p-8 md:p-12 z-50">
-            <div className="flex flex-col">
-               <h2 className="text-white text-xl font-extralight tracking-tight uppercase">
-                  {item.name}
-               </h2>
-               <div className="text-white/30 text-[10px] font-mono tracking-[0.3em] uppercase mt-2">
-                  {index + 1} / {item.images.length} — {item.category}
-               </div>
-            </div>
-            <div className="flex items-center gap-6">
-               <Link
-                  href={`/gallery/${item._id}`}
-                  className="hidden md:flex items-center gap-4 px-8 py-3 bg-white/5 border border-white/10 rounded-full text-[10px] uppercase tracking-[0.3em] text-white hover:bg-white hover:text-black transition-all"
-               >
-                  Explore Details
-               </Link>
-               <button onClick={onClose} className="p-4 rounded-full bg-white/5 border border-white/10 hover:bg-white hover:text-black transition-all group">
-                  <X className="w-5 h-5" />
-               </button>
-            </div>
-         </div>
-
-         {/* Main Stage */}
-         <div className="flex-1 relative flex items-center justify-center p-6 md:p-20" onClick={onClose}>
-            <AnimatePresence mode="wait">
-               <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.98 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.02 }}
-                  transition={{ duration: 0.6, ease: [0.2, 0, 0, 1] }}
-                  className="relative w-full h-full flex items-center justify-center"
-                  onClick={(e) => e.stopPropagation()}
-               >
-                  {!isLoaded && (
-                     <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-8 h-8 border-t-2 border-white/40 rounded-full animate-spin" />
-                     </div>
-                  )}
-                  <ImageWithLqip
-                     src={item.images[index].url}
-                     alt=""
-                     width={2400}
-                     height={1800}
-                     className={`max-w-full max-h-full object-contain ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-                     transformOpts={{ w: 2400, q: 'auto:best' }}
-                     onLoad={() => setIsLoaded(true)}
-                     priority
-                     noBlur={true}
-                  />
-               </motion.div>
-            </AnimatePresence>
-
-            {/* Arrows */}
-            {item.images.length > 1 && (
-               <>
-                  <button onClick={prev} className="absolute left-8 md:left-12 p-5 rounded-full bg-black/20 border border-white/5 text-white/30 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md">
-                     <ChevronLeft className="w-8 h-8" />
-                  </button>
-                  <button onClick={next} className="absolute right-8 md:right-12 p-5 rounded-full bg-black/20 border border-white/5 text-white/30 hover:text-white hover:bg-white/10 transition-all backdrop-blur-md">
-                     <ChevronRight className="w-8 h-8" />
-                  </button>
-               </>
-            )}
-         </div>
-      </motion.div>
-   );
-};
-
 // --- MAIN COMPONENT ---
 
 export default function GalleryGrid({ filters, initialItems, initialTotal }: GalleryGridProps) {
@@ -133,7 +34,6 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
    const [error, setError] = useState<string | null>(null);
    const [hasMore, setHasMore] = useState(hasInitialData ? (initialTotal ? initialItems!.length < initialTotal : true) : true);
    const [page, setPage] = useState(hasInitialData ? 1 : 0);
-   const [selectedItem, setSelectedItem] = useState<GalleryItem | null>(null);
 
    const observerRef = useRef<HTMLDivElement>(null);
    const ITEMS_PER_PAGE = 14; // Even number for better grid fit
@@ -200,17 +100,14 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
             </div>
          ) : (
             /* Refined Responsive Grid - 3 Columns on Desktop */
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[2px]">
                {items.map((item, index) => (
                   <GalleryCard
                      key={item._id}
                      item={item}
                      index={index}
-                     onQuickView={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setSelectedItem(item);
-                     }}
+                     aspectRatio="4/5"
+                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   />
                ))}
             </div>
@@ -232,26 +129,16 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
                         className="absolute inset-[30%] bg-white/20 rounded-full"
                      />
                   </div>
-                  <span className="text-[10px] uppercase tracking-[0.5em] text-white/20">Loading Volume</span>
+                  <span className="text-[10px] uppercase tracking-[0.5em] text-white/45">Loading Volume</span>
                </div>
             )}
             {!loading && items.length === 0 && !error && (
                <div className="text-center py-20">
                   <Camera className="w-12 h-12 mx-auto mb-6 text-white/5" />
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-light">No frames found in this category</p>
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-white/60 font-light">No frames found in this category</p>
                </div>
             )}
          </div>
-
-         {/* Lightbox Modal */}
-         <AnimatePresence>
-            {selectedItem && (
-               <Lightbox
-                  item={selectedItem}
-                  onClose={() => setSelectedItem(null)}
-               />
-            )}
-         </AnimatePresence>
       </div>
    );
 }

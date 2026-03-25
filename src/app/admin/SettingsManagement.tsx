@@ -60,7 +60,7 @@ export default function SettingsManagement() {
     <div className="space-y-6 max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Studio Settings</h2>
+          <h2 className="text-2xl font-normal text-white tracking-tight">Studio Settings</h2>
           <p className="text-zinc-500 text-sm mt-1">Manage your contact information and social presence.</p>
         </div>
         <button
@@ -76,7 +76,7 @@ export default function SettingsManagement() {
       <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Contact Info Group */}
         <div className="space-y-6 bg-zinc-900/50 p-6 rounded-xl border border-zinc-800">
-          <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+          <h3 className="text-sm font-normal text-zinc-400 uppercase tracking-wider flex items-center gap-2">
             <Mail size={14} /> Contact Details
           </h3>
           
@@ -130,7 +130,7 @@ export default function SettingsManagement() {
 
         {/* Socials Group */}
         <div className="space-y-6 bg-zinc-900/50 p-6 rounded-xl border border-zinc-800">
-          <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+          <h3 className="text-sm font-normal text-zinc-400 uppercase tracking-wider flex items-center gap-2">
             <Globe size={14} /> Social Presence
           </h3>
           

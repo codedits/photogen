@@ -52,22 +52,22 @@ export default async function Home() {
   ]);
 
   return (
-    <PageContainer className="bg-black">
+    <PageContainer>
       <FullBleed>
         <Hero />
       </FullBleed>
 
-      <FullBleed>
+      <FullBleed className="perf-section">
         <ParallaxGallery />
       </FullBleed>
 
       {featuredGallery.length > 0 && (
-        <FullBleed>
+        <FullBleed className="perf-section">
           <FeaturedGallery items={featuredGallery} />
         </FullBleed>
       )}
 
-      <FullBleed>
+      <FullBleed className="perf-section">
         <PresetsSection presets={presets} />
       </FullBleed>
     </PageContainer>

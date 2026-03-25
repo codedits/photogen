@@ -66,7 +66,7 @@ function GalleryManagement({ onCreate, onEdit, onDelete }: GalleryManagementProp
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-zinc-100">Gallery</h2>
+          <h2 className="text-lg font-normal text-zinc-100">Gallery</h2>
           <p className="text-sm text-zinc-500">
             {filteredItems.length} items{items.length !== filteredItems.length ? ` of ${items.length}` : ''}
           </p>
@@ -182,7 +182,7 @@ function GalleryManagement({ onCreate, onEdit, onDelete }: GalleryManagementProp
                 )}
                 <div className="absolute left-2 top-2 flex gap-1">
                   {item.featured && (
-                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-900 inline-flex items-center gap-1">
+                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-normal text-zinc-900 inline-flex items-center gap-1">
                       <Star size={10} /> Featured
                     </span>
                   )}

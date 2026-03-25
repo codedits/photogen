@@ -11,7 +11,7 @@ import { ensurePresetIndexes } from "../lib/mongodb";
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -63,7 +63,7 @@ export default async function RootLayout({
   <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
       <body
-        className={`${dmSans.variable} ${geistMono.variable} font-sans antialiased`}
+        className={`${dmSans.variable} ${geistMono.variable} font-sans antialiased bg-background`}
       >
         <Nav />
         {children}

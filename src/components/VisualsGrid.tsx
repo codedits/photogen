@@ -12,10 +12,10 @@ const images = [
 
 export default function VisualsGrid() {
   return (
-    <section className="py-24 bg-black">
+    <section className="py-24 bg-background">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-bold text-white mb-4 font-sans">Stunning Visuals</h2>
+          <h2 className="text-3xl md:text-5xl font-normal text-white mb-4 font-sans">Stunning Visuals</h2>
           <p className="text-gray-400 max-w-2xl mx-auto">
             Explore the possibilities of AI-enhanced photography.
           </p>
@@ -38,7 +38,7 @@ export default function VisualsGrid() {
                 className="object-cover transition-transform duration-500 group-hover:scale-110"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
               />
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors duration-500" />
+              <div className="absolute inset-0 bg-background/20 group-hover:bg-background/0 transition-colors duration-500" />
             </motion.div>
           ))}
         </div>

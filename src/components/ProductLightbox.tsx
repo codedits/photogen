@@ -189,11 +189,11 @@ export function ProductLightbox({
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-200"
+          className="fixed inset-0 z-[1000] bg-background flex flex-col animate-in fade-in duration-200"
         >
           {/* Top bar */}
-          <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-gradient-to-b from-black/90 via-black/50 to-transparent">
-            <span className="text-white text-sm font-semibold tracking-wider uppercase">
+          <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-gradient-to-b from-background/90 via-background/50 to-transparent">
+            <span className="text-white text-sm font-normal tracking-wider uppercase">
               {currentIndex + 1} / {images.length}
             </span>
             <div className="flex items-center gap-4">
@@ -206,7 +206,7 @@ export function ProductLightbox({
                 >
                   <ZoomOut className="w-5 h-5" />
                 </button>
-                <span className="text-white text-[11px] font-bold min-w-[50px] text-center">
+                <span className="text-white text-[11px] font-normal min-w-[50px] text-center">
                   {Math.round(zoomLevel * 100)}%
                 </span>
                 <button
@@ -279,7 +279,7 @@ export function ProductLightbox({
 
           {/* Bottom thumbnail strip */}
           {images.length > 1 && (
-            <div className="absolute bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black/60 to-transparent py-4 px-6">
+            <div className="absolute bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-background/60 to-transparent py-4 px-6">
               <div className="flex items-center justify-center gap-2 overflow-x-auto no-scrollbar scroll-smooth">
                 {images.map((img, idx) => (
                   <button
@@ -307,7 +307,7 @@ export function ProductLightbox({
 
           {/* Double-click hint (shows briefly) */}
           {zoomLevel <= 1 && (
-            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 text-white/60 text-[11px] font-bold uppercase tracking-widest pointer-events-none bg-black/20 backdrop-blur-sm px-4 py-1 rounded-full">
+            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 text-white/60 text-[11px] font-normal uppercase tracking-widest pointer-events-none bg-background/20 backdrop-blur-sm px-4 py-1 rounded-full">
               Pinch or Scroll to zoom · Arrows to navigate
             </div>
           )}

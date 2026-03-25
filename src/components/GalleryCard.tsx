@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 import { ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 import ImageWithLqip from './ImageWithLqip';
@@ -19,43 +19,51 @@ export interface GalleryCardItem {
 interface GalleryCardProps {
   item: GalleryCardItem;
   index: number;
-  onQuickView?: (e: React.MouseEvent) => void;
   aspectRatio?: string; // e.g. "3/2", "4/5"
   className?: string;
   priority?: boolean;
   sizes?: string;
   width?: number; // Base width for Cloudinary transform
-  height?: number | string; // Base height for Cloudinary transform or CSS string
+  height?: number | string; 
+  parallax?: boolean;
 }
 
 const GalleryCard = ({ 
   item, 
   index, 
-  onQuickView, 
   aspectRatio = "3/2", 
   className,
   priority = false,
   sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
   width = 1200,
+  parallax = false,
   height
 }: GalleryCardProps) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"]
+  });
+
+  const scrollScale = useTransform(scrollYProgress, [0, 1], [1, 1.15]);
+  const scale = useSpring(scrollScale, { stiffness: 100, damping: 30 });
+
   const dateStr = item.uploadDate ? new Date(item.uploadDate).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric'
   }) : '';
 
-  // Calculate numeric height for Cloudinary
+  // ... (cloudinary logic remains same)
   let cloudinaryHeight: number | undefined;
   if (typeof height === 'number') {
     cloudinaryHeight = height;
   } else if (typeof height === 'string' && height.endsWith('vh')) {
-    // Rough estimate for Cloudinary based on vh string
     const vhValue = parseInt(height);
-    cloudinaryHeight = Math.round((width * (vhValue / 100)) * 1.5); // Oversize slightly for safety
+    cloudinaryHeight = Math.round((width * (vhValue / 100)) * 1.5);
   }
 
-  // If no height but aspect ratio exists
   if (!cloudinaryHeight && aspectRatio?.includes('/')) {
     const [wRatio, hRatio] = aspectRatio.split('/').map(Number);
     if (wRatio && hRatio) {
@@ -71,6 +79,7 @@ const GalleryCard = ({
 
   return (
     <motion.div
+      ref={containerRef}
       initial={{ opacity: 0, y: 8 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
@@ -84,7 +93,6 @@ const GalleryCard = ({
         className="group relative w-full bg-neutral-950 border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden"
       >
         <Link href={`/gallery/${item._id}`} className="block">
-          {/* ASPECT RATIO OR FIXED HEIGHT CONTAINER */}
           <div 
             className="relative overflow-hidden w-full"
             style={{ 
@@ -93,13 +101,13 @@ const GalleryCard = ({
             }}
           >
             
-            {/* --- IMAGE LAYER --- */}
             <motion.div 
               className="w-full h-full relative"
-              variants={{
+              style={{ scale: parallax ? scale : undefined }}
+              variants={!parallax ? {
                 rest: { scale: 1 },
                 hover: { scale: 1.05 }
-              }}
+              } : undefined}
               transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
             >
               <ImageWithLqip
@@ -135,13 +143,6 @@ const GalleryCard = ({
                   {item.name}
                 </h2>
                 <ArrowUpRight className="w-4 h-4 text-white/50 group-hover:text-white group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
-                {onQuickView && (
-                  <button 
-                    onClick={onQuickView}
-                    className="absolute inset-0 z-30 cursor-pointer opacity-0"
-                    aria-label="Quick view"
-                  />
-                )}
               </div>
               
               {/* Tags / Metadata */}
@@ -151,7 +152,7 @@ const GalleryCard = ({
                 </p>
                 
                 {/* Fake ID/Ref number for "Technical" look */}
-                <span className="text-[9px] text-white/20 font-mono">
+                <span className="text-[9px] text-white/45 font-mono">
                   {item._id.substring(0, 4).toUpperCase()}
                 </span>
               </div>

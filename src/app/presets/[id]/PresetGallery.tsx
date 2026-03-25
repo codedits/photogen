@@ -69,7 +69,7 @@ export default function PresetGallery({ images: rawImages, presetName }: PresetG
 
   if (!images || images.length === 0 || !currentImage) {
     return (
-      <div className="w-full h-[50vh] lg:h-screen bg-[#080808] flex flex-col items-center justify-center text-white/20 border-b lg:border-b-0 lg:border-r border-white/10">
+      <div className="w-full h-[50vh] lg:h-screen bg-background flex flex-col items-center justify-center text-white/45 border-b lg:border-b-0 lg:border-r border-white/10">
         <ImageIcon className="w-16 h-16 opacity-20 mb-4" />
         <p className="font-mono text-xs uppercase tracking-widest">No Preview Available</p>
       </div>

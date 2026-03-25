@@ -11,13 +11,16 @@ html {
 ::-webkit-scrollbar {
   width: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: #0a0a0a;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #333;
   border-radius: 3px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
@@ -64,8 +67,8 @@ html {
 
 :root {
   --radius: 0rem;
-  /* Default site background: pure black for a high-end aesthetic */
-  --background: #000000;
+
+  --background: #050505;
   --foreground: #ffffff;
   --card: #0a0a0a;
   --card-foreground: #ffffff;
@@ -99,7 +102,8 @@ html {
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  /* Consistent dark background */
+  --background: #000000;
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -133,7 +137,9 @@ html {
 }
 
 /* Prevent accidental horizontal scroll on small devices (Surgical fix for sticky positioning) */
-html, body, #__next {
+html,
+body,
+#__next {
   overflow-x: visible;
 }
 
@@ -141,6 +147,7 @@ html, body, #__next {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -149,16 +156,17 @@ html, body, #__next {
 /* subtle reusable white text glow */
 .text-glow {
   /* tiny, soft blur to create a subtle glow without overpowering text */
- text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
   /* slightly increase perceived brightness */
-  filter: drop-shadow(0 1px 4px rgba(255,255,255,0.03));
+  filter: drop-shadow(0 1px 4px rgba(255, 255, 255, 0.03));
 }
 
 /* Thin, themed scrollbar: violet thumb on dark/black track */
-html, body {
+html,
+body {
   /* Firefox: thumb-color track-color */
   scrollbar-width: thin;
-  scrollbar-color: rgba(16, 0, 54, 0.75) rgba(0,0,0,0.35);
+  scrollbar-color: rgba(16, 0, 54, 0.75) rgba(0, 0, 0, 0.35);
 }
 
 /* WebKit/Blink (Chrome, Edge, Safari) */
@@ -166,26 +174,35 @@ html, body {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
-  background: rgba(0,0,0,0.30); /* dark/black track */
+  background: rgba(0, 0, 0, 0.30);
+  /* dark/black track */
   border-radius: 9999px;
 }
+
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(142,95,255,0.60); /* subtle violet */
+  background-color: rgba(142, 95, 255, 0.60);
+  /* subtle violet */
   border-radius: 9999px;
-  border: 1px solid rgba(0,0,0,0.35);
+  border: 1px solid rgba(0, 0, 0, 0.35);
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(142,95,255,0.85);
+  background-color: rgba(142, 95, 255, 0.85);
 }
 
 /* Utility to fully hide scrollbars on a specific container if desired */
 .hide-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
+
 .hide-scrollbar::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  display: none;
+  /* Chrome, Safari, Opera */
 }
 
 /* Violet button with subtle glow */
@@ -193,20 +210,28 @@ html, body {
   background: linear-gradient(180deg, rgb(83, 17, 250) 0%, rgb(91, 26, 243) 100%);
   color: white !important;
 
-  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.18), 0 2px 6px rgba(99,102,241,0.08);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.18), 0 2px 6px rgba(99, 102, 241, 0.08);
   transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
 }
+
 .btn-violet:hover {
   transform: translateY(-1px);
-    text-shadow:0 0px 15px rgb(255, 255, 255) ;
+  text-shadow: 0 0px 15px rgb(255, 255, 255);
   box-shadow: 0 0px 30px rgba(120, 43, 253, 0.8);
 }
-.btn-violet:active { transform: translateY(0); }
-.btn-violet:focus { outline: none; box-shadow: 0 0 0 4px rgba(98, 21, 231, 0.12); }
+
+.btn-violet:active {
+  transform: translateY(0);
+}
+
+.btn-violet:focus {
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(98, 21, 231, 0.12);
+}
 
 /* subtle glow helper for elements that need an outer violet glow */
 .glow-violet {
-  filter: drop-shadow(0 6px 18px rgba(124,58,237,0.14));
+  filter: drop-shadow(0 6px 18px rgba(124, 58, 237, 0.14));
 }
 
 /* Chat widget floating button color (explicit RGBA as requested) */
@@ -215,20 +240,23 @@ html, body {
   background-color: rgba(6, 6, 8, 0.55);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
-  border: 1px solid rgba(255,255,255,0.04);
-  color: white !important; /* default icon/text color */
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  color: white !important;
+  /* default icon/text color */
   /* neutral shadow only — remove violet glow from the button itself */
-  box-shadow: 0 4px 12px rgba(0,0,0,0.55);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
   transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
 }
+
 .chat-widget-button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 18px rgba(0,0,0,0.6);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.6);
 }
 
 /* Icon adjustments: make the icon visually white (no violet fill) and give it a soft violet glow */
 .chat-widget-button svg {
-  color: white; /* lucide icons use currentColor */
+  color: white;
+  /* lucide icons use currentColor */
   stroke: currentColor;
   fill: none;
   /* thicker stroke to make the icon appear bold */
@@ -236,30 +264,33 @@ html, body {
   stroke-linecap: round;
   stroke-linejoin: round;
   /* stronger, multi-layered glow focused on the icon */
-  filter: drop-shadow(0 6px 20px rgba(142,95,255,0.36)) drop-shadow(0 2px 8px rgba(0,0,0,0.35));
+  filter: drop-shadow(0 6px 20px rgba(142, 95, 255, 0.36)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
   transition: filter 160ms ease, transform 120ms ease;
 }
 
 /* Style select dropdown inside the AI Studio section for better contrast */
 #ai-studio select {
-  background: linear-gradient(180deg, rgba(12,6,30,0.9), rgba(18,10,40,0.9));
+  background: linear-gradient(180deg, rgba(12, 6, 30, 0.9), rgba(18, 10, 40, 0.9));
   color: var(--foreground);
-  border-color: rgba(255,255,255,0.08);
-  padding-right: 1.5rem; /* keep space for native dropdown arrow */
+  border-color: rgba(255, 255, 255, 0.08);
+  padding-right: 1.5rem;
+  /* keep space for native dropdown arrow */
 }
 
 /* Native option styling - browsers vary, but this improves appearance in modern browsers */
 #ai-studio option {
-  background: rgba(12,6,30,1);
+  background: rgba(12, 6, 30, 1);
   color: var(--foreground);
 }
 
 /* WebKit: make the dropdown arrow match the theme (where supported) */
-#ai-studio select::-ms-expand { display: block; }
+#ai-studio select::-ms-expand {
+  display: block;
+}
 
 /* Ensure focus ring is visible and themed */
 #ai-studio select:focus {
-  box-shadow: 0 0 0 4px rgba(124,58,237,0.10);
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.10);
   outline: none;
 }
 
@@ -270,43 +301,73 @@ html, body {
   gap: 0.5rem;
   align-items: stretch;
 }
+
 .pg-loading .pg-bar-wrap {
   width: 100%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.02));
   border-radius: 9999px;
   height: 10px;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.04);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
+
 .pg-loading .pg-bar {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, rgba(137,90,255,1), rgba(99,102,241,1));
-  box-shadow: 0 6px 18px rgba(124,58,237,0.12);
-  transition: width 420ms cubic-bezier(.2,.9,.2,1);
+  background: linear-gradient(90deg, rgba(137, 90, 255, 1), rgba(99, 102, 241, 1));
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.12);
+  transition: width 420ms cubic-bezier(.2, .9, .2, 1);
 }
+
 .pg-loading .pg-msg {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 0.9rem;
-  color: rgba(255,255,255,0.85);
+  color: rgba(255, 255, 255, 0.85);
 }
+
 .pg-loading .pg-msg .pg-left {
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255, 0.9);
 }
+
 .pg-loading .pg-msg .pg-right {
-  color: rgba(255,255,255,0.6);
+  color: rgba(255, 255, 255, 0.6);
   font-size: 0.85rem;
 }
+
 .glow-sm {
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.39),
-               0 0 8px rgba(255, 255, 255, 0.25);
+    0 0 8px rgba(255, 255, 255, 0.25);
 }
 
 /* smaller bar on mobile for compact layout */
 @media (max-width: 640px) {
-  .pg-loading .pg-bar-wrap { height: 8px; }
-  .pg-loading .pg-msg { font-size: 0.85rem; }
+  .pg-loading .pg-bar-wrap {
+    height: 8px;
+  }
+
+  .pg-loading .pg-msg {
+    font-size: 0.85rem;
+  }
 }
 
+/* Skip rendering work for off-screen sections until needed. */
+.perf-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 900px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

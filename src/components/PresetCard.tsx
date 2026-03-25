@@ -36,7 +36,7 @@ export default function PresetCard({ preset, className = "", priority = false }:
       initial="rest"
       whileHover="hover"
       animate="rest"
-      className={`group relative w-full bg-neutral-950 border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden ${className}`}
+      className={`group relative w-full bg-background border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden ${className}`}
     >
       {/* ASPECT RATIO CONTAINER 
         Using 4:5 (Standard Portrait) for a "Photo Studio" feel
@@ -64,13 +64,13 @@ export default function PresetCard({ preset, className = "", priority = false }:
              />
            </motion.div>
         ) : (
-           <div className="w-full h-full flex items-center justify-center bg-neutral-900 text-neutral-700">
+           <div className="w-full h-full flex items-center justify-center bg-background/50 text-neutral-700">
              <Layers className="w-12 h-12 opacity-20" />
            </div>
         )}
 
         {/* --- OVERLAY GRADIENT (Cinematic fade) --- */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/90 pointer-events-none" />
         
         {/* --- INTERACTIVE TOP BADGE --- */}
         <motion.div 
@@ -79,12 +79,12 @@ export default function PresetCard({ preset, className = "", priority = false }:
           className="absolute top-3 right-3 z-20 flex gap-2"
         >
           {imageCount > 1 && (
-            <div className="flex items-center gap-1 bg-black/50 backdrop-blur-md border border-white/10 px-2 py-1 text-[9px] text-white uppercase tracking-widest">
+            <div className="flex items-center gap-1 bg-background/50 backdrop-blur-md border border-white/10 px-2 py-1 text-[9px] text-white uppercase tracking-widest">
               <ImageIcon className="w-3 h-3" />
               <span>{imageCount}</span>
             </div>
           )}
-          <div className="bg-white text-black px-2 py-1 text-[9px] font-bold uppercase tracking-widest">
+          <div className="bg-white text-black px-2 py-1 text-[9px] font-normal uppercase tracking-widest">
             Open
           </div>
         </motion.div>
@@ -116,11 +116,11 @@ export default function PresetCard({ preset, className = "", priority = false }:
                  {preset.tags.slice(0, 3).join(" / ")}
                </p>
              ) : (
-               <p className="text-[10px] text-white/30 font-mono uppercase tracking-widest">RAW</p>
+               <p className="text-[10px] text-white/50 font-mono uppercase tracking-widest">RAW</p>
              )}
              
              {/* Fake ID number for "Technical" look */}
-             <span className="text-[9px] text-white/20 font-mono">
+             <span className="text-[9px] text-white/45 font-mono">
                {preset.id.substring(0, 4).toUpperCase()}
              </span>
            </div>

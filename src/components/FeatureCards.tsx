@@ -15,7 +15,7 @@ export default function FeatureCards() {
                   <CountUp end={100} suffix="%" duration={2200} />
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-white glow-sm">Free & Open Source</h4>
+                  <h4 className="text-lg font-normal text-white glow-sm">Free & Open Source</h4>
                   <p className="text-sm text-zinc-400 mt-1">For everyone</p>
                 </div>
               </div>
@@ -27,7 +27,7 @@ export default function FeatureCards() {
                   <CountUp end={4} duration={1400} decimals={1} />
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-white glow-sm">Component Variants</h4>
+                  <h4 className="text-lg font-normal text-white glow-sm">Component Variants</h4>
                   <p className="text-sm text-zinc-400 mt-1">Premium Presets</p>
                 </div>
               </div>
@@ -39,7 +39,7 @@ export default function FeatureCards() {
               <div className="text-6xl md:text-7xl font-extrabold text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(90deg,#a855f7,#7c3aed)', WebkitBackgroundClip: 'text', color: 'transparent' }}>
                 <CountUp end={50} suffix="+" duration={2400} />
               </div>
-              <h4 className="text-2xl font-semibold text-white  mt-2 glow-sm">Creative Presets</h4>
+              <h4 className="text-2xl font-normal text-white  mt-2 glow-sm">Creative Presets</h4>
               <p className="text-sm text-zinc-400 mt-2">Growing weekly & only getting better</p>
             </div>
           </article>

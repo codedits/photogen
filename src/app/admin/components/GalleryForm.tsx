@@ -274,7 +274,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
             <ArrowLeft size={16} />
           </button>
           <div>
-            <h2 className="text-lg font-semibold text-zinc-100">{item ? 'Edit Gallery Item' : 'Add Gallery Item'}</h2>
+            <h2 className="text-lg font-normal text-zinc-100">{item ? 'Edit Gallery Item' : 'Add Gallery Item'}</h2>
             <p className="text-sm text-zinc-500">Minimal publishing flow with clear ordering controls.</p>
           </div>
         </div>
@@ -304,7 +304,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <section className="space-y-5 lg:col-span-2">
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 flex items-center gap-2">
+            <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
               <Info size={14} />
               Basic Info
             </h3>
@@ -375,7 +375,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 flex items-center gap-2">
+              <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
                 <ImageIcon size={14} />
                 Images
               </h3>
@@ -409,7 +409,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
                     <div className="relative aspect-square">
                       <ImageWithLqip src={img.url} alt="gallery" fill className="object-cover" transformOpts={{ w: 300, h: 300, fit: 'cover' }} />
                       {idx === 0 && (
-                        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-900">
+                        <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-normal text-zinc-900">
                           <Star size={10} /> Cover
                         </span>
                       )}
@@ -485,7 +485,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
 
         <aside className="space-y-5">
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Details</h3>
+            <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500">Details</h3>
 
             <div>
               <label className="mb-1.5 block text-sm text-zinc-300">Photographer</label>
@@ -538,7 +538,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
           </div>
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 flex items-center gap-2">
+            <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
               <Settings size={14} />
               Camera Metadata
             </h3>

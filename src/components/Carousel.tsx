@@ -119,7 +119,7 @@ export default function Carousel({
     >
       {/* Stage */}
       <div
-        className="relative w-full max-w-3xl aspect-[9/16] max-h-[720px] sm:max-h-none sm:h-[520px] md:h-[520px] rounded-xl overflow-hidden bg-slate-900"
+        className="relative w-full max-w-3xl aspect-[9/16] max-h-[720px] sm:max-h-none sm:h-[520px] md:h-[520px] rounded-xl overflow-hidden bg-background"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -138,17 +138,17 @@ export default function Carousel({
             loading={'eager'}
           />
         </div>
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/30 via-transparent to-transparent" />
 
         {/* Controls */}
         {len > 1 && (
           <>
             <button aria-label="Previous slide" onClick={prev}
-              className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full h-10 w-10 sm:h-11 sm:w-11 flex items-center justify-center backdrop-blur-[1px] z-20">
+              className="absolute left-3 top-1/2 -translate-y-1/2 bg-background/40 hover:bg-background/60 text-white rounded-full h-10 w-10 sm:h-11 sm:w-11 flex items-center justify-center backdrop-blur-[1px] z-20">
               ‹
             </button>
             <button aria-label="Next slide" onClick={next}
-              className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full h-10 w-10 sm:h-11 sm:w-11 flex items-center justify-center backdrop-blur-[1px] z-20">
+              className="absolute right-3 top-1/2 -translate-y-1/2 bg-background/40 hover:bg-background/60 text-white rounded-full h-10 w-10 sm:h-11 sm:w-11 flex items-center justify-center backdrop-blur-[1px] z-20">
               ›
             </button>
           </>

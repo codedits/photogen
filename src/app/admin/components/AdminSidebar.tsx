@@ -34,7 +34,7 @@ export default function AdminSidebar({
     <>
       <div 
         className={cn(
-          "fixed inset-0 z-40 bg-black/60 md:hidden transition-opacity duration-200",
+          "fixed inset-0 z-40 bg-background/60 md:hidden transition-opacity duration-200",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         onClick={() => setIsOpen(false)}
@@ -42,7 +42,7 @@ export default function AdminSidebar({
 
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-zinc-800 bg-zinc-950 transform transition-all duration-200 md:translate-x-0 md:static md:h-screen",
+          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-zinc-800 bg-background transform transition-all duration-200 md:translate-x-0 md:static md:h-screen",
           isOpen ? "translate-x-0" : "-translate-x-full",
           "w-64",
           collapsed ? "md:w-20" : "md:w-64"
@@ -53,14 +53,14 @@ export default function AdminSidebar({
           collapsed ? "justify-center px-0" : "justify-between px-4"
         )}>
           <div className="flex items-center gap-2 overflow-hidden">
-            <div className="h-8 w-8 rounded-lg border border-zinc-700 bg-zinc-900 flex items-center justify-center text-zinc-200 text-xs font-semibold">
+            <div className="h-8 w-8 rounded-lg border border-zinc-700 bg-zinc-900 flex items-center justify-center text-zinc-200 text-xs font-normal">
               PG
             </div>
             <div className={cn(
               "overflow-hidden whitespace-nowrap transition-all",
               collapsed ? "md:w-0 md:opacity-0" : "w-auto opacity-100"
             )}>
-              <span className="text-sm font-semibold text-zinc-100">Photogen Admin</span>
+              <span className="text-sm font-normal text-zinc-100">Photogen Admin</span>
             </div>
           </div>
           <button 
@@ -93,7 +93,7 @@ export default function AdminSidebar({
 
         <nav className="flex-1 py-3 space-y-1 overflow-y-auto overflow-x-hidden">
           <p className={cn(
-            "px-6 mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500",
+            "px-6 mb-2 text-[10px] font-normal uppercase tracking-wide text-zinc-500",
             collapsed && "md:hidden"
           )}>
             Content

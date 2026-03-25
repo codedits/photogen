@@ -53,7 +53,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const resolvedParams = await params;
   const id = resolvedParams?.id || '';
   const preset = await getPreset(id);
-  
+
   if (!preset) {
     return {
       title: 'Preset Not Found | PhotoGen',
@@ -89,8 +89,8 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
           <p className="text-neutral-500 text-xs font-mono uppercase tracking-widest mb-8">
             ID: {id || 'UNDEFINED'}
           </p>
-          <Link 
-            href="/presets" 
+          <Link
+            href="/presets"
             className="px-6 py-3 border border-white/20 hover:bg-white hover:text-black hover:border-transparent text-xs font-normal uppercase tracking-[0.2em] transition-all"
           >
             Return to Index
@@ -105,15 +105,15 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
 
   return (
     <main className="min-h-screen bg-background text-foreground selection:bg-foreground/20">
-      
+
       {/* Global Grain Texture */}
-      <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay" 
-           style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }} />
+      <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay"
+        style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }} />
 
       {/* --- FLOATING NAV --- */}
       <nav className="fixed top-0 left-0 h-16 px-6 z-50 flex items-center">
-        <Link 
-          href="/presets" 
+        <Link
+          href="/presets"
           className="group flex items-center gap-2 px-4 py-2 bg-background/50 backdrop-blur-md border border-border rounded-full hover:bg-foreground hover:text-background transition-all"
         >
           <ArrowLeft className="w-3 h-3 transition-transform group-hover:-translate-x-1" />
@@ -123,7 +123,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
 
       {/* --- SPLIT LAYOUT --- */}
       <div className="flex flex-col lg:flex-row min-h-screen">
-        
+
         {/* LEFT: IMMERSIVE GALLERY (65% width) */}
         <div className="w-full lg:w-[65%] xl:w-[70%] relative z-10">
           <PresetGallery images={images} presetName={preset.name || 'Untitled'} />
@@ -131,9 +131,9 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
 
         {/* RIGHT: DETAILS SIDEBAR (35% width) */}
         <aside className="w-full lg:w-[35%] xl:w-[30%] bg-background border-l-0 lg:border-l border-border flex flex-col relative z-20">
-          
+
           <div className="p-8 lg:p-12 flex-grow">
-            
+
             {/* Header Block */}
             <div className="mb-12 pt-8 lg:pt-16">
               <div className="flex items-center gap-2 text-emerald-500 mb-4">
@@ -143,11 +143,11 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
                 </span>
                 <span className="text-[9px] uppercase tracking-widest font-mono text-muted-foreground">Active Asset</span>
               </div>
-              
+
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-medium uppercase tracking-tighter leading-[0.85] text-foreground mb-6">
                 {preset.name || 'Untitled'}
               </h1>
-              
+
               <div className="w-12 h-[1px] bg-border" />
             </div>
 
@@ -171,8 +171,8 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
               <div className="flex flex-wrap gap-2">
                 {preset.tags && preset.tags.length > 0 ? (
                   preset.tags.map((tag) => (
-                    <span 
-                      key={tag} 
+                    <span
+                      key={tag}
                       className="px-2 py-1 bg-secondary border border-border text-[10px] uppercase tracking-wider text-muted-foreground"
                     >
                       {tag}
@@ -186,14 +186,14 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
 
             {/* Metadata (Visual Filler) */}
             <div className="grid grid-cols-2 gap-4 pt-8 border-t border-border">
-               <div>
-                  <span className="block text-[9px] uppercase tracking-widest text-muted-foreground mb-1">ID</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">{preset._id.toString().slice(-6).toUpperCase()}</span>
-               </div>
-               <div>
-                  <span className="block text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Type</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">DIGITAL ASSET</span>
-               </div>
+              <div>
+                <span className="block text-[9px] uppercase tracking-widest text-muted-foreground mb-1">ID</span>
+                <span className="font-mono text-[10px] text-muted-foreground">{preset._id.toString().slice(-6).toUpperCase()}</span>
+              </div>
+              <div>
+                <span className="block text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Type</span>
+                <span className="font-mono text-[10px] text-muted-foreground">DIGITAL ASSET</span>
+              </div>
             </div>
           </div>
 
@@ -218,7 +218,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
               </button>
             )}
             <p className="text-center mt-3 text-[9px] text-muted-foreground uppercase tracking-widest">
-              Commercial License Included
+              Commercial  License Included
             </p>
           </div>
 

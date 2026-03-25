@@ -1,10 +1,10 @@
 "use client";
 
-import React, { memo, useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
+import React, { useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
 import PresetCard from "./PresetCard";
 import Link from "next/link";
-import AutoSizer from "react-virtualized-auto-sizer";
-import { FixedSizeGrid as Grid, type GridChildComponentProps } from "react-window";
+import { AutoSizer } from "react-virtualized-auto-sizer";
+import { Grid, type CellComponentProps } from "react-window";
 
 type PresetShape = {
   id: string;
@@ -71,29 +71,37 @@ export default function LiveSearchPresets({ initial = [] }: { initial?: PresetSh
 
       {shouldVirtualize ? (
         <div className="h-[75vh] w-full">
-          <AutoSizer>
-            {({ height, width }) => {
-              const columns = width >= 1280 ? 4 : width >= 768 ? 3 : width >= 640 ? 2 : 1;
+          <AutoSizer
+            renderProp={({ height, width }) => {
+              const safeWidth = width ?? 0;
+              const safeHeight = height ?? 0;
+
+              if (safeWidth === 0 || safeHeight === 0) {
+                return null;
+              }
+
+              const columns = safeWidth >= 1280 ? 4 : safeWidth >= 768 ? 3 : safeWidth >= 640 ? 2 : 1;
               const rowCount = Math.ceil(cardItems.length / columns);
-              const columnWidth = Math.floor(width / columns);
+              const columnWidth = Math.floor(safeWidth / columns);
               const rowHeight = columns === 1 ? 420 : 500;
 
               return (
                 <Grid
-                  height={height}
-                  width={width}
+                  defaultHeight={safeHeight}
+                  defaultWidth={safeWidth}
                   columnCount={columns}
                   rowCount={rowCount}
                   columnWidth={columnWidth}
                   rowHeight={rowHeight}
-                  overscanRowCount={2}
-                  itemData={{ items: cardItems, columns }}
+                  overscanCount={2}
+                  cellComponent={VirtualPresetCell}
+                  cellProps={{ items: cardItems, columns }}
+                  style={{ height: safeHeight, width: safeWidth }}
                 >
-                  {VirtualPresetCell}
                 </Grid>
               );
             }}
-          </AutoSizer>
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -116,14 +124,15 @@ type GridData = {
   columns: number;
 };
 
-const VirtualPresetCell = memo(function VirtualPresetCell({
+function VirtualPresetCell({
   columnIndex,
   rowIndex,
   style,
-  data,
-}: GridChildComponentProps<GridData>) {
-  const index = rowIndex * data.columns + columnIndex;
-  const preset = data.items[index];
+  items,
+  columns,
+}: CellComponentProps<GridData>) {
+  const index = rowIndex * columns + columnIndex;
+  const preset = items[index];
   if (!preset) return <div style={style} />;
 
   const firstImage = preset.images?.[0]?.url || preset.image || undefined;
@@ -145,7 +154,7 @@ const VirtualPresetCell = memo(function VirtualPresetCell({
       </Link>
     </div>
   );
-});
+}
 
 function useDebounce<T>(value: T, delay = 300) {
   const [v, setV] = useState(value);

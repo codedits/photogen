@@ -2,6 +2,7 @@ import Hero from "../components/Hero";
 import PresetsSection from "../components/PresetsSection";
 import ParallaxGallery from "../components/ParallaxGallery";
 import FeaturedGallery from "../components/FeaturedGallery";
+import LatestBlog from "../components/LatestBlog";
 import { PageContainer, FullBleed } from "../components/layout/Primitives";
 import getDatabase from "../lib/mongodb";
 import { Preset } from "../components/PresetCard";
@@ -45,6 +46,34 @@ async function getFeaturedGallery(): Promise<any[]> {
   }
 }
 
+async function getLatestBlogPosts(): Promise<any[]> {
+  try {
+    const db = await getDatabase();
+    const coll = db.collection("blog");
+    const docs = await coll
+      .find(
+        { status: 'published', publishedAt: { $ne: null } },
+        { projection: { title: 1, slug: 1, excerpt: 1, publishedAt: 1, coverImage: 1, inlineImages: 1 } }
+      )
+      .sort({ publishedAt: -1, createdAt: -1 })
+      .limit(4)
+      .toArray();
+
+    return docs.map((doc) => ({
+      id: doc._id.toString(),
+      title: doc.title || 'Untitled',
+      slug: doc.slug || '',
+      excerpt: doc.excerpt || 'Read the full article for details.',
+      publishedAt: doc.publishedAt ? new Date(doc.publishedAt).toISOString() : null,
+      coverImage: doc.coverImage || null,
+      inlineImages: Array.isArray(doc.inlineImages) ? doc.inlineImages : [],
+    }));
+  } catch (e) {
+    console.error("Failed to fetch latest blog posts:", e);
+    return [];
+  }
+}
+
 type HeroSettings = {
   introText?: string;
   mainHeadline?: string;
@@ -75,10 +104,11 @@ async function getHeroSettings(): Promise<HeroSettings | null> {
 }
 
 export default async function Home() {
-  const [presets, featuredGallery, heroSettings] = await Promise.all([
+  const [presets, featuredGallery, heroSettings, latestBlogPosts] = await Promise.all([
     getFeaturedPresets(),
     getFeaturedGallery(),
     getHeroSettings(),
+    getLatestBlogPosts(),
   ]);
 
   return (
@@ -99,6 +129,10 @@ export default async function Home() {
 
       <FullBleed className="perf-section">
         <PresetsSection presets={presets} />
+      </FullBleed>
+
+      <FullBleed className="perf-section">
+        <LatestBlog posts={latestBlogPosts} />
       </FullBleed>
     </PageContainer>
   );

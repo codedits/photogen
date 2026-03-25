@@ -2,9 +2,9 @@
 
 import React from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowDownRight } from "lucide-react";
+import LiquidRiseCTA from "./LiquidRiseCTA";
 
 interface HeroProps {
   settings?: {
@@ -20,101 +20,83 @@ interface HeroProps {
 export default function Hero({ settings }: HeroProps) {
   const introText = settings?.introText ?? "";
   const mainHeadline = settings?.mainHeadline ?? "";
-  const heroImage = settings?.image?.url ?? "";
+  const heroImage = settings?.image?.url ?? "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?width=1600";
 
   return (
-    <section className="relative min-h-screen w-full flex flex-col justify-end selection:bg-white selection:text-black overflow-hidden">
+    <section className="relative h-screen w-full flex flex-col p-1 bg-background selection:bg-white selection:text-black overflow-hidden font-sans">
+      
+      {/* Main Container: Editorial Frame */}
+      <div className="relative flex-1 w-full rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.4)] border border-border/20 group/hero">
+        
+        {/* Cinematic Background with Slow Parallax/Scale */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            src={heroImage}
+            alt="Hero Background"
+            fill
+            className="object-cover contrast-[1.1] grayscale-[0.05] brightness-[0.85]"
+            priority
+            quality={80}
+          />
+          {/* Multi-layered Vignette for depth */}
+          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/40 to-transparent opacity-80" />
+          <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/60 to-transparent" />
+        </div>
 
-      {/* Content */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 pb-16 md:pb-24 pt-32">
+        {/* Layout: Single Central Stack */}
+        <div className="relative z-10 h-full w-full flex flex-col justify-center items-center px-8 text-center max-w-7xl mx-auto">
+          
+          <div className="max-w-4xl flex flex-col items-center space-y-8">
+            {/* Subtitle / Intro */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1 }}
+              className="flex items-center gap-4 text-white/40"
+            >
+              <span className="w-8 h-[1px] bg-white/10" />
+              <span
+                className="text-[10px] md:text-[11px] uppercase tracking-[0.5em] font-medium"
+                dangerouslySetInnerHTML={{ __html: introText }}
+              />
+              <span className="w-8 h-[1px] bg-white/10" />
+            </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-end">
-
-          {/* Left: Editorial Text */}
-          <div className="lg:col-span-6 xl:col-span-7 flex flex-col justify-end">
-
-            {/* Subtle Intro */}
+            {/* Main Title */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground mb-8 flex items-center gap-3 [&>p]:inline-block"
+              transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             >
-              <span className="w-8 h-px bg-foreground/30" />
-              <span dangerouslySetInnerHTML={{ __html: introText }} />
+              <h1 className="text-white text-[clamp(1.5rem,6vw,3.5rem)] font-light leading-[1.1] tracking-tight">
+                <span dangerouslySetInnerHTML={{ __html: mainHeadline }} className="[&_strong]:font-medium [&_strong]:italic" />
+              </h1>
             </motion.div>
 
-            {/* Main Headline */}
-            <motion.h1
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1, delay: 0.4 }}
-              className="text-[clamp(2rem,5vw,3.5rem)] font-normal leading-[0.9] tracking-tight text-foreground prose-strong:font-semibold prose-strong:text-foreground [&>p]:inline"
-            >
-              <span dangerouslySetInnerHTML={{ __html: mainHeadline }} />
-            </motion.h1>
-
-            {/* CTA */}
+            {/* CTAs */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.8 }}
-              className="mt-10 flex items-center gap-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.6 }}
+              className="flex flex-wrap justify-center gap-4 pt-6"
             >
-              <Link
-                href="/gallery"
-                className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+              <LiquidRiseCTA 
+                href="/gallery" 
+                className="!bg-white !text-black border-transparent !w-40 !h-11 text-[10px]"
               >
-                <span className="w-4 h-px bg-foreground/30" />
-                Browse Gallery
-              </Link>
-              <Link
-                href="/studio"
-                className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+                Gallery
+              </LiquidRiseCTA>
+              
+              <LiquidRiseCTA 
+                href="/studio" 
+                className="!bg-white/10 !text-white !backdrop-blur-xl border-white/20 !w-40 !h-11 text-[10px]"
               >
-                <span className="w-4 h-px bg-foreground/30" />
-                Open Studio
-              </Link>
+                Studio
+              </LiquidRiseCTA>
             </motion.div>
           </div>
-
-          {/* Right: Featured Image */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.2, delay: 0.3 }}
-            className="lg:col-span-6 xl:col-span-5"
-          >
-            {heroImage && (
-              <div className="relative aspect-[3/4] w-full max-w-md lg:max-w-none ml-auto overflow-hidden rounded-sm">
-                <Image
-                  src={heroImage}
-                  alt="Featured editorial photograph"
-                  fill
-                  className="object-cover"
-                  priority
-                  quality={85}
-                  sizes="(max-width: 1024px) 100vw, 40vw"
-                />
-              </div>
-            )}
-          </motion.div>
-
         </div>
       </div>
-
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-        className="absolute bottom-8 right-8 z-20 hidden md:block"
-      >
-        <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all cursor-pointer">
-          <ArrowDownRight className="w-4 h-4" />
-        </div>
-      </motion.div>
-
     </section>
   );
 }

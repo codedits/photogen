@@ -7,9 +7,11 @@ import { Plus } from "lucide-react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
+import LiquidRiseCTA from "./LiquidRiseCTA";
 
 const NAV_LINKS = [
   { href: "/gallery", label: "Projects" },
+  { href: "/blog", label: "Blog" },
   { href: "/presets", label: "Presets" },
   { href: "/studio", label: "Studio" },
   { href: "/contact", label: "About" },
@@ -139,13 +141,12 @@ export default function Nav() {
 
             {/* Right */}
             <div className="flex items-center gap-2 md:gap-3">
-              <Link
+              <LiquidRiseCTA
                 href="/contact"
-                className="hidden sm:inline-flex px-4 py-2 bg-primary text-primary-foreground text-[10px] uppercase tracking-[0.15em] font-bold rounded-full hover:bg-primary/90 transition-colors"
-                title="Book an Inquiry"
+                className="hidden sm:flex !w-auto !h-9 !rounded-full px-5 text-[10px]"
               >
                 Inquiry
-              </Link>
+              </LiquidRiseCTA>
 
               <ThemeToggle className="ml-1" />
 

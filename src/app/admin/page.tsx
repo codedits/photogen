@@ -8,8 +8,10 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 // Lazy load heavy components
 const PresetsManagement = lazy(() => import('./PresetsManagement'));
 const GalleryManagement = lazy(() => import('./GalleryManagement'));
+const BlogManagement = lazy(() => import('./BlogManagement'));
 const PresetForm = lazy(() => import('./components/PresetForm'));
 const GalleryForm = lazy(() => import('./components/GalleryForm'));
+const BlogForm = lazy(() => import('./components/BlogForm'));
 const SettingsManagement = lazy(() => import('./SettingsManagement'));
 
 type PresetRow = {
@@ -22,12 +24,28 @@ type PresetRow = {
   dng?: { url?: string; public_id?: string; format?: string } | null;
 };
 
+type BlogRow = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  contentHtml: string;
+  tags: string[];
+  status: 'draft' | 'published';
+  coverImage?: { url: string; public_id: string } | null;
+  inlineImages?: { url: string; public_id: string }[];
+  seoTitle?: string;
+  seoDescription?: string;
+};
+
 export type AdminView = 
-  | { type: 'list'; tab: 'presets' | 'gallery' | 'contact' }
+  | { type: 'list'; tab: 'presets' | 'gallery' | 'blog' | 'contact' }
   | { type: 'create-preset' }
   | { type: 'edit-preset'; preset: PresetRow }
   | { type: 'create-gallery' }
-  | { type: 'edit-gallery'; item: any };
+  | { type: 'edit-gallery'; item: any }
+  | { type: 'create-blog' }
+  | { type: 'edit-blog'; post: BlogRow };
 
 // Toast Context for global notifications
 type Toast = { id: string; message: string; type: 'success' | 'error' | 'info' };
@@ -175,7 +193,7 @@ export default function AdminPage() {
     addToast('Gallery item deleted', 'info');
   }, [addToast]);
 
-  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'contact') => {
+  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'blog' | 'contact') => {
     setView({ type: 'list', tab });
   }, []);
 
@@ -183,8 +201,48 @@ export default function AdminPage() {
   const openEditPreset = useCallback((preset: PresetRow) => setView({ type: 'edit-preset', preset }), []);
   const openCreateGallery = useCallback(() => setView({ type: 'create-gallery' }), []);
   const openEditGallery = useCallback((item: any) => setView({ type: 'edit-gallery', item }), []);
+  const openCreateBlog = useCallback(() => setView({ type: 'create-blog' }), []);
+  const openEditBlog = useCallback(async (post: { id: string }) => {
+    try {
+      const res = await fetch(`/api/blog/${post.id}`, { cache: 'no-store' });
+      const result = await res.json().catch(() => null);
+      if (!res.ok || !result?.post) {
+        throw new Error(result?.error || 'Failed to load blog post');
+      }
+      setView({ type: 'edit-blog', post: result.post });
+    } catch (err: any) {
+      addToast(err?.message || 'Failed to load blog post', 'error');
+    }
+  }, [addToast]);
   const backToPresets = useCallback(() => setView({ type: 'list', tab: 'presets' }), []);
   const backToGallery = useCallback(() => setView({ type: 'list', tab: 'gallery' }), []);
+  const backToBlog = useCallback(() => setView({ type: 'list', tab: 'blog' }), []);
+
+  const handleSaveBlog = useCallback(async (data: any) => {
+    const isEdit = view.type === 'edit-blog';
+    const url = isEdit ? `/api/blog/${(view as any).post.id}` : '/api/blog';
+    const method = isEdit ? 'PATCH' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    const result = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(result?.error || 'Failed to save blog post');
+    }
+
+    addToast(isEdit ? 'Blog post updated' : 'Blog post created', 'success');
+  }, [addToast, view]);
+
+  const handleDeleteBlog = useCallback(async (post: { id: string }) => {
+    const res = await fetch(`/api/blog/${post.id}`, { method: 'DELETE' });
+    const result = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(result?.error || 'Delete failed');
+    addToast('Blog post deleted', 'info');
+  }, [addToast]);
 
   const [revalidating, setRevalidating] = useState(false);
   const handleManualRevalidate = useCallback(async () => {
@@ -283,7 +341,42 @@ export default function AdminPage() {
     );
   }
 
-  const activeTab = view.type === 'list' ? view.tab : (view.type.includes('preset') ? 'presets' : (view.type.includes('gallery') ? 'gallery' : 'contact'));
+  const activeTab = view.type === 'list'
+    ? view.tab
+    : view.type.includes('preset')
+      ? 'presets'
+      : view.type.includes('gallery')
+        ? 'gallery'
+        : view.type.includes('blog')
+          ? 'blog'
+          : 'contact';
+
+  const title = view.type === 'list'
+    ? activeTab === 'presets'
+      ? 'Presets'
+      : activeTab === 'gallery'
+        ? 'Gallery'
+        : activeTab === 'blog'
+          ? 'Blog'
+          : 'Contact Page'
+    : view.type.includes('preset')
+      ? 'Edit Preset'
+      : view.type.includes('gallery')
+        ? 'Edit Gallery'
+        : 'Edit Blog';
+
+  const breadcrumb = view.type !== 'list'
+    ? [
+        {
+          label: view.type.includes('preset') ? 'Presets' : view.type.includes('gallery') ? 'Gallery' : 'Blog',
+          onClick: () => setView({
+            type: 'list',
+            tab: view.type.includes('preset') ? 'presets' : view.type.includes('gallery') ? 'gallery' : 'blog',
+          }),
+        },
+        { label: view.type.includes('create') ? 'Create New' : 'Editing' },
+      ]
+    : undefined;
 
   return (
     <ToastContext.Provider value={toastContextValue}>
@@ -300,14 +393,11 @@ export default function AdminPage() {
         
         <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
           <AdminHeader 
-            title={view.type === 'list' ? (activeTab === 'presets' ? 'Presets' : activeTab === 'gallery' ? 'Gallery' : 'Contact Page') : (view.type.includes('preset') ? 'Edit Preset' : 'Edit Gallery')} 
+            title={title}
             onMenuClick={() => setSidebarOpen(true)}
             onRevalidate={handleManualRevalidate}
             revalidating={revalidating}
-            breadcrumb={view.type !== 'list' ? [
-              { label: view.type.includes('preset') ? 'Presets' : 'Gallery', onClick: () => setView({ type: 'list', tab: view.type.includes('preset') ? 'presets' : 'gallery' }) },
-              { label: view.type.includes('create') ? 'Create New' : 'Editing' }
-            ] : undefined}
+            breadcrumb={breadcrumb}
           />
           
           <main className="flex-1 overflow-y-auto bg-background">
@@ -333,6 +423,13 @@ export default function AdminPage() {
                     onCreate={openCreateGallery}
                     onEdit={openEditGallery}
                     onDelete={handleDeleteGallery}
+                  />
+                )}
+                {view.type === 'list' && view.tab === 'blog' && (
+                  <BlogManagement
+                    onCreate={openCreateBlog}
+                    onEdit={openEditBlog}
+                    onDelete={handleDeleteBlog}
                   />
                 )}
                 {view.type === 'list' && (activeTab as string) === 'contact' && (
@@ -364,6 +461,20 @@ export default function AdminPage() {
                     onBack={backToGallery}
                     onSave={handleSaveGallery}
                     onDelete={handleDeleteGallery}
+                  />
+                )}
+                {view.type === 'create-blog' && (
+                  <BlogForm
+                    onBack={backToBlog}
+                    onSave={handleSaveBlog}
+                  />
+                )}
+                {view.type === 'edit-blog' && (
+                  <BlogForm
+                    post={view.post}
+                    onBack={backToBlog}
+                    onSave={handleSaveBlog}
+                    onDelete={handleDeleteBlog}
                   />
                 )}
               </Suspense>

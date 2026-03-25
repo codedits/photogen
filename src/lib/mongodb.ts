@@ -78,3 +78,26 @@ export async function ensureGalleryIndexes(dbName = defaultDb) {
   _idxPromises.set(`${dbName}_gallery`, p);
   return p;
 }
+
+// Ensure blog collection indexes
+export async function ensureBlogIndexes(dbName = defaultDb) {
+  const cacheKey = `${dbName}_blog`;
+  if (_idxPromises.has(cacheKey)) return _idxPromises.get(cacheKey)!;
+  const p = (async () => {
+    const db = await getDatabase(dbName);
+    const coll = db.collection('blog');
+    await Promise.all([
+      coll.createIndex({ slug: 1 }, { unique: true }),
+      coll.createIndex({ status: 1, publishedAt: -1 }),
+      coll.createIndex({ publishedAt: -1 }),
+      coll.createIndex({ createdAt: -1 }),
+      coll.createIndex({ tags: 1 }),
+      coll.createIndex(
+        { title: 'text', excerpt: 'text', contentText: 'text', tags: 'text' },
+        { name: 'blog_text_idx' }
+      ),
+    ]);
+  })();
+  _idxPromises.set(cacheKey, p);
+  return p;
+}

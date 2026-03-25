@@ -15,6 +15,7 @@ import {
   type MotionValue,
 } from "framer-motion";
 import Link from "next/link";
+import LiquidRiseCTA from "./LiquidRiseCTA";
 
 const IMAGES = [
   "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?width=904&height=1200",
@@ -94,8 +95,8 @@ function ParallaxRow({
 
   return (
     <div className="flex whitespace-nowrap overflow-hidden">
-      <motion.div 
-        className="flex flex-nowrap gap-[2px]" 
+      <motion.div
+        className="flex flex-nowrap gap-[2px]"
         style={{ x, willChange: 'transform' }}
       >
         {allImages.map((src, i) => (
@@ -105,7 +106,7 @@ function ParallaxRow({
             whileHover={isMobileViewport ? undefined : { scale: 0.98 }}
             transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
           >
-             <Image
+            <Image
               src={src}
               alt=""
               fill
@@ -116,9 +117,9 @@ function ParallaxRow({
             />
             {/* Brightened Indicator */}
             <div className="absolute top-4 left-4 z-10">
-               <span className="text-[10px] text-white/70 font-mono uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                 {/* Index numbering removed */}
-               </span>
+              <span className="text-[10px] text-white/70 font-mono uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Index numbering removed */}
+              </span>
             </div>
           </motion.div>
         ))}
@@ -175,29 +176,26 @@ export default function ParallaxGallery() {
             <h2 className="mb-6 text-3xl font-light uppercase leading-[0.85] tracking-tighter text-foreground md:text-7xl">
               Explore <br className="hidden md:block" /> the gallery
             </h2>
-            <Link 
-              href="/gallery"
-              className="pointer-events-auto inline-flex items-center gap-4 px-8 py-3 bg-foreground text-background text-[10px] font-normal uppercase tracking-[0.3em] rounded-full hover:opacity-90 transition-all duration-300"
-            >
-              Browse Archive
-            </Link>
+            <div className="mt-6 pointer-events-auto flex justify-center">
+              <LiquidRiseCTA href="/gallery">Gallery</LiquidRiseCTA>
+            </div>
           </motion.div>
         </div>
       </div>
 
       {/* Marquee Rows */}
       <div className="flex flex-col gap-[2px] relative z-10">
-        <ParallaxRow 
-          images={IMAGES.slice(0, 7)} 
-          baseVelocity={-0.8} 
+        <ParallaxRow
+          images={IMAGES.slice(0, 7)}
+          baseVelocity={-0.8}
           velocityFactor={velocityFactor}
           isActive={isActive}
           prefersReducedMotion={!!prefersReducedMotion}
           priorityCount={1}
         />
-        <ParallaxRow 
-          images={IMAGES.slice(7, 14)} 
-          baseVelocity={0.8} 
+        <ParallaxRow
+          images={IMAGES.slice(7, 14)}
+          baseVelocity={0.8}
           velocityFactor={velocityFactor}
           isActive={isActive}
           prefersReducedMotion={!!prefersReducedMotion}

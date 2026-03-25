@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Instagram, Twitter, Linkedin, Send, Loader2, CheckCircle } from "lucide-react";
+import LiquidRiseCTA from "@/components/LiquidRiseCTA";
 
 export default function ContactPage() {
   const [loading, setLoading] = useState(true);
@@ -234,19 +235,13 @@ export default function ContactPage() {
                   />
                 </div>
 
-                <button 
+                <LiquidRiseCTA 
+                  type="submit" 
                   disabled={status === 'sending'}
-                  className="w-full py-5 bg-primary text-primary-foreground text-xs font-normal uppercase tracking-[0.3em] rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  className="w-full !rounded-xl"
                 >
-                  {status === 'sending' ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : (
-                    <>
-                      Send Message
-                      <Send size={16} />
-                    </>
-                  )}
-                </button>
+                  {status === 'sending' ? 'Sending...' : 'Send Message'}
+                </LiquidRiseCTA>
               </form>
             )}
           </motion.div>

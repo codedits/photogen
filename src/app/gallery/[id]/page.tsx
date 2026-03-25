@@ -6,6 +6,7 @@ import getDatabase from '../../../lib/mongodb';
 import ImageWithLqip from '../../../components/ImageWithLqip';
 import GalleryImageGrid from '../../../components/GalleryImageGrid';
 import type { GalleryDoc } from '../../api/gallery/route';
+import LiquidRiseCTA from '../../../components/LiquidRiseCTA';
 
 // --- TYPES ---
 interface GalleryItem extends Omit<GalleryDoc, '_id'> {
@@ -141,12 +142,7 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
                   Professional prints available upon request.
                 </div>
                 
-                <Link 
-                  href="/contact"
-                  className="bg-foreground text-background font-normal text-[14px] uppercase tracking-widest px-8 py-3.5 rounded-full hover:opacity-90 transition-all duration-300 hover:scale-105 active:scale-95"
-                >
-                  Inquiry
-                </Link>
+                <LiquidRiseCTA href="/contact">Inquiry</LiquidRiseCTA>
               </div>
 
               {/* Divider */}
@@ -199,12 +195,9 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
 
       {/* Floating Action Buttons */}
       <div className="fixed bottom-8 right-8 flex flex-col items-end gap-3 z-50 pointer-events-none hidden md:flex">
-        <Link 
-          href="/contact"
-          className="pointer-events-auto bg-foreground text-background font-normal text-[11px] uppercase tracking-widest px-6 py-3 rounded-full shadow-2xl hover:opacity-90 transition-transform hover:scale-105 active:scale-95"
-        >
-          Book a Session
-        </Link>
+        <div className="pointer-events-auto shadow-2xl rounded-full">
+          <LiquidRiseCTA href="/contact">Book a Session</LiquidRiseCTA>
+        </div>
         <button className="pointer-events-auto bg-card/80 backdrop-blur-xl text-muted-foreground font-normal text-[10px] uppercase tracking-widest px-6 py-3 rounded-full border border-border shadow-2xl hover:text-foreground transition-all">
           Shared with PhotoGen
         </button>

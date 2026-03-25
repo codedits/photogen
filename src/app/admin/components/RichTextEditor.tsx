@@ -28,7 +28,7 @@ export default function RichTextEditor({ content, onChange, placeholder }: RichT
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-sm text-white',
+        class: 'prose prose-invert max-w-none focus:outline-none min-h-[100px] text-sm text-white [&_strong]:font-bold [&_b]:font-bold',
       },
     },
   });

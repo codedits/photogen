@@ -98,7 +98,7 @@ export default async function PresetsPage({ searchParams }: { searchParams?: { q
             <span className="w-4 h-px bg-border" />
             Library
           </p>
-          <h1 className="text-3xl md:text-4xl font-normal tracking-tight text-foreground">
+          <h1 className="text-3xl md:text-4xl font-normal tracking-tight text-foreground leading-[0.95]">
             Presets
           </h1>
           <p className="text-[13px] text-muted-foreground mt-4 max-w-md leading-relaxed">

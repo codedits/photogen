@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Upload, Save, ArrowLeft, Trash2, Image as ImageIcon, Link2, Info, Loader2, ArrowUp, ArrowDown, Star } from 'lucide-react';
 import ImageWithLqip from '../../../components/ImageWithLqip';
+import RichTextEditor from './RichTextEditor';
 
 type PresetRow = {
   id: string;
@@ -307,10 +308,9 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
 
             <div>
               <label className="mb-1.5 block text-sm text-zinc-300">Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[100px] w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+              <RichTextEditor
+                content={description}
+                onChange={setDescription}
                 placeholder="Describe this preset look"
               />
             </div>

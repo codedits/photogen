@@ -86,7 +86,7 @@ export default function ContactPage() {
               <motion.h1 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-6xl md:text-8xl font-normal tracking-tighter text-foreground leading-[0.9]"
+                className="text-6xl md:text-8xl font-normal tracking-tighter text-foreground leading-[0.85]"
               >
                 Let&apos;s <br />
                 <span className="text-muted-foreground/60">Connect.</span>

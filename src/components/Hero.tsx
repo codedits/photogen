@@ -8,19 +8,19 @@ import { ArrowDownRight } from "lucide-react";
 
 interface HeroProps {
   settings?: {
-    introText: string;
-    mainHeadline: string;
-    image: {
-      url: string;
-      public_id: string;
+    introText?: string;
+    mainHeadline?: string;
+    image?: {
+      url?: string;
+      public_id?: string;
     };
   };
 }
 
 export default function Hero({ settings }: HeroProps) {
-  const introText = settings?.introText || "It's about emotion and clarity. It is the balance between structure and imagination.";
-  const mainHeadline = settings?.mainHeadline || "Art Director from Pakistan, working across brand, and campaign. My work is a dialogue between order and chaos.";
-  const heroImage = settings?.image?.url || "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?scale-down-to=1024";
+  const introText = settings?.introText ?? "";
+  const mainHeadline = settings?.mainHeadline ?? "";
+  const heroImage = settings?.image?.url ?? "";
 
   return (
     <section className="relative min-h-screen w-full flex flex-col justify-end selection:bg-white selection:text-black overflow-hidden">
@@ -49,7 +49,7 @@ export default function Hero({ settings }: HeroProps) {
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 0.4 }}
-              className="text-[clamp(2rem,5vw,3.5rem)] font-normal leading-[1.1] tracking-tight text-foreground prose-strong:font-semibold prose-strong:text-foreground [&>p]:inline"
+              className="text-[clamp(2rem,5vw,3.5rem)] font-normal leading-[0.9] tracking-tight text-foreground prose-strong:font-semibold prose-strong:text-foreground [&>p]:inline"
             >
               <span dangerouslySetInnerHTML={{ __html: mainHeadline }} />
             </motion.h1>
@@ -85,17 +85,19 @@ export default function Hero({ settings }: HeroProps) {
             transition={{ duration: 1.2, delay: 0.3 }}
             className="lg:col-span-6 xl:col-span-5"
           >
-            <div className="relative aspect-[3/4] w-full max-w-md lg:max-w-none ml-auto overflow-hidden rounded-sm">
-              <Image
-                src={heroImage}
-                alt="Featured editorial photograph"
-                fill
-                className="object-cover"
-                priority
-                quality={85}
-                sizes="(max-width: 1024px) 100vw, 40vw"
-              />
-            </div>
+            {heroImage && (
+              <div className="relative aspect-[3/4] w-full max-w-md lg:max-w-none ml-auto overflow-hidden rounded-sm">
+                <Image
+                  src={heroImage}
+                  alt="Featured editorial photograph"
+                  fill
+                  className="object-cover"
+                  priority
+                  quality={85}
+                  sizes="(max-width: 1024px) 100vw, 40vw"
+                />
+              </div>
+            )}
           </motion.div>
 
         </div>

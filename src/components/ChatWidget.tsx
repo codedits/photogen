@@ -214,7 +214,7 @@ export default function ChatWidget() {
     <div className="fixed inset-0 z-50 pointer-events-none">
       {open && (
         <div className="md:hidden fixed inset-x-0 bottom-16 flex justify-center px-4 pointer-events-auto">
-          <div className="w-full max-w-[420px] bg-background/65 backdrop-blur-md border border-white/10 rounded-xl p-4 flex flex-col box-border max-h-[85vh] min-h-[340px]">
+          <div className="w-full max-w-[420px] bg-black/65 text-white backdrop-blur-md border border-white/10 rounded-xl p-4 flex flex-col box-border max-h-[85vh] min-h-[340px]">
             <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-normal">PhotoGen Chat</h3>
                 <div className="flex items-center gap-2 text-xs text-slate-300">
@@ -266,7 +266,7 @@ export default function ChatWidget() {
 
   <div className="absolute bottom-6 right-6 flex flex-col items-end pointer-events-auto">
         {open && (
-          <div className="hidden md:flex w-[360px] max-w-[92vw] flex-col bg-background/60 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-xl text-sm text-white max-h-[85vh] box-border">
+          <div className="hidden md:flex w-[360px] max-w-[92vw] flex-col bg-black/60 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-xl text-sm text-white max-h-[85vh] box-border">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium">PhotoGen Chat</h3>
               <div className="flex items-center gap-3">

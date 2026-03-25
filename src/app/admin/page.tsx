@@ -208,7 +208,7 @@ export default function AdminPage() {
 
   if (authed === false) {
     return (
-      <div className="min-h-screen bg-background px-4 py-10 sm:py-16">
+      <div className="dark min-h-screen bg-background px-4 py-10 sm:py-16">
         <div className="mx-auto w-full max-w-md">
           <form onSubmit={doLogin} className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-6 sm:p-7">
             <div className="mb-6">
@@ -274,7 +274,7 @@ export default function AdminPage() {
 
   if (authed === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="dark min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 text-zinc-300 animate-spin" />
           <p className="text-zinc-400 text-sm">Checking session...</p>
@@ -287,7 +287,7 @@ export default function AdminPage() {
 
   return (
     <ToastContext.Provider value={toastContextValue}>
-      <div className="min-h-screen bg-background flex">
+      <div className="dark min-h-screen bg-background flex">
         <AdminSidebar 
           activeTab={activeTab} 
           setActiveTab={handleSetActiveTab} 

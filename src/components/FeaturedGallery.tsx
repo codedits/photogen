@@ -33,7 +33,7 @@ export default function FeaturedGallery({ items }: FeaturedGalleryProps) {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-4xl md:text-6xl font-normal tracking-tight text-foreground leading-[1.1]"
+              className="text-4xl md:text-6xl font-normal tracking-tight text-foreground leading-[0.9]"
             >
               Curated <br />
               <span className="text-muted-foreground">Masterpieces</span>

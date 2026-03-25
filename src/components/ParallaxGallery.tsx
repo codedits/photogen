@@ -172,12 +172,12 @@ export default function ParallaxGallery() {
             transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
             className="backdrop-blur-md bg-background/20 p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border border-white/5 shadow-2xl"
           >
-            <h2 className="mb-6 text-3xl font-light uppercase leading-[0.9] tracking-tighter text-white md:text-7xl">
+            <h2 className="mb-6 text-3xl font-light uppercase leading-[0.85] tracking-tighter text-foreground md:text-7xl">
               Explore <br className="hidden md:block" /> the gallery
             </h2>
             <Link 
               href="/gallery"
-              className="pointer-events-auto inline-flex items-center gap-4 px-8 py-3 bg-white text-black text-[10px] font-normal uppercase tracking-[0.3em] rounded-full hover:bg-neutral-200 transition-all duration-300"
+              className="pointer-events-auto inline-flex items-center gap-4 px-8 py-3 bg-foreground text-background text-[10px] font-normal uppercase tracking-[0.3em] rounded-full hover:opacity-90 transition-all duration-300"
             >
               Browse Archive
             </Link>

@@ -91,11 +91,11 @@ export default function GalleryClientShell({ initialItems, totalCount }: Gallery
         </div>
       </section>
 
-      {/* Gallery Section with Sticky Filters */}
-      <section id="gallery" className="relative z-10 pb-40">
-        {/* Sticky Filter Bar Container */}
+      {/* Gallery Section */}
+      <section id="gallery" className="relative z-10 pb-20">
+        {/* Filter Bar Container */}
         <div className={cn(
-          "sticky top-0 z-40 w-full transition-all duration-700 border-b",
+          "relative z-40 w-full transition-all duration-700 border-b",
           isScrolled 
             ? "bg-background/90 backdrop-blur-2xl border-border py-6" 
             : "border-transparent py-8"

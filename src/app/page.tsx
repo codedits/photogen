@@ -45,16 +45,46 @@ async function getFeaturedGallery(): Promise<any[]> {
   }
 }
 
+type HeroSettings = {
+  introText?: string;
+  mainHeadline?: string;
+  image?: {
+    url?: string;
+    public_id?: string;
+  };
+};
+
+async function getHeroSettings(): Promise<HeroSettings | null> {
+  try {
+    const db = await getDatabase();
+    const settings = await db.collection("settings").findOne({ _id: "hero_settings" as any });
+    if (!settings) return null;
+
+    return {
+      introText: settings.introText,
+      mainHeadline: settings.mainHeadline,
+      image: {
+        url: settings.image?.url,
+        public_id: settings.image?.public_id,
+      },
+    };
+  } catch (e) {
+    console.error("Failed to fetch hero settings:", e);
+    return null;
+  }
+}
+
 export default async function Home() {
-  const [presets, featuredGallery] = await Promise.all([
+  const [presets, featuredGallery, heroSettings] = await Promise.all([
     getFeaturedPresets(),
-    getFeaturedGallery()
+    getFeaturedGallery(),
+    getHeroSettings(),
   ]);
 
   return (
     <PageContainer>
       <FullBleed>
-        <Hero />
+        <Hero settings={heroSettings ?? undefined} />
       </FullBleed>
 
       <FullBleed className="perf-section">

@@ -171,7 +171,7 @@ const GalleryCard = ({
 
               {/* Title & Arrow */}
               <div className="flex justify-between items-start mb-1">
-                <h2 className="text-xl md:text-2xl font-light text-white uppercase tracking-tighter leading-none">
+                <h2 className="text-xl md:text-2xl font-light text-white uppercase tracking-tighter leading-[0.9]">
                   {item.name}
                 </h2>
                 <ArrowUpRight className="w-4 h-4 text-white/50 group-hover:text-white group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />

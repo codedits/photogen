@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Upload, Save, ArrowLeft, Trash2, Eye, EyeOff, MapPin, Info, Loader2, Image as ImageIcon, Settings, ArrowUp, ArrowDown, Star } from 'lucide-react';
 import ImageWithLqip from '../../../components/ImageWithLqip';
+import RichTextEditor from './RichTextEditor';
 
 const CATEGORIES = [
   { id: 'portrait', label: 'Portrait' },
@@ -325,10 +326,9 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
 
             <div>
               <label className="mb-1.5 block text-sm text-zinc-300">Description</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                className="min-h-[100px] w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+              <RichTextEditor
+                content={formData.description}
+                onChange={(content) => setFormData((prev) => ({ ...prev, description: content }))}
                 placeholder="Story, context, or style notes"
               />
             </div>

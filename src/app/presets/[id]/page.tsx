@@ -144,7 +144,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
                 <span className="text-[9px] uppercase tracking-widest font-mono text-muted-foreground">Active Asset</span>
               </div>
               
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-medium uppercase tracking-tighter leading-[0.9] text-foreground mb-6">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-medium uppercase tracking-tighter leading-[0.85] text-foreground mb-6">
                 {preset.name || 'Untitled'}
               </h1>
               

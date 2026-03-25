@@ -7,19 +7,19 @@ interface PresetsSectionProps {
 
 export default function PresetsSection({ presets }: PresetsSectionProps) {
   return (
-    <section className="py-24 bg-background border-t border-white/[0.06]">
+    <section className="py-24 bg-background border-t border-border">
       <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-16">
         <div className="flex justify-between items-end mb-12">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-white/50 mb-3 flex items-center gap-2">
-              <span className="w-4 h-px bg-white/20" />
+            <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-3 flex items-center gap-2">
+              <span className="w-4 h-px bg-foreground/20" />
               Collection
             </p>
-            <h2 className="text-2xl font-normal tracking-tight text-white">Featured Presets</h2>
+            <h2 className="text-2xl font-normal tracking-tight text-foreground">Featured Presets</h2>
           </div>
           <Link 
             href="/presets" 
-            className="text-[11px] uppercase tracking-[0.15em] text-white/60 hover:text-white transition-colors duration-300"
+            className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground hover:text-foreground transition-colors duration-300"
           >
             View All →
           </Link>

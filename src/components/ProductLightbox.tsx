@@ -193,25 +193,25 @@ export function ProductLightbox({
         >
           {/* Top bar */}
           <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-gradient-to-b from-background/90 via-background/50 to-transparent">
-            <span className="text-white text-sm font-normal tracking-wider uppercase">
+            <span className="text-foreground text-sm font-normal tracking-wider uppercase">
               {currentIndex + 1} / {images.length}
             </span>
             <div className="flex items-center gap-4">
               {/* Zoom controls */}
-              <div className="flex items-center bg-white/10 backdrop-blur-md rounded-full px-2">
+              <div className="flex items-center bg-foreground/10 backdrop-blur-md rounded-full px-2">
                 <button
                   onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 1))}
-                  className="w-10 h-10 flex items-center justify-center text-white/90 hover:text-white transition-colors"
+                  className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                   disabled={zoomLevel <= 1}
                 >
                   <ZoomOut className="w-5 h-5" />
                 </button>
-                <span className="text-white text-[11px] font-normal min-w-[50px] text-center">
+                <span className="text-foreground text-[11px] font-normal min-w-[50px] text-center">
                   {Math.round(zoomLevel * 100)}%
                 </span>
                 <button
                   onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 4))}
-                  className="w-10 h-10 flex items-center justify-center text-white/90 hover:text-white transition-colors"
+                  className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                   disabled={zoomLevel >= 4}
                 >
                   <ZoomIn className="w-5 h-5" />
@@ -220,7 +220,7 @@ export function ProductLightbox({
 
               <button
                 onClick={onClose}
-                className="w-10 h-10 flex items-center justify-center bg-white text-black rounded-full hover:bg-neutral-200 transition-colors shadow-lg"
+                className="w-10 h-10 flex items-center justify-center bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors shadow-lg"
               >
                 <X className="w-6 h-6 stroke-[2.5px]" />
               </button>
@@ -264,13 +264,13 @@ export function ProductLightbox({
             <>
               <button
                 onClick={goPrev}
-                className="absolute left-6 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center bg-white/20 backdrop-blur-md rounded-full hover:bg-white hover:text-black transition-all text-white shadow-xl"
+                className="absolute left-6 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center bg-foreground/20 backdrop-blur-md rounded-full hover:bg-foreground hover:text-background transition-all text-foreground shadow-xl"
               >
                 <ChevronLeft className="w-7 h-7" />
               </button>
               <button
                 onClick={goNext}
-                className="absolute right-6 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center bg-white/20 backdrop-blur-md rounded-full hover:bg-white hover:text-black transition-all text-white shadow-xl"
+                className="absolute right-6 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center bg-foreground/20 backdrop-blur-md rounded-full hover:bg-foreground hover:text-background transition-all text-foreground shadow-xl"
               >
                 <ChevronRight className="w-7 h-7" />
               </button>
@@ -307,7 +307,7 @@ export function ProductLightbox({
 
           {/* Double-click hint (shows briefly) */}
           {zoomLevel <= 1 && (
-            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 text-white/60 text-[11px] font-normal uppercase tracking-widest pointer-events-none bg-background/20 backdrop-blur-sm px-4 py-1 rounded-full">
+            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-50 text-muted-foreground text-[11px] font-normal uppercase tracking-widest pointer-events-none bg-background/20 backdrop-blur-sm px-4 py-1 rounded-full">
               Pinch or Scroll to zoom · Arrows to navigate
             </div>
           )}

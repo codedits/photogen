@@ -90,7 +90,7 @@ const GalleryCard = ({
         initial="rest"
         whileHover="hover"
         animate="rest"
-        className="group relative w-full bg-neutral-950 border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden"
+        className="group relative w-full bg-neutral-900 border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden"
       >
         <Link href={`/gallery/${item._id}`} className="block">
           <div 
@@ -147,12 +147,12 @@ const GalleryCard = ({
               
               {/* Tags / Metadata */}
               <div className="flex items-center justify-between mt-2">
-                <p className="text-[10px] text-white/70 font-mono uppercase tracking-[0.2em] truncate max-w-[80%]">
+                <p className="text-[10px] text-white/50 font-mono uppercase tracking-[0.2em] truncate max-w-[80%]">
                   {item.category} / {dateStr}
                 </p>
                 
                 {/* Fake ID/Ref number for "Technical" look */}
-                <span className="text-[9px] text-white/45 font-mono">
+                <span className="text-[9px] text-white/30 font-mono">
                   {item._id.substring(0, 4).toUpperCase()}
                 </span>
               </div>

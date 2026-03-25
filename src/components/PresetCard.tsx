@@ -36,7 +36,7 @@ export default function PresetCard({ preset, className = "", priority = false }:
       initial="rest"
       whileHover="hover"
       animate="rest"
-      className={`group relative w-full bg-background border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden ${className}`}
+      className={`group relative w-full bg-neutral-950 border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden ${className}`}
     >
       {/* ASPECT RATIO CONTAINER 
         Using 4:5 (Standard Portrait) for a "Photo Studio" feel
@@ -70,7 +70,7 @@ export default function PresetCard({ preset, className = "", priority = false }:
         )}
 
         {/* --- OVERLAY GRADIENT (Cinematic fade) --- */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/90 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90 pointer-events-none" />
         
         {/* --- INTERACTIVE TOP BADGE --- */}
         <motion.div 
@@ -79,7 +79,7 @@ export default function PresetCard({ preset, className = "", priority = false }:
           className="absolute top-3 right-3 z-20 flex gap-2"
         >
           {imageCount > 1 && (
-            <div className="flex items-center gap-1 bg-background/50 backdrop-blur-md border border-white/10 px-2 py-1 text-[9px] text-white uppercase tracking-widest">
+            <div className="flex items-center gap-1 bg-black/50 backdrop-blur-md border border-white/10 px-2 py-1 text-[9px] text-white uppercase tracking-widest">
               <ImageIcon className="w-3 h-3" />
               <span>{imageCount}</span>
             </div>
@@ -120,7 +120,7 @@ export default function PresetCard({ preset, className = "", priority = false }:
              )}
              
              {/* Fake ID number for "Technical" look */}
-             <span className="text-[9px] text-white/45 font-mono">
+             <span className="text-[9px] text-white/30 font-mono">
                {preset.id.substring(0, 4).toUpperCase()}
              </span>
            </div>

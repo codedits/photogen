@@ -69,7 +69,7 @@ export default function PresetGallery({ images: rawImages, presetName }: PresetG
 
   if (!images || images.length === 0 || !currentImage) {
     return (
-      <div className="w-full h-[50vh] lg:h-screen bg-background flex flex-col items-center justify-center text-white/45 border-b lg:border-b-0 lg:border-r border-white/10">
+      <div className="w-full h-[50vh] lg:h-screen bg-background flex flex-col items-center justify-center text-muted-foreground border-b lg:border-b-0 lg:border-r border-border">
         <ImageIcon className="w-16 h-16 opacity-20 mb-4" />
         <p className="font-mono text-xs uppercase tracking-widest">No Preview Available</p>
       </div>
@@ -115,7 +115,7 @@ export default function PresetGallery({ images: rawImages, presetName }: PresetG
   };
 
   return (
-    <div className="relative w-full h-[60vh] lg:h-screen bg-[#050505] overflow-hidden group border-b lg:border-b-0 lg:border-r border-white/10"
+    <div className="relative w-full h-[60vh] lg:h-screen bg-background overflow-hidden group border-b lg:border-b-0 lg:border-r border-border"
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
       onPointerDown={onPointerDown} onPointerUp={onPointerUp}
       style={{ touchAction: 'pan-y' }}>
@@ -155,14 +155,14 @@ export default function PresetGallery({ images: rawImages, presetName }: PresetG
       {/* 1. Fit Toggle (Top Right) */}
       <button
         onClick={() => setFitMode(fitMode === "contain" ? "cover" : "contain")}
-        className="absolute top-6 right-6 z-30 p-2 bg-black/50 backdrop-blur-md border border-white/10 rounded-full text-white/70 hover:text-white transition-all hover:bg-white/10"
+        className="absolute top-6 right-6 z-30 p-2 bg-background/50 backdrop-blur-md border border-border rounded-full text-muted-foreground hover:text-foreground transition-all hover:bg-foreground/10"
         title={fitMode === "contain" ? "Fill Screen (Zoom)" : "Fit Image (No Crop)"}
       >
         {fitMode === "contain" ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
       </button>
 
       {/* 2. Counter (Top Left) */}
-      <div className="absolute top-6 left-6 z-20 bg-black/50 backdrop-blur border border-white/10 px-3 py-1 text-[10px] uppercase tracking-widest text-white/80 font-mono rounded-full">
+      <div className="absolute top-6 left-6 z-20 bg-background/50 backdrop-blur border border-border px-3 py-1 text-[10px] uppercase tracking-widest text-foreground/80 font-mono rounded-full">
         {(currentIndex + 1).toString().padStart(2, "0")} / {images.length.toString().padStart(2, "0")}
       </div>
 
@@ -171,13 +171,13 @@ export default function PresetGallery({ images: rawImages, presetName }: PresetG
         <>
           <button 
             onClick={prevImage}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/20 hover:bg-white/10 text-white/50 hover:text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-background/20 hover:bg-foreground/10 text-muted-foreground hover:text-foreground backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <button 
             onClick={nextImage}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-black/20 hover:bg-white/10 text-white/50 hover:text-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-background/20 hover:bg-foreground/10 text-muted-foreground hover:text-foreground backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
           >
             <ChevronRight className="w-6 h-6" />
           </button>
@@ -189,7 +189,7 @@ export default function PresetGallery({ images: rawImages, presetName }: PresetG
                 key={idx}
                 onClick={() => setCurrentIndex(idx)}
                 className={`h-1 rounded-full transition-all duration-300 ${
-                  idx === currentIndex ? "bg-white w-6" : "bg-white/20 w-1 hover:bg-white/40"
+                  idx === currentIndex ? "bg-foreground w-6" : "bg-foreground/20 w-1 hover:bg-foreground/40"
                 }`}
               />
             ))}

@@ -43,13 +43,13 @@ export default function ContactPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-zinc-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-background font-sans selection:bg-white selection:text-black overflow-x-hidden relative">
+    <main className="min-h-screen bg-background font-sans selection:bg-foreground selection:text-background overflow-x-hidden relative">
       {/* Cinematic Background Image */}
       <div className="fixed inset-0 z-0">
         <motion.div 
@@ -86,52 +86,52 @@ export default function ContactPage() {
               <motion.h1 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-6xl md:text-8xl font-normal tracking-tighter text-white leading-[0.9]"
+                className="text-6xl md:text-8xl font-normal tracking-tighter text-foreground leading-[0.9]"
               >
                 Let&apos;s <br />
-                <span className="text-zinc-600">Connect.</span>
+                <span className="text-muted-foreground/60">Connect.</span>
               </motion.h1>
               <motion.p 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="text-xl text-zinc-400 max-w-md leading-relaxed"
+                className="text-xl text-muted-foreground max-w-md leading-relaxed"
               >
                 Whether you have a question about our work, want to collaborate, or just want to say hi, my inbox is always open.
               </motion.p>
             </div>
 
-            <div className="space-y-8 pt-8 border-t border-zinc-900">
+            <div className="space-y-8 pt-8 border-t border-border">
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center shrink-0 border border-zinc-800">
-                    <Mail size={20} className="text-zinc-400" />
+                  <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center shrink-0 border border-border">
+                    <Mail size={20} className="text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-normal uppercase tracking-widest text-zinc-600 mb-1">Email</p>
-                    <a href={`mailto:${settings?.email}`} className="text-lg text-white hover:text-zinc-400 transition-colors">
+                    <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground mb-1">Email</p>
+                    <a href={`mailto:${settings?.email}`} className="text-lg text-foreground hover:text-muted-foreground transition-colors">
                       {settings?.email}
                     </a>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center shrink-0 border border-zinc-800">
-                    <Phone size={20} className="text-zinc-400" />
+                  <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center shrink-0 border border-border">
+                    <Phone size={20} className="text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-normal uppercase tracking-widest text-zinc-600 mb-1">Phone</p>
-                    <p className="text-lg text-white">{settings?.phone}</p>
+                    <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground mb-1">Phone</p>
+                    <p className="text-lg text-foreground">{settings?.phone}</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center shrink-0 border border-zinc-800">
-                    <MapPin size={20} className="text-zinc-400" />
+                  <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center shrink-0 border border-border">
+                    <MapPin size={20} className="text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-xs font-normal uppercase tracking-widest text-zinc-600 mb-1">Studio</p>
-                    <p className="text-lg text-white whitespace-pre-line">{settings?.address}</p>
+                    <p className="text-xs font-normal uppercase tracking-widest text-muted-foreground mb-1">Studio</p>
+                    <p className="text-lg text-foreground whitespace-pre-line">{settings?.address}</p>
                   </div>
                 </div>
               </div>
@@ -140,19 +140,19 @@ export default function ContactPage() {
               <div className="flex gap-4 pt-4">
                 {settings?.socials?.instagram && (
                   <a href={settings.socials.instagram} target="_blank" rel="noopener noreferrer" 
-                     className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-800 hover:border-white transition-all text-zinc-500 hover:text-white">
+                     className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center border border-border hover:border-foreground transition-all text-muted-foreground hover:text-foreground">
                     <Instagram size={18} />
                   </a>
                 )}
                 {settings?.socials?.twitter && (
                   <a href={settings.socials.twitter} target="_blank" rel="noopener noreferrer"
-                     className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-800 hover:border-white transition-all text-zinc-500 hover:text-white">
+                     className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center border border-border hover:border-foreground transition-all text-muted-foreground hover:text-foreground">
                     <Twitter size={18} />
                   </a>
                 )}
                 {settings?.socials?.linkedin && (
                   <a href={settings.socials.linkedin} target="_blank" rel="noopener noreferrer"
-                     className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-800 hover:border-white transition-all text-zinc-500 hover:text-white">
+                     className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center border border-border hover:border-foreground transition-all text-muted-foreground hover:text-foreground">
                     <Linkedin size={18} />
                   </a>
                 )}
@@ -165,20 +165,20 @@ export default function ContactPage() {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-zinc-900/50 p-8 md:p-12 rounded-3xl border border-zinc-800 backdrop-blur-xl relative overflow-hidden"
+            className="bg-card/50 p-8 md:p-12 rounded-3xl border border-border backdrop-blur-xl relative overflow-hidden"
           >
             {status === 'success' ? (
               <div className="py-20 text-center space-y-6">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-zinc-100 text-zinc-900">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary text-primary-foreground">
                   <CheckCircle size={40} />
                 </div>
-                <h2 className="text-3xl font-normal text-white tracking-tight">Message Sent!</h2>
-                <p className="text-zinc-400 max-w-xs mx-auto">
+                <h2 className="text-3xl font-normal text-foreground tracking-tight">Message Sent!</h2>
+                <p className="text-muted-foreground max-w-xs mx-auto">
                   Thank you for reaching out. We&apos;ll get back to you within 24 hours.
                 </p>
                 <button 
                   onClick={() => setStatus('idle')}
-                  className="px-8 py-3 bg-zinc-800 text-white rounded-full hover:bg-zinc-700 transition-colors text-sm font-normal uppercase tracking-widest"
+                  className="px-8 py-3 bg-secondary text-secondary-foreground rounded-full hover:bg-secondary/80 transition-colors text-sm font-normal uppercase tracking-widest"
                 >
                   Send Another
                 </button>
@@ -187,56 +187,56 @@ export default function ContactPage() {
               <form onSubmit={handleSubmit} className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-zinc-500">Full Name</label>
+                    <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-muted-foreground">Full Name</label>
                     <input 
                       required
                       type="text" 
                       value={formState.name}
                       onChange={e => setFormState({...formState, name: e.target.value})}
                       placeholder="John Doe"
-                      className="w-full bg-transparent border-b border-zinc-800 py-3 text-white focus:border-white outline-none transition-colors"
+                      className="w-full bg-transparent border-b border-border py-3 text-foreground focus:border-foreground outline-none transition-colors"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-zinc-500">Email Address</label>
+                    <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-muted-foreground">Email Address</label>
                     <input 
                       required
                       type="email" 
                       value={formState.email}
                       onChange={e => setFormState({...formState, email: e.target.value})}
                       placeholder="john@example.com"
-                      className="w-full bg-transparent border-b border-zinc-800 py-3 text-white focus:border-white outline-none transition-colors"
+                      className="w-full bg-transparent border-b border-border py-3 text-foreground focus:border-foreground outline-none transition-colors"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-zinc-500">Subject</label>
+                  <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-muted-foreground">Subject</label>
                   <input 
                     required
                     type="text" 
                     value={formState.subject}
                     onChange={e => setFormState({...formState, subject: e.target.value})}
                     placeholder="Inquiry about..."
-                    className="w-full bg-transparent border-b border-zinc-800 py-3 text-white focus:border-white outline-none transition-colors"
+                    className="w-full bg-transparent border-b border-border py-3 text-foreground focus:border-foreground outline-none transition-colors"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-zinc-500">Message</label>
+                  <label className="text-[10px] font-normal uppercase tracking-[0.2em] text-muted-foreground">Message</label>
                   <textarea 
                     required
                     rows={4}
                     value={formState.message}
                     onChange={e => setFormState({...formState, message: e.target.value})}
                     placeholder="Tell us about your project..."
-                    className="w-full bg-transparent border-b border-zinc-800 py-3 text-white focus:border-white outline-none transition-colors resize-none"
+                    className="w-full bg-transparent border-b border-border py-3 text-foreground focus:border-foreground outline-none transition-colors resize-none"
                   />
                 </div>
 
                 <button 
                   disabled={status === 'sending'}
-                  className="w-full py-5 bg-white text-black text-xs font-normal uppercase tracking-[0.3em] rounded-xl hover:bg-zinc-200 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  className="w-full py-5 bg-primary text-primary-foreground text-xs font-normal uppercase tracking-[0.3em] rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
                 >
                   {status === 'sending' ? (
                     <Loader2 size={18} className="animate-spin" />

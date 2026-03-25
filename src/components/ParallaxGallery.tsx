@@ -124,7 +124,7 @@ function ParallaxRow({
             />
             {/* Brightened Indicator */}
             <div className="absolute top-4 left-4 z-10">
-               <span className="text-[10px] text-white/70 font-mono uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+               <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
                  {/* Index numbering removed */}
                </span>
             </div>
@@ -170,14 +170,14 @@ export default function ParallaxGallery() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, amount: 0.4 }}
             transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            className="backdrop-blur-md bg-background/20 p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border border-white/5 shadow-2xl"
+            className="backdrop-blur-md bg-background/20 p-8 md:p-16 rounded-[2.5rem] md:rounded-[4rem] border border-border shadow-2xl"
           >
-            <h2 className="mb-6 text-3xl font-light uppercase leading-[0.9] tracking-tighter text-white md:text-7xl">
+            <h2 className="mb-6 text-3xl font-light uppercase leading-[0.9] tracking-tighter text-foreground md:text-7xl">
               Explore <br className="hidden md:block" /> the gallery
             </h2>
             <Link 
               href="/gallery"
-              className="pointer-events-auto inline-flex items-center gap-4 px-8 py-3 bg-white text-black text-[10px] font-normal uppercase tracking-[0.3em] rounded-full hover:bg-neutral-200 transition-all duration-300"
+              className="pointer-events-auto inline-flex items-center gap-4 px-8 py-3 bg-primary text-primary-foreground text-[10px] font-normal uppercase tracking-[0.3em] rounded-full hover:bg-primary/90 transition-all duration-300"
             >
               Browse Archive
             </Link>

@@ -50,12 +50,12 @@ export default function LiveSearchPresets({ initial = [] }: { initial?: PresetSh
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search presets…"
-          className="flex-1 p-2 rounded bg-white/5"
+          className="flex-1 p-2 rounded bg-secondary/50 border border-border focus:outline-none focus:border-foreground transition-colors"
         />
-        <button type="button" onClick={() => setQuery('')} className="px-3 py-2 rounded bg-white/10">Clear</button>
+        <button type="button" onClick={() => setQuery('')} className="px-3 py-2 rounded bg-secondary hover:bg-secondary/80 transition-colors text-foreground">Clear</button>
       </div>
 
-      {loading && <div className="text-sm text-slate-400 mb-2">Searching…</div>}
+      {loading && <div className="text-sm text-muted-foreground mb-2">Searching…</div>}
 
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {results.map((p) => {

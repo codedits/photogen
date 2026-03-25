@@ -25,9 +25,9 @@ export default function Hero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-[11px] uppercase tracking-[0.3em] text-white/60 mb-8 flex items-center gap-3"
+              className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground mb-8 flex items-center gap-3"
             >
-              <span className="w-8 h-px bg-white/20" />
+              <span className="w-8 h-px bg-foreground/30" />
               It&apos;s about emotion and clarity. It is the balance between structure and imagination.
             </motion.p>
 
@@ -36,7 +36,7 @@ export default function Hero() {
               initial={{ opacity: 0, y: 40 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 0.4 }}
-              className="text-[clamp(2rem,5vw,3.5rem)] font-normal leading-[1.1] tracking-tight text-white"
+              className="text-[clamp(2rem,5vw,3.5rem)] font-normal leading-[1.1] tracking-tight text-foreground"
             >
               Art Director from Pakistan, working across brand, and campaign. My work is a dialogue between order and chaos.
             </motion.h1>
@@ -50,16 +50,16 @@ export default function Hero() {
             >
               <Link
                 href="/gallery"
-                className="text-[11px] uppercase tracking-[0.2em] text-white/60 hover:text-white transition-colors flex items-center gap-2"
+                className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
               >
-                <span className="w-4 h-px bg-white/30" />
+                <span className="w-4 h-px bg-foreground/30" />
                 Browse Gallery
               </Link>
               <Link
                 href="/studio"
-                className="text-[11px] uppercase tracking-[0.2em] text-white/60 hover:text-white transition-colors flex items-center gap-2"
+                className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
               >
-                <span className="w-4 h-px bg-white/30" />
+                <span className="w-4 h-px bg-foreground/30" />
                 Open Studio
               </Link>
             </motion.div>
@@ -95,7 +95,7 @@ export default function Hero() {
         transition={{ delay: 1.5 }}
         className="absolute bottom-8 right-8 z-20 hidden md:block"
       >
-        <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:border-white/30 transition-all cursor-pointer">
+        <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-all cursor-pointer">
           <ArrowDownRight className="w-4 h-4" />
         </div>
       </motion.div>

@@ -88,20 +88,20 @@ export default async function PresetsPage({ searchParams }: { searchParams?: { q
   const presets = await getPresetsFiltered(q);
 
   return (
-    <main className="min-h-screen w-full text-[#e1e1e1] selection:bg-white/20 relative">
+    <main className="min-h-screen w-full text-foreground selection:bg-foreground/20 relative">
       
       <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 pt-32 pb-24">
         
         {/* Header */}
-        <header className="mb-16 pb-8 border-b border-white/[0.06]">
-          <p className="text-[10px] uppercase tracking-[0.3em] text-white/50 mb-6 flex items-center gap-2">
-            <span className="w-4 h-px bg-white/20" />
+        <header className="mb-16 pb-8 border-b border-border">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-6 flex items-center gap-2">
+            <span className="w-4 h-px bg-border" />
             Library
           </p>
-          <h1 className="text-3xl md:text-4xl font-normal tracking-tight text-white/90">
+          <h1 className="text-3xl md:text-4xl font-normal tracking-tight text-foreground">
             Presets
           </h1>
-          <p className="text-[13px] text-white/60 mt-4 max-w-md leading-relaxed">
+          <p className="text-[13px] text-muted-foreground mt-4 max-w-md leading-relaxed">
             Curated grading tools for intelligent photography.
           </p>
         </header>

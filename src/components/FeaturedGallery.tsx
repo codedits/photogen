@@ -33,17 +33,17 @@ export default function FeaturedGallery({ items }: FeaturedGalleryProps) {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-4xl md:text-6xl font-normal tracking-tight text-white leading-[1.1]"
+              className="text-4xl md:text-6xl font-normal tracking-tight text-foreground leading-[1.1]"
             >
               Curated <br />
-              <span className="text-zinc-500">Masterpieces</span>
+              <span className="text-muted-foreground">Masterpieces</span>
             </motion.h2>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-lg text-zinc-400 font-medium"
+              className="text-lg text-muted-foreground font-medium"
             >
               A selection of our most evocative captures, defined by light, <br className="hidden md:block" />
               shadow, and the soul of the subject.
@@ -57,10 +57,10 @@ export default function FeaturedGallery({ items }: FeaturedGalleryProps) {
           >
             <Link 
               href="/gallery" 
-              className="group flex items-center gap-3 text-white font-normal text-lg hover:text-zinc-400 transition-colors"
+              className="group flex items-center gap-3 text-foreground font-normal text-lg hover:text-muted-foreground transition-colors"
             >
               View Full Gallery
-              <div className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center group-hover:border-white transition-all group-hover:translate-x-1">
+              <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center group-hover:border-foreground transition-all group-hover:translate-x-1">
                 <ArrowRight size={18} />
               </div>
             </Link>
@@ -87,20 +87,20 @@ export default function FeaturedGallery({ items }: FeaturedGalleryProps) {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          className="pt-12 border-t border-zinc-800/50 flex flex-col md:flex-row gap-8 items-center justify-between"
+          className="pt-12 border-t border-border flex flex-col md:flex-row gap-8 items-center justify-between"
         >
           <div className="flex gap-12 items-center">
             <div className="space-y-1">
-              <div className="text-white text-3xl font-normal">140+</div>
-              <div className="text-zinc-500 text-xs font-normal uppercase tracking-wider">Public Captures</div>
+              <div className="text-foreground text-3xl font-normal">140+</div>
+              <div className="text-muted-foreground text-xs font-normal uppercase tracking-wider">Public Captures</div>
             </div>
             <div className="space-y-1">
-              <div className="text-white text-3xl font-normal">24</div>
-              <div className="text-zinc-500 text-xs font-normal uppercase tracking-wider">Premium Presets</div>
+              <div className="text-foreground text-3xl font-normal">24</div>
+              <div className="text-muted-foreground text-xs font-normal uppercase tracking-wider">Premium Presets</div>
             </div>
           </div>
           
-          <p className="text-zinc-600 text-sm max-w-xs text-center md:text-right font-medium">
+          <p className="text-muted-foreground text-sm max-w-xs text-center md:text-right font-medium">
             Every image tells a unique story, processed with precision using our signature workflow.
           </p>
         </motion.div>

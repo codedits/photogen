@@ -271,11 +271,11 @@ export default function ImageGenerator() {
   const canGenerate = prompt.trim().length > 0 && !loading;
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 font-sans text-white overflow-hidden selection:bg-white/20">
+    <div className="relative min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 font-sans text-foreground overflow-hidden selection:bg-foreground/20">
 
       {/* --- Background Elements --- */}
-      <div className="fixed inset-0 pointer-events-none -z-10 bg-[#080808]">
-        <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-[#111111] to-transparent z-10" />
+      <div className="fixed inset-0 pointer-events-none -z-10 bg-background">
+        <div className="absolute top-0 inset-x-0 h-1/3 bg-gradient-to-b from-background to-transparent z-10" />
 
         {/* Animated colorful blurs */}
         <div className={`absolute -top-[10%] -left-[10%] w-[60%] h-[60%] bg-[#3b82f6] rounded-full mix-blend-screen filter blur-[100px] sm:blur-[120px] transition-opacity duration-1000 ${loading ? 'opacity-10' : 'opacity-30 animate-pulse'}`} />
@@ -297,7 +297,7 @@ export default function ImageGenerator() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.05 }}
-              className="w-full max-w-[800px] aspect-video rounded-[32px] overflow-hidden bg-black/40 border border-white/5 shadow-2xl relative group"
+              className="w-full max-w-[800px] aspect-video rounded-[32px] overflow-hidden bg-card/40 border border-border shadow-2xl relative group"
             >
               <img
                 src={imageUrl}
@@ -306,8 +306,8 @@ export default function ImageGenerator() {
                 onLoad={() => setImageLoaded(true)}
               />
               {!imageLoaded && (
-                <div className="absolute inset-0 bg-white/5 animate-pulse flex items-center justify-center">
-                  <div className="w-8 h-8 border-2 border-white/20 border-t-white/80 rounded-full animate-spin" />
+                <div className="absolute inset-0 bg-foreground/5 animate-pulse flex items-center justify-center">
+                  <div className="w-8 h-8 border-2 border-foreground/20 border-t-foreground/80 rounded-full animate-spin" />
                 </div>
               )}
             </motion.div>
@@ -317,13 +317,13 @@ export default function ImageGenerator() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="w-full max-w-[680px] p-8 rounded-3xl border border-red-500/20 bg-red-500/5 text-center flex flex-col items-center gap-4"
+              className="w-full max-w-[680px] p-8 rounded-3xl border border-destructive/20 bg-destructive/10 text-center flex flex-col items-center gap-4"
             >
-              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
-                <span className="text-red-500 text-xl font-normal">!</span>
+              <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center border border-destructive/20">
+                <span className="text-destructive text-xl font-normal">!</span>
               </div>
-              <p className="text-red-400 text-sm leading-relaxed">{error}</p>
-              <button onClick={() => setError(null)} className="text-[10px] uppercase tracking-widest text-white/60 hover:text-white transition-colors">Dismiss</button>
+              <p className="text-destructive/80 text-sm leading-relaxed">{error}</p>
+              <button onClick={() => setError(null)} className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">Dismiss</button>
             </motion.div>
           )}
 
@@ -334,16 +334,16 @@ export default function ImageGenerator() {
               className="w-full max-w-[680px] p-12 text-center flex flex-col items-center gap-6"
             >
               <div className="w-16 h-16 relative">
-                <div className="absolute inset-0 border-4 border-white/10 rounded-full" />
+                <div className="absolute inset-0 border-4 border-foreground/10 rounded-full" />
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 border-4 border-white/40 border-t-transparent rounded-full"
+                  className="absolute inset-0 border-4 border-foreground/40 border-t-transparent rounded-full"
                 />
               </div>
               <div className="space-y-2">
-                <p className="text-white/80 text-sm tracking-widest uppercase font-medium">{loadingMessage}</p>
-                <p className="text-white/45 text-[10px] font-mono">{Math.round(progress)}% COMPLETE</p>
+                <p className="text-foreground/80 text-sm tracking-widest uppercase font-medium">{loadingMessage}</p>
+                <p className="text-muted-foreground text-[10px] font-mono">{Math.round(progress)}% COMPLETE</p>
               </div>
             </motion.div>
           )}
@@ -370,11 +370,11 @@ export default function ImageGenerator() {
 
           {/* Static subtle border (visible when not generating) */}
           {!loading && (
-            <div className={`absolute inset-0 rounded-[24px] sm:rounded-[32px] border pointer-events-none z-20 transition-colors duration-300 ${isFocused ? 'border-white/20' : 'border-white/10'}`} />
+            <div className={`absolute inset-0 rounded-[24px] sm:rounded-[32px] border pointer-events-none z-20 transition-colors duration-300 ${isFocused ? 'border-foreground/20' : 'border-foreground/10'}`} />
           )}
 
           {/* Content Box */}
-          <div className="relative w-full bg-[#1a1a1a]/90 sm:bg-[#1a1a1a]/95 backdrop-blur-3xl rounded-[22px] sm:rounded-[30px] p-3 sm:p-4 pt-4 sm:pt-5 flex flex-col gap-3 z-10">
+          <div className="relative w-full bg-card/90 sm:bg-card/95 backdrop-blur-3xl rounded-[22px] sm:rounded-[30px] p-3 sm:p-4 pt-4 sm:pt-5 flex flex-col gap-3 z-10">
 
             <textarea
               ref={textareaRef}
@@ -390,14 +390,14 @@ export default function ImageGenerator() {
               }}
               disabled={loading}
               placeholder={loading ? "Synthesizing pixels..." : "Describe the image you want to create..."}
-              className="w-full bg-transparent text-white/95 placeholder:text-white/50 focus:outline-none resize-none min-h-[44px] max-h-[150px] sm:max-h-[200px] text-[15px] sm:text-[16px] leading-relaxed px-2 overflow-y-auto custom-scrollbar disabled:cursor-not-allowed transition-opacity duration-500"
+              className="w-full bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none resize-none min-h-[44px] max-h-[150px] sm:max-h-[200px] text-[15px] sm:text-[16px] leading-relaxed px-2 overflow-y-auto custom-scrollbar disabled:cursor-not-allowed transition-opacity duration-500"
               rows={1}
             />
 
             <div className="flex items-center justify-between pt-1">
               <div className="flex items-center gap-1 sm:gap-2">
                 <button
-                  className="p-2 sm:p-2.5 text-white/60 hover:text-white/80 hover:bg-white/10 rounded-full transition-all duration-200 disabled:opacity-20 active:scale-95"
+                  className="p-2 sm:p-2.5 text-muted-foreground hover:text-foreground/80 hover:bg-foreground/10 rounded-full transition-all duration-200 disabled:opacity-20 active:scale-95"
                   disabled={loading}
                   aria-label="Add attachment"
                 >
@@ -409,7 +409,7 @@ export default function ImageGenerator() {
                   <button
                     onClick={() => setIsModelOpen(!isModelOpen)}
                     disabled={loading}
-                    className={`flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${isModelOpen ? 'bg-white/15 text-white shadow-inner' : 'text-white/50 hover:text-white/90 hover:bg-white/10'} disabled:opacity-50`}
+                    className={`flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${isModelOpen ? 'bg-foreground/15 text-foreground shadow-inner' : 'text-muted-foreground hover:text-foreground/90 hover:bg-foreground/10'} disabled:opacity-50`}
                   >
                     <SparklesIcon />
                     <span className="hidden xs:inline">{MODELS.find(m => m.id === model)?.label || 'Model'}</span>
@@ -422,13 +422,13 @@ export default function ImageGenerator() {
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        className="absolute bottom-full left-0 mb-2 w-48 bg-[#2a2a2a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-1.5 z-50 transform origin-bottom-left"
+                        className="absolute bottom-full left-0 mb-2 w-48 bg-popover/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl py-1.5 z-50 transform origin-bottom-left text-popover-foreground"
                       >
                         {MODELS.map(m => (
                           <button
                             key={m.id}
                             onClick={() => { setModel(m.id); setIsModelOpen(false); }}
-                            className={`w-full text-left px-4 py-2.5 text-[13px] sm:text-sm transition-colors ${model === m.id ? 'text-white font-medium bg-white/5' : 'text-white/60 hover:bg-white/5 hover:text-white/90'}`}
+                            className={`w-full text-left px-4 py-2.5 text-[13px] sm:text-sm transition-colors ${model === m.id ? 'text-foreground font-medium bg-foreground/5' : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground/90'}`}
                           >
                             {m.label}
                           </button>
@@ -443,7 +443,7 @@ export default function ImageGenerator() {
                   <button
                     onClick={() => setIsRatioOpen(!isRatioOpen)}
                     disabled={loading}
-                    className={`flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${isRatioOpen ? 'bg-white/15 text-white shadow-inner' : 'text-white/50 hover:text-white/90 hover:bg-white/10'} disabled:opacity-50`}
+                    className={`flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 ${isRatioOpen ? 'bg-foreground/15 text-foreground shadow-inner' : 'text-muted-foreground hover:text-foreground/90 hover:bg-foreground/10'} disabled:opacity-50`}
                   >
                     <RatioIcon />
                     <span className="hidden xs:inline">{ratio}</span>
@@ -455,13 +455,13 @@ export default function ImageGenerator() {
                         initial={{ opacity: 0, scale: 0.95, y: 10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                        className="absolute bottom-full left-0 mb-2 w-36 bg-[#2a2a2a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl py-1.5 z-50 transform origin-bottom-left"
+                        className="absolute bottom-full left-0 mb-2 w-36 bg-popover/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl py-1.5 z-50 transform origin-bottom-left text-popover-foreground"
                       >
                         {RATIOS.map(r => (
                           <button
                             key={r.id}
                             onClick={() => { setRatio(r.id); setIsRatioOpen(false); }}
-                            className={`w-full text-left px-4 py-2.5 text-[13px] sm:text-sm transition-colors ${ratio === r.id ? 'text-white font-medium bg-white/5' : 'text-white/60 hover:bg-white/5 hover:text-white/90'}`}
+                            className={`w-full text-left px-4 py-2.5 text-[13px] sm:text-sm transition-colors ${ratio === r.id ? 'text-foreground font-medium bg-foreground/5' : 'text-muted-foreground hover:bg-foreground/5 hover:text-foreground/90'}`}
                           >
                             {r.label}
                           </button>
@@ -477,14 +477,14 @@ export default function ImageGenerator() {
                 onClick={() => handleGenerate()}
                 disabled={!canGenerate}
                 className={`ml-2 p-2.5 sm:p-2 rounded-full flex items-center justify-center transition-all duration-300 ${loading
-                    ? 'bg-white text-black opacity-100 scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)]'
+                    ? 'bg-primary text-primary-foreground opacity-100 scale-95 shadow-[0_0_20px_rgba(255,255,255,0.3)]'
                     : canGenerate
-                      ? 'bg-white text-black hover:bg-gray-200 shadow-[0_4px_14px_rgba(255,255,255,0.25)] transform hover:scale-105 active:scale-95'
-                      : 'bg-[#333] text-white/45'
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_4px_14px_rgba(255,255,255,0.25)] transform hover:scale-105 active:scale-95'
+                      : 'bg-secondary text-muted-foreground'
                   }`}
               >
                 {loading ? (
-                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-primary-foreground/20 border-t-primary-foreground rounded-full animate-spin" />
                 ) : (
                   <ArrowUpIcon />
                 )}

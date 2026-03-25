@@ -6,6 +6,7 @@ import LazyChatWidget from "../components/LazyChatWidget";
 import Footer from "../components/Footer";
 import VercelAnalytics from "../components/VercelAnalytics";
 import { ensurePresetIndexes } from "../lib/mongodb";
+import { ThemeProvider } from "../components/ThemeProvider";
 
 
 const dmSans = DM_Sans({
@@ -55,7 +56,7 @@ export default async function RootLayout({
   } catch {}
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/gen.svg" />
   {/* Preconnect to Cloudinary to improve image fetch latency */}
@@ -63,13 +64,15 @@ export default async function RootLayout({
   <link rel="dns-prefetch" href="https://res.cloudinary.com" />
       </head>
       <body
-        className={`${dmSans.variable} ${geistMono.variable} font-sans antialiased bg-background`}
+        className={`${dmSans.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground transition-colors duration-300`}
       >
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
         <Nav />
         {children}
         <LazyChatWidget />
         <Footer />
         <VercelAnalytics />
+        </ThemeProvider>
       </body>
     </html>
   );

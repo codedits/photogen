@@ -69,14 +69,14 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
             key={cat}
             onClick={() => handleCategoryChange(cat)}
             className={`whitespace-nowrap text-[11px] md:text-[12px] uppercase tracking-widest transition-all duration-700 relative group ${
-              activeCategory === cat ? 'text-white font-medium' : 'text-white/50 hover:text-white/80'
+              activeCategory === cat ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {cat}
             {activeCategory === cat && (
               <motion.div 
                 layoutId="activeCategory"
-                className="absolute -bottom-2 left-0 right-0 h-px bg-white/40"
+                className="absolute -bottom-2 left-0 right-0 h-px bg-foreground/40"
                 transition={{ type: "spring", stiffness: 380, damping: 30 }}
               />
             )}
@@ -84,12 +84,12 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
         ))}
       </div>
 
-      <div className="flex items-center gap-8 md:gap-12 pl-8 border-l border-white/10 ml-8">
+      <div className="flex items-center gap-8 md:gap-12 pl-8 border-l border-border ml-8">
         {/* Featured Toggle */}
         <button
           onClick={toggleFeatured}
           className={`text-[11px] md:text-[12px] uppercase tracking-widest transition-all duration-700 whitespace-nowrap ${
-            isFeatured ? 'text-white font-medium italic' : 'text-white/50 hover:text-white/80'
+            isFeatured ? 'text-foreground font-medium italic' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           Featured
@@ -106,20 +106,20 @@ export default function GalleryFilters({ onFiltersChange }: GalleryFiltersProps)
                 transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
                 className="overflow-hidden"
               >
-                <input
+                  <input
                   type="text"
                   autoFocus
                   placeholder="FILTER BY NAME"
                   value={searchQuery}
                   onChange={handleSearch}
-                  className="bg-transparent border-b border-white/20 text-[11px] tracking-widest uppercase w-full py-1 focus:outline-none focus:border-white transition-all placeholder:text-white/50"
+                  className="bg-transparent border-b border-border text-[11px] tracking-widest uppercase w-full py-1 focus:outline-none focus:border-foreground transition-all placeholder:text-muted-foreground"
                 />
               </motion.div>
             )}
           </AnimatePresence>
           <button 
             onClick={() => setIsSearchOpen(!isSearchOpen)}
-            className={`transition-all duration-700 ${isSearchOpen ? 'text-white' : 'text-white/50 hover:text-white/80'}`}
+            className={`transition-all duration-700 ${isSearchOpen ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             <Search className="w-4 h-4" />
           </button>

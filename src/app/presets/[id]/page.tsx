@@ -104,7 +104,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
   const images = Array.isArray(preset.images) ? preset.images : [];
 
   return (
-    <main className="min-h-screen bg-background text-[#e1e1e1] selection:bg-white/20">
+    <main className="min-h-screen bg-background text-foreground selection:bg-foreground/20">
       
       {/* Global Grain Texture */}
       <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay" 
@@ -114,7 +114,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
       <nav className="fixed top-0 left-0 h-16 px-6 z-50 flex items-center">
         <Link 
           href="/presets" 
-          className="group flex items-center gap-2 px-4 py-2 bg-black/50 backdrop-blur-md border border-white/10 rounded-full hover:bg-white hover:text-black transition-all"
+          className="group flex items-center gap-2 px-4 py-2 bg-background/50 backdrop-blur-md border border-border rounded-full hover:bg-foreground hover:text-background transition-all"
         >
           <ArrowLeft className="w-3 h-3 transition-transform group-hover:-translate-x-1" />
           <span className="text-[10px] uppercase tracking-widest font-normal">Back</span>
@@ -130,7 +130,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
         </div>
 
         {/* RIGHT: DETAILS SIDEBAR (35% width) */}
-        <aside className="w-full lg:w-[35%] xl:w-[30%] bg-background border-l-0 lg:border-l border-white/10 flex flex-col relative z-20">
+        <aside className="w-full lg:w-[35%] xl:w-[30%] bg-background border-l-0 lg:border-l border-border flex flex-col relative z-20">
           
           <div className="p-8 lg:p-12 flex-grow">
             
@@ -141,22 +141,22 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                <span className="text-[9px] uppercase tracking-widest font-mono text-white/60">Active Asset</span>
+                <span className="text-[9px] uppercase tracking-widest font-mono text-muted-foreground">Active Asset</span>
               </div>
               
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-medium uppercase tracking-tighter leading-[0.9] text-white mb-6">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-medium uppercase tracking-tighter leading-[0.9] text-foreground mb-6">
                 {preset.name || 'Untitled'}
               </h1>
               
-              <div className="w-12 h-[1px] bg-white/50" />
+              <div className="w-12 h-[1px] bg-border" />
             </div>
 
             {/* Description */}
             <div className="mb-12">
-              <h3 className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/60 mb-3 font-mono">
+              <h3 className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground mb-3 font-mono">
                 <Info className="w-3 h-3" /> Info
               </h3>
-              <p className="text-sm leading-7 text-white/70 font-light">
+              <p className="text-sm leading-7 text-muted-foreground font-light">
                 {preset.description || (
                   <span className="italic opacity-50">No description provided for this grading asset.</span>
                 )}
@@ -165,7 +165,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
 
             {/* Tags */}
             <div className="mb-12">
-              <h3 className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/60 mb-3 font-mono">
+              <h3 className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground mb-3 font-mono">
                 <Hash className="w-3 h-3" /> Attributes
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -173,51 +173,51 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
                   preset.tags.map((tag) => (
                     <span 
                       key={tag} 
-                      className="px-2 py-1 bg-white/5 border border-white/5 text-[10px] uppercase tracking-wider text-white/60"
+                      className="px-2 py-1 bg-secondary border border-border text-[10px] uppercase tracking-wider text-muted-foreground"
                     >
                       {tag}
                     </span>
                   ))
                 ) : (
-                  <span className="text-[10px] text-white/45 font-mono">NULL</span>
+                  <span className="text-[10px] text-muted-foreground/50 font-mono">NULL</span>
                 )}
               </div>
             </div>
 
             {/* Metadata (Visual Filler) */}
-            <div className="grid grid-cols-2 gap-4 pt-8 border-t border-white/10">
+            <div className="grid grid-cols-2 gap-4 pt-8 border-t border-border">
                <div>
-                  <span className="block text-[9px] uppercase tracking-widest text-white/50 mb-1">ID</span>
-                  <span className="font-mono text-[10px] text-white/60">{preset._id.toString().slice(-6).toUpperCase()}</span>
+                  <span className="block text-[9px] uppercase tracking-widest text-muted-foreground mb-1">ID</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{preset._id.toString().slice(-6).toUpperCase()}</span>
                </div>
                <div>
-                  <span className="block text-[9px] uppercase tracking-widest text-white/50 mb-1">Type</span>
-                  <span className="font-mono text-[10px] text-white/60">DIGITAL ASSET</span>
+                  <span className="block text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Type</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">DIGITAL ASSET</span>
                </div>
             </div>
           </div>
 
           {/* Sticky Bottom Actions */}
-          <div className="sticky bottom-0 p-8 bg-background/90 backdrop-blur-lg border-t border-white/10">
+          <div className="sticky bottom-0 p-8 bg-background/90 backdrop-blur-lg border-t border-border">
             {preset.dng?.url ? (
               <a
                 href={preset.dng.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group relative w-full flex items-center justify-center gap-3 py-4 bg-white text-black hover:bg-neutral-200 transition-colors"
+                className="group relative w-full flex items-center justify-center gap-3 py-4 bg-foreground text-background hover:bg-foreground/90 transition-colors"
               >
                 <span className="text-xs font-normal uppercase tracking-[0.2em]">Download Asset</span>
                 <Download className="w-4 h-4" />
                 {/* Hover Effect Line */}
-                <div className="absolute bottom-0 left-0 h-[2px] w-0 bg-black transition-all duration-300 group-hover:w-full" />
+                <div className="absolute bottom-0 left-0 h-[2px] w-0 bg-background transition-all duration-300 group-hover:w-full" />
               </a>
             ) : (
-              <button disabled className="w-full flex items-center justify-center gap-2 py-4 bg-white/5 text-white/45 cursor-not-allowed border border-white/5">
+              <button disabled className="w-full flex items-center justify-center gap-2 py-4 bg-secondary text-muted-foreground cursor-not-allowed border border-border">
                 <AlertCircle className="w-4 h-4" />
                 <span className="text-xs font-normal uppercase tracking-[0.2em]">Unavailable</span>
               </button>
             )}
-            <p className="text-center mt-3 text-[9px] text-white/50 uppercase tracking-widest">
+            <p className="text-center mt-3 text-[9px] text-muted-foreground uppercase tracking-widest">
               Commercial License Included
             </p>
           </div>

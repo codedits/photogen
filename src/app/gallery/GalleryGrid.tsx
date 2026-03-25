@@ -95,8 +95,8 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
       <div className="min-h-screen">
          {error ? (
             <div className="text-center py-32">
-               <p className="text-red-400/60 font-mono text-[10px] uppercase tracking-widest mb-6">{error}</p>
-               <button onClick={() => fetchItems(true)} className="px-8 py-3 border border-white/10 rounded-full text-white text-[10px] uppercase tracking-widest hover:bg-white hover:text-black transition-all">Retry Connection</button>
+               <p className="text-destructive font-mono text-[10px] uppercase tracking-widest mb-6">{error}</p>
+               <button onClick={() => fetchItems(true)} className="px-8 py-3 border border-border rounded-full text-foreground text-[10px] uppercase tracking-widest hover:bg-foreground hover:text-background transition-all">Retry Connection</button>
             </div>
          ) : (
             /* Refined Responsive Grid - 3 Columns on Desktop */
@@ -121,21 +121,21 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
                      <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        className="absolute inset-0 border border-white/5 rounded-full"
+                        className="absolute inset-0 border border-border rounded-full"
                      />
                      <motion.div
                         animate={{ scale: [1, 1.2, 1] }}
                         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                        className="absolute inset-[30%] bg-white/20 rounded-full"
+                        className="absolute inset-[30%] bg-foreground/20 rounded-full"
                      />
                   </div>
-                  <span className="text-[10px] uppercase tracking-[0.5em] text-white/45">Loading Volume</span>
+                  <span className="text-[10px] uppercase tracking-[0.5em] text-muted-foreground">Loading Volume</span>
                </div>
             )}
             {!loading && items.length === 0 && !error && (
                <div className="text-center py-20">
-                  <Camera className="w-12 h-12 mx-auto mb-6 text-white/5" />
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-white/60 font-light">No frames found in this category</p>
+                  <Camera className="w-12 h-12 mx-auto mb-6 text-muted-foreground/20" />
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-light">No frames found in this category</p>
                </div>
             )}
          </div>

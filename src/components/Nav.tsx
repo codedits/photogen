@@ -106,9 +106,9 @@ export default function Nav() {
                 </span>
               </Link>
 
-              <span className="hidden sm:block text-[10px] md:text-[11px] font-mono text-muted-foreground uppercase tracking-wider mt-0.5">
-                {time}
-              </span>
+              <div className="hidden sm:block min-w-[140px] text-[10px] md:text-[11px] font-mono text-muted-foreground uppercase tracking-wider mt-0.5">
+                {time || "\u00A0"}
+              </div>
             </div>
 
             {/* Right-aligned Links (hide when open) */}

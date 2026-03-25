@@ -68,8 +68,8 @@ export default function Hero({ settings }: HeroProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             >
-              <h1 className="text-white text-[clamp(1.5rem,6vw,3.5rem)] font-light leading-[1.1] tracking-tight">
-                <span dangerouslySetInnerHTML={{ __html: mainHeadline }} className="[&_strong]:font-medium [&_strong]:italic" />
+              <h1 className="text-white text-[clamp(1.85rem,6vw,3.5rem)] font-light leading-[1.1] tracking-tight">
+                <span dangerouslySetInnerHTML={{ __html: mainHeadline }} className="[&_strong]:font-medium [&_em]:italic" />
               </h1>
             </motion.div>
 
@@ -82,14 +82,14 @@ export default function Hero({ settings }: HeroProps) {
             >
               <LiquidRiseCTA 
                 href="/gallery" 
-                className="!bg-white !text-black border-transparent !w-40 !h-11 text-[10px]"
+                className="!bg-white !text-black border-transparent md:!w-40 !w-32 md:!h-11 !h-9 md:text-[10px] text-[9px]"
               >
                 Gallery
               </LiquidRiseCTA>
               
               <LiquidRiseCTA 
                 href="/studio" 
-                className="!bg-white/10 !text-white !backdrop-blur-xl border-white/20 !w-40 !h-11 text-[10px]"
+                className="!bg-white/10 !text-white !backdrop-blur-xl border-white/20 md:!w-40 !w-32 md:!h-11 !h-9 md:text-[10px] text-[9px]"
               >
                 Studio
               </LiquidRiseCTA>

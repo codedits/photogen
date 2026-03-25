@@ -389,7 +389,7 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
                 </div>
                 {contentHtml && (
                   <div
-                    className="prose prose-invert prose-sm max-w-none mt-6 border-t border-zinc-800 pt-6 prose-headings:font-normal prose-p:text-zinc-300"
+                    className="prose prose-invert prose-sm max-w-none mt-6 border-t border-zinc-800 pt-6 prose-headings:font-normal prose-p:text-zinc-300 [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:my-4 [&_ol]:list-decimal [&_ol]:ml-6 [&_ol]:my-4 [&_li]:mb-1"
                     dangerouslySetInnerHTML={{ __html: contentHtml }}
                   />
                 )}

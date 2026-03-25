@@ -86,7 +86,7 @@ export default function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-invert max-w-none focus:outline-none min-h-[280px] text-sm text-white [&_strong]:font-bold [&_b]:font-bold [&_h1]:text-4xl [&_h1]:md:text-5xl [&_h1]:font-semibold [&_h1]:leading-tight [&_h2]:text-3xl [&_h2]:md:text-4xl [&_h2]:font-semibold [&_h2]:leading-tight [&_h3]:text-2xl [&_h3]:md:text-3xl [&_h3]:font-semibold [&_h3]:leading-tight [&_p]:leading-7 [&_blockquote]:border-l-2 [&_blockquote]:border-zinc-500 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-zinc-300 [&_pre]:bg-zinc-900 [&_pre]:border [&_pre]:border-zinc-700 [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_code]:bg-zinc-800 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_hr]:border-zinc-700 [&_hr]:my-6 [&_s]:text-zinc-400',
+        class: 'prose prose-invert max-w-none focus:outline-none min-h-[280px] text-sm text-white [&_strong]:font-bold [&_b]:font-bold [&_h1]:text-4xl [&_h1]:md:text-5xl [&_h1]:font-semibold [&_h1]:leading-tight [&_h2]:text-3xl [&_h2]:md:text-4xl [&_h2]:font-semibold [&_h2]:leading-tight [&_h3]:text-2xl [&_h3]:md:text-3xl [&_h3]:font-semibold [&_h3]:leading-tight [&_p]:leading-7 [&_ul]:list-disc [&_ul]:ml-6 [&_ul]:pl-1 [&_ul]:my-4 [&_ol]:list-decimal [&_ol]:ml-6 [&_ol]:pl-1 [&_ol]:my-4 [&_li]:pl-1 [&_li]:mb-1 [&_blockquote]:border-l-2 [&_blockquote]:border-zinc-500 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-zinc-300 [&_pre]:bg-zinc-900 [&_pre]:border [&_pre]:border-zinc-700 [&_pre]:rounded-md [&_pre]:p-3 [&_pre]:text-sm [&_code]:bg-zinc-800 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_hr]:border-zinc-700 [&_hr]:my-6 [&_s]:text-zinc-400',
       },
     },
   });

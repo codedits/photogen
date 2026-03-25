@@ -78,15 +78,15 @@ function serialize(doc: any) {
 
 function cloudinaryCleanup(publicIds: string[]) {
   if (!publicIds.length) return;
-  setTimeout(async () => {
-    try {
-      for (const pid of publicIds) {
-        await cloudinary.uploader.destroy(pid);
+  Promise.resolve().then(async () => {
+    for (const pid of publicIds) {
+      try {
+        await cloudinary.uploader.destroy(pid, { invalidate: true });
+      } catch (e) {
+        console.error(`Blog image cleanup failed for ${pid}:`, e);
       }
-    } catch (e) {
-      console.error('Blog image cleanup failed:', e);
     }
-  }, 0);
+  }).catch((e) => console.error('Blog image cleanup failed:', e));
 }
 
 export async function GET(

@@ -59,14 +59,20 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/gen.svg" />
-  {/* Preconnect to Cloudinary to improve image fetch latency */}
-  <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
-  <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+        {/* Preconnect to Cloudinary to improve image fetch latency */}
+        <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+        {/* Inline script to apply dark class BEFORE first paint — eliminates FOUC */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light'){document.documentElement.classList.remove('dark')}else{document.documentElement.classList.add('dark')}}catch(e){document.documentElement.classList.add('dark')}})();`,
+          }}
+        />
       </head>
       <body
-        className={`${dmSans.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground transition-colors duration-300`}
+        className={`${dmSans.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground`}
       >
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
         <Nav />
         {children}
         <LazyChatWidget />

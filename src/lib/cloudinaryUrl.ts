@@ -24,16 +24,26 @@ export function thumbUrl(source: string, opts: ThumbOpts = {}) {
     const u = new URL(source);
     const parts = u.pathname.split('/upload/');
     if (parts.length !== 2) return source;
-    // Avoid stacking duplicate transform strings for already-transformed URLs.
-    if (parts[1].startsWith('c_') || parts[1].startsWith('w_') || parts[1].startsWith('q_') || parts[1].startsWith('f_')) {
+
+    // Check if the URL already has transformation-like characters in the path
+    // But be careful not to skip URLs just because they have folders
+    if (parts[1].includes('c_') && (parts[1].includes('w_') || parts[1].includes('h_'))) {
       return source;
     }
+
     // Map our fit -> cloudinary crop
     const cropMap: Record<string, string> = { cover: 'fill', crop: 'crop', fill: 'fill', scale: 'scale', contain: 'fit' };
     const c = cropMap[fit] || 'fill';
     const dp = typeof dpr !== 'undefined' ? `,dpr_${dpr}` : '';
-    const t = `c_${c},g_auto,w_${Math.round(w)},h_${Math.round(h)},q_${q},f_${f},fl_progressive${dp}`;
-    const newPath = parts[0] + '/upload/' + t + '/' + parts[1].replace(/^\//, '');
+    // Simplify parameters to the bare essentials if previous high-quality params were too strict
+    const t = `c_${c},w_${Math.round(w)},h_${Math.round(h)},q_auto,f_auto${dp}`;
+    
+    // Check if parts[1] starts with a version number like v123456789/
+    // If it DOES NOT, and there are folders, Cloudinary sometimes expects the transform 
+    // to be before the folders OR the version.
+    let resourcePath = parts[1].replace(/^\//, '');
+    
+    const newPath = `${parts[0]}/upload/${t}/${resourcePath}`;
     return `${u.protocol}//${u.host}${newPath}`;
   } catch {
     return source;

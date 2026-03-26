@@ -62,12 +62,6 @@ export async function PUT(
     const body = await req.json();
     const db = await getDatabase();
     const coll = db.collection<GalleryDoc>('gallery');
-
-    // Fetch existing item first to enable server-side image diff
-    const existing = await coll.findOne({ _id: new ObjectId(id) });
-    if (!existing) {
-      return NextResponse.json({ error: 'Gallery item not found' }, { status: 404 });
-    }
     
     // Build update object (only update provided fields)
     const updateDoc: any = {};
@@ -97,43 +91,27 @@ export async function PUT(
       };
     }
     
-    await coll.updateOne(
+    const result = await coll.updateOne(
       { _id: new ObjectId(id) },
       { $set: updateDoc }
     );
-
-    // --- Server-side image diff: detect removed images automatically ---
-    const removedIds: string[] = [];
-
-    // Collect client-sent removePublicIds
-    if (Array.isArray(body.removePublicIds)) {
-      for (const pid of body.removePublicIds) {
-        if (typeof pid === 'string' && pid) removedIds.push(pid);
-      }
-    }
-
-    // Auto-detect orphans: compare existing DB images against the incoming set
-    if (Array.isArray(updateDoc.images) && Array.isArray(existing.images)) {
-      const newIdSet = new Set(updateDoc.images.map((img: any) => img.public_id).filter(Boolean));
-      for (const oldImg of existing.images) {
-        if (oldImg.public_id && !newIdSet.has(oldImg.public_id)) {
-          removedIds.push(oldImg.public_id);
-        }
-      }
-    }
-
-    // Deduplicate and clean up from Cloudinary (non-blocking)
-    const uniqueRemovedIds = Array.from(new Set(removedIds));
-    if (uniqueRemovedIds.length > 0) {
-      Promise.resolve().then(async () => {
-        for (const pid of uniqueRemovedIds) {
-          try {
-            await cloudinary.uploader.destroy(pid, { invalidate: true });
-          } catch (e) {
-            console.error(`Failed to delete gallery image ${pid} from Cloudinary:`, e);
+    
+    // Process removals from Cloudinary
+    if (Array.isArray(body.removePublicIds) && body.removePublicIds.length > 0) {
+      setTimeout(async () => {
+        try {
+          for (const pid of body.removePublicIds) {
+            await cloudinary.uploader.destroy(pid);
+            console.log(`Deleted removed image from Cloudinary: ${pid}`);
           }
+        } catch (e) {
+          console.error('Failed to cleanup Cloudinary images for gallery:', e);
         }
-      }).catch((e) => console.error('Gallery image cleanup failed:', e));
+      }, 0);
+    }
+    
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: 'Gallery item not found' }, { status: 404 });
     }
 
     delCachePrefix('gallery:list:');
@@ -195,18 +173,21 @@ export async function DELETE(
     if (galleryItem.images && galleryItem.images.length > 0) {
       const publicIds = galleryItem.images
         .map(img => img.public_id)
-        .filter(Boolean);
+        .filter(Boolean); // Remove any undefined/null public_ids
         
       if (publicIds.length > 0) {
-        Promise.resolve().then(async () => {
-          for (const publicId of publicIds) {
-            try {
-              await cloudinary.uploader.destroy(publicId, { invalidate: true });
-            } catch (e) {
-              console.error(`Failed to delete gallery image ${publicId} from Cloudinary:`, e);
+        // Delete from Cloudinary in the background (don't wait for it)
+        setTimeout(async () => {
+          try {
+            for (const publicId of publicIds) {
+              await cloudinary.uploader.destroy(publicId);
+              console.log(`Deleted image from Cloudinary: ${publicId}`);
             }
+          } catch (cloudinaryError) {
+            // Log the error but don't fail the API response since DB deletion succeeded
+            console.error('Failed to delete some images from Cloudinary:', cloudinaryError);
           }
-        }).catch((e) => console.error('Gallery DELETE cleanup failed:', e));
+        }, 0);
       }
     }
     

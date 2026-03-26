@@ -81,8 +81,9 @@ export default function Nav() {
       <header className="fixed top-0 left-0 right-0 z-[999] pointer-events-none flex justify-center px-2 md:px-4">
         <motion.div
           layout
-          initial={false}
-          transition={springConfig}
+          initial={{ y: -100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ ...springConfig, delay: 0.5 }}
           className={cn(
             "pointer-events-auto relative flex flex-col overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)]",
             "w-[98vw] md:w-[90vw] max-w-[1550px]",

@@ -4,15 +4,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import {
   motion,
-  useScroll,
-  useSpring,
   useTransform,
   useMotionValue,
-  useVelocity,
   useAnimationFrame,
   useInView,
   useReducedMotion,
-  type MotionValue,
 } from "framer-motion";
 import Link from "next/link";
 import LiquidRiseCTA from "./LiquidRiseCTA";
@@ -37,15 +33,15 @@ const IMAGES = [
 function ParallaxRow({
   images,
   baseVelocity = 100,
-  velocityFactor,
   isActive,
+  isMobileViewport,
   prefersReducedMotion,
   priorityCount = 1,
 }: {
   images: string[];
   baseVelocity: number;
-  velocityFactor: MotionValue<number>;
   isActive: boolean;
+  isMobileViewport: boolean;
   prefersReducedMotion: boolean;
   priorityCount?: number;
 }) {
@@ -59,16 +55,6 @@ function ParallaxRow({
   const x = useTransform(baseX, (v) => `${((v % 50) - 50) % 50}%`);
 
   const directionFactor = useRef<number>(1);
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mediaQuery = window.matchMedia("(max-width: 767px)");
-    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
-    updateViewport();
-    mediaQuery.addEventListener("change", updateViewport);
-    return () => mediaQuery.removeEventListener("change", updateViewport);
-  }, []);
 
   useAnimationFrame((t, delta) => {
     if (!isActive || prefersReducedMotion) return;
@@ -76,28 +62,23 @@ function ParallaxRow({
     let moveBy = directionFactor.current * baseVelocity * (delta / 1000);
 
     if (isMobileViewport) {
-      baseX.set(baseX.get() + moveBy * 1.6);
+      baseX.set(baseX.get() + moveBy * 1.25);
       return;
     }
-
-    if (velocityFactor.get() < 0) {
-      directionFactor.current = -1;
-    } else if (velocityFactor.get() > 0) {
-      directionFactor.current = 1;
-    }
-
-    moveBy += directionFactor.current * moveBy * velocityFactor.get();
 
     baseX.set(baseX.get() + moveBy);
   });
 
-  const allImages = useMemo(() => [...images, ...images], [images]);
+  const allImages = useMemo(
+    () => [...images, ...images],
+    [images]
+  );
 
   return (
     <div className="flex whitespace-nowrap overflow-hidden">
       <motion.div
         className="flex flex-nowrap gap-[2px]"
-        style={{ x, willChange: 'transform' }}
+        style={{ x, willChange: "transform" }}
       >
         {allImages.map((src, i) => (
           <motion.div
@@ -133,6 +114,16 @@ export default function ParallaxGallery() {
   const isInView = useInView(sectionRef, { margin: "200px 0px 200px 0px" });
   const prefersReducedMotion = useReducedMotion();
   const [isTabVisible, setIsTabVisible] = useState(true);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mediaQuery = window.matchMedia("(max-width: 767px)");
+    const updateViewport = () => setIsMobileViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -143,15 +134,6 @@ export default function ParallaxGallery() {
   }, []);
 
   const isActive = isInView && isTabVisible;
-  const { scrollY } = useScroll();
-  const scrollVelocity = useVelocity(scrollY);
-  const smoothVelocity = useSpring(scrollVelocity, {
-    damping: 44,
-    stiffness: 280,
-  });
-  const velocityFactor = useTransform(smoothVelocity, [0, 1000], [0, 5], {
-    clamp: false,
-  });
 
   return (
     <section ref={sectionRef} id="gallery" className="relative overflow-hidden bg-background py-8 md:py-12">
@@ -188,16 +170,16 @@ export default function ParallaxGallery() {
         <ParallaxRow
           images={IMAGES.slice(0, 7)}
           baseVelocity={-0.8}
-          velocityFactor={velocityFactor}
           isActive={isActive}
+          isMobileViewport={isMobileViewport}
           prefersReducedMotion={!!prefersReducedMotion}
           priorityCount={1}
         />
         <ParallaxRow
           images={IMAGES.slice(7, 14)}
           baseVelocity={0.8}
-          velocityFactor={velocityFactor}
           isActive={isActive}
+          isMobileViewport={isMobileViewport}
           prefersReducedMotion={!!prefersReducedMotion}
           priorityCount={0}
         />

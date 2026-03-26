@@ -44,7 +44,7 @@ export default function ImageWithLqip({
     return <div className={className} style={{ width, height, position: fill ? 'absolute' : 'relative', inset: fill ? 0 : undefined, backgroundColor: 'rgba(255,255,255,0.05)' }} />;
   }
   
-  const url = thumbUrl(src, { w: transformOpts?.w || width || 400, h: transformOpts?.h || height || 300, fit: transformOpts?.fit || 'cover', q: transformOpts?.q ?? 'auto', f: transformOpts?.f ?? 'auto', dpr: transformOpts?.dpr });
+  const url = thumbUrl(src, { w: transformOpts?.w || width || 400, h: transformOpts?.h || height || 300, fit: transformOpts?.fit || 'cover', q: transformOpts?.q ?? 'auto:good', f: transformOpts?.f ?? 'auto', dpr: transformOpts?.dpr ?? 'auto' });
   const placeholder = (blur && !noBlur) ? 'blur' as const : undefined;
 
   // Determine objectFit from className if present, fall back to cover for thumbs and contain for fills

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowDownRight } from "lucide-react";
 import LiquidRiseCTA from "./LiquidRiseCTA";
+import { cloudinaryPresetUrl } from "../lib/cloudinaryUrl";
 
 interface HeroProps {
   settings?: {
@@ -29,15 +30,26 @@ export default function Hero({ settings }: HeroProps) {
       <div className="relative flex-1 w-full rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.4)] border border-border/20 group/hero">
         
         {/* Cinematic Background with Slow Parallax/Scale */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src={heroImage}
-            alt="Hero Background"
-            fill
-            className="object-cover contrast-[1.1] grayscale-[0.05] brightness-[0.85]"
-            priority
-            quality={80}
-          />
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <motion.div
+            initial={{ scale: 1.15, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ 
+              duration: 2.5, 
+              ease: [0.16, 1, 0.3, 1],
+              opacity: { duration: 1.5 }
+            }}
+            className="relative h-full w-full"
+          >
+            <Image
+              src={cloudinaryPresetUrl(heroImage, "hero")}
+              alt="Hero Background"
+              fill
+              className="object-cover contrast-[1.1] grayscale-[0.05] brightness-[0.85]"
+              priority
+              quality={85}
+            />
+          </motion.div>
           {/* Multi-layered Vignette for depth */}
           <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/40 to-transparent opacity-80" />
           <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/60 to-transparent" />

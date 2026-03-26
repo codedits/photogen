@@ -37,7 +37,7 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
             return (
               <div 
                 key={idx} 
-                className="relative group w-full overflow-hidden rounded-lg bg-background cursor-zoom-in"
+                className="relative group w-full overflow-hidden rounded-none md:rounded-lg bg-background cursor-zoom-in"
                 onClick={() => openLightbox(originalIndex)}
               >
                 <ImageWithLqip 
@@ -71,7 +71,7 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
             return (
               <div 
                 key={idx} 
-                className="relative group w-full overflow-hidden rounded-lg bg-background cursor-zoom-in"
+                className="relative group w-full overflow-hidden rounded-none md:rounded-lg bg-background cursor-zoom-in"
                 onClick={() => openLightbox(originalIndex)}
               >
                 <ImageWithLqip 

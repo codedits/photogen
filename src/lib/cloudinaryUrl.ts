@@ -5,6 +5,16 @@
  */
 export type ThumbOpts = { w?: number; h?: number; fit?: 'cover' | 'crop' | 'fill' | 'scale' | 'contain'; q?: string | number; f?: 'auto' | string; dpr?: number | 'auto' };
 
+export type CloudinaryPreset = 'hero' | 'card' | 'content' | 'social' | 'lqip';
+
+const PRESET_DEFAULTS: Record<CloudinaryPreset, ThumbOpts> = {
+  hero: { w: 1920, h: 1080, fit: 'cover', q: 'auto:good', f: 'auto', dpr: 'auto' },
+  card: { w: 960, h: 640, fit: 'cover', q: 'auto:good', f: 'auto', dpr: 'auto' },
+  content: { w: 1280, h: 960, fit: 'contain', q: 'auto:good', f: 'auto', dpr: 'auto' },
+  social: { w: 1200, h: 630, fit: 'cover', q: 'auto:good', f: 'auto', dpr: 1 },
+  lqip: { w: 24, h: 24, fit: 'cover', q: 'auto:eco', f: 'auto', dpr: 1 },
+};
+
 export function thumbUrl(source: string, opts: ThumbOpts = {}) {
   const { w = 400, h = 300, fit = 'cover', q = 'auto', f = 'auto', dpr } = opts;
   if (!source) return source;
@@ -14,16 +24,24 @@ export function thumbUrl(source: string, opts: ThumbOpts = {}) {
     const u = new URL(source);
     const parts = u.pathname.split('/upload/');
     if (parts.length !== 2) return source;
+    // Avoid stacking duplicate transform strings for already-transformed URLs.
+    if (parts[1].startsWith('c_') || parts[1].startsWith('w_') || parts[1].startsWith('q_') || parts[1].startsWith('f_')) {
+      return source;
+    }
     // Map our fit -> cloudinary crop
-  const cropMap: Record<string, string> = { cover: 'fill', crop: 'crop', fill: 'fill', scale: 'scale', contain: 'fit' };
+    const cropMap: Record<string, string> = { cover: 'fill', crop: 'crop', fill: 'fill', scale: 'scale', contain: 'fit' };
     const c = cropMap[fit] || 'fill';
-  const dp = typeof dpr !== 'undefined' ? `,dpr_${dpr}` : '';
-  const t = `c_${c},w_${Math.round(w)},h_${Math.round(h)},q_${q},f_${f}${dp}`;
+    const dp = typeof dpr !== 'undefined' ? `,dpr_${dpr}` : '';
+    const t = `c_${c},g_auto,w_${Math.round(w)},h_${Math.round(h)},q_${q},f_${f},fl_progressive${dp}`;
     const newPath = parts[0] + '/upload/' + t + '/' + parts[1].replace(/^\//, '');
     return `${u.protocol}//${u.host}${newPath}`;
   } catch {
     return source;
   }
+}
+
+export function cloudinaryPresetUrl(source: string, preset: CloudinaryPreset, overrides: ThumbOpts = {}) {
+  return thumbUrl(source, { ...PRESET_DEFAULTS[preset], ...overrides });
 }
 
 export default thumbUrl;

@@ -8,6 +8,7 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import LiquidRiseCTA from "./LiquidRiseCTA";
+import { cloudinaryPresetUrl } from "@/lib/cloudinaryUrl";
 
 const NAV_LINKS = [
   { href: "/gallery", label: "Projects" },
@@ -85,8 +86,8 @@ export default function Nav() {
           className={cn(
             "pointer-events-auto relative flex flex-col overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)]",
             "w-[98vw] md:w-[90vw] max-w-[1550px]",
-            "bg-background/90 backdrop-blur-xl border border-border shadow-md dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)]",
-            "transition-all duration-500",
+            "bg-background/95 md:bg-background/90 md:backdrop-blur-xl border border-border shadow-md dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)]",
+            "transition-[opacity,border-radius,margin] duration-500",
             open
               ? "rounded-[28px] mt-2 md:mt-4"
               : "rounded-b-xl md:rounded-b-2xl",
@@ -214,7 +215,7 @@ export default function Nav() {
                       className="relative rounded-[20px] overflow-hidden sm:min-h-[220px] lg:min-h-[100%] flex flex-col justify-between p-5 border border-border bg-secondary"
                       style={{
                         backgroundImage:
-                          'url("https://framerusercontent.com/images/8JG9l1vs1T358YK5DGjMZHom0A.jpeg?width=840&height=1200")',
+                          `url("${cloudinaryPresetUrl("https://framerusercontent.com/images/8JG9l1vs1T358YK5DGjMZHom0A.jpeg?width=840&height=1200", 'card', { w: 840, h: 1200 })}")`,
                         backgroundSize: "cover",
                         backgroundPosition: "center",
                       }}

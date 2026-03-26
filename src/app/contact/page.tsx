@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Mail, Phone, MapPin, Instagram, Twitter, Linkedin, Send, Loader2, CheckCircle } from "lucide-react";
 import LiquidRiseCTA from "@/components/LiquidRiseCTA";
+import { cloudinaryPresetUrl } from "@/lib/cloudinaryUrl";
 
 export default function ContactPage() {
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,7 @@ export default function ContactPage() {
           className="absolute inset-0"
         >
           <img 
-            src="https://framerusercontent.com/images/8JG9l1vs1T358YK5DGjMZHom0A.jpeg?width=1600&height=2000" 
+            src={cloudinaryPresetUrl("https://framerusercontent.com/images/8JG9l1vs1T358YK5DGjMZHom0A.jpeg?width=1600&height=2000", 'hero', { w: 1600, h: 2000 })} 
             alt="" 
             className="w-full h-full object-cover grayscale-[0.5] contrast-[1.2]"
           />

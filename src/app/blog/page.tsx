@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import getDatabase from '../../lib/mongodb';
+import { cloudinaryPresetUrl } from '../../lib/cloudinaryUrl';
 import type { BlogDoc } from '../api/blog/route';
 
 export const revalidate = 300;
@@ -117,7 +118,7 @@ export default async function BlogPage({
                   <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={featured.coverImage.url}
+                      src={cloudinaryPresetUrl(featured.coverImage.url, 'hero', { w: 1600, h: 960 })}
                       alt={featured.title}
                       className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
                       loading="eager"
@@ -166,7 +167,7 @@ export default async function BlogPage({
                         <>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={post.coverImage.url}
+                            src={cloudinaryPresetUrl(post.coverImage.url, 'card', { w: 960, h: 600 })}
                             alt={post.title}
                             className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             loading="lazy"

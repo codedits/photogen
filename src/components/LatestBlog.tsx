@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import Image from 'next/image';
+import { cloudinaryPresetUrl } from '../lib/cloudinaryUrl';
 
 type LatestBlogItem = {
   id: string;
@@ -38,7 +40,7 @@ export default function LatestBlog({ posts }: LatestBlogProps) {
   const secondary = posts.slice(1, 4);
 
   return (
-    <section className="min-h-screen bg-background text-foreground px-6 py-16 md:px-12 lg:px-20 md:py-24">
+    <section className="min-h-[70vh] md:min-h-screen bg-background text-foreground px-6 py-16 md:px-12 lg:px-20 md:py-24">
       <div className="max-w-[1400px] mx-auto">
         <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-8 mb-12 md:mb-16">
           <div className="max-w-2xl">
@@ -69,14 +71,17 @@ export default function LatestBlog({ posts }: LatestBlogProps) {
             {featured && (
               <Link
                 href={`/blog/${featured.slug}`}
-                className="md:col-span-2 relative rounded-[20px] overflow-hidden min-h-[450px] lg:min-h-[540px] group cursor-pointer"
+                className="md:col-span-2 relative rounded-[20px] overflow-hidden min-h-[450px] lg:min-h-[540px] group cursor-pointer [content-visibility:auto]"
               >
                 {postImage(featured) ? (
-                  <img
-                    src={postImage(featured) as string}
+                  <Image
+                    src={cloudinaryPresetUrl(postImage(featured) as string, 'hero', { w: 1440, h: 900 })}
                     alt={featured.title}
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    fill
                     loading="lazy"
+                    quality={75}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 50vw"
                   />
                 ) : (
                   <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-950" />
@@ -84,7 +89,7 @@ export default function LatestBlog({ posts }: LatestBlogProps) {
 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/35 to-black/10 transition-opacity duration-500" />
 
-                <div className="absolute top-5 right-5 bg-black/70 backdrop-blur-md px-4 py-1.5 rounded-full text-[13px] font-medium text-white/95 z-10 border border-white/5">
+                <div className="absolute top-5 right-5 bg-black/80 md:bg-black/70 md:backdrop-blur-md px-4 py-1.5 rounded-full text-[13px] font-medium text-white/95 z-10 border border-white/5">
                   {tagLabel(featured.title, 0)}
                 </div>
 
@@ -101,20 +106,23 @@ export default function LatestBlog({ posts }: LatestBlogProps) {
             )}
 
             {secondary.map((post, idx) => (
-              <Link key={post.id} href={`/blog/${post.slug}`} className="flex flex-col group cursor-pointer">
+              <Link key={post.id} href={`/blog/${post.slug}`} className="flex flex-col group cursor-pointer [content-visibility:auto]">
                 <div className="relative rounded-[20px] overflow-hidden aspect-video mb-5">
                   {postImage(post) ? (
-                    <img
-                      src={postImage(post) as string}
+                    <Image
+                      src={cloudinaryPresetUrl(postImage(post) as string, 'card', { w: 960, h: 600 })}
                       alt={post.title}
                       className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      fill
                       loading="lazy"
+                      quality={75}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 25vw"
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-950" />
                   )}
 
-                  <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md px-4 py-1.5 rounded-full text-[13px] font-medium text-white/95 border border-white/5 z-10">
+                  <div className="absolute top-4 right-4 bg-black/85 md:bg-black/80 md:backdrop-blur-md px-4 py-1.5 rounded-full text-[13px] font-medium text-white/95 border border-white/5 z-10">
                     {tagLabel(post.title, idx + 1)}
                   </div>
                 </div>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import getDatabase from '../../../lib/mongodb';
+import { cloudinaryPresetUrl } from '../../../lib/cloudinaryUrl';
 import type { BlogDoc } from '../../api/blog/route';
 import BlogShareButtons from './BlogShareButtons';
 
@@ -68,7 +69,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       title,
       description,
       type: 'article',
-      images: post.coverImage?.url ? [post.coverImage.url] : undefined,
+      images: post.coverImage?.url ? [cloudinaryPresetUrl(post.coverImage.url, 'social')] : undefined,
     },
   };
 }
@@ -94,7 +95,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<Param
         <div className="relative w-full min-h-[50vh] md:min-h-[65vh] lg:min-h-[75vh] overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={post.coverImage.url}
+            src={cloudinaryPresetUrl(post.coverImage.url, 'hero', { w: 1920, h: 1080 })}
             alt={post.title}
             className="absolute inset-0 w-full h-full object-cover"
             loading="eager"
@@ -155,7 +156,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<Param
                 <div className="relative aspect-video w-full overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={post.coverImage.url}
+                    src={cloudinaryPresetUrl(post.coverImage.url, 'content', { w: 1400, h: 900 })}
                     alt={post.title}
                     className="absolute inset-0 h-full w-full object-cover"
                     loading="eager"
@@ -247,7 +248,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<Param
                     {rp.coverImage?.url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={rp.coverImage.url}
+                        src={cloudinaryPresetUrl(rp.coverImage.url, 'card', { w: 960, h: 600 })}
                         alt={rp.title}
                         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                         loading="lazy"

@@ -90,13 +90,13 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
   
   return (
     <main className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground/20">
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-10 pt-28 md:pt-32 pb-4 md:pb-8 lg:pb-10">
+      <div className="max-w-[1600px] mx-auto px-[2px] md:px-8 lg:px-10 pt-28 md:pt-32 pb-4 md:pb-8 lg:pb-10">
         
         {/* Main Layout Grid */}
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 relative items-start">
           
           {/* --- LEFT SIDEBAR (Fixed/Sticky on Desktop) --- */}
-          <aside className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 lg:sticky lg:top-32 flex flex-col pb-10 lg:pb-0">
+          <aside className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 lg:sticky lg:top-32 flex flex-col pb-10 lg:pb-0 px-4 md:px-0">
             
             <div className="flex flex-col gap-10">
               {/* Back to Gallery */}

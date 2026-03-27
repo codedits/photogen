@@ -67,12 +67,11 @@ export default function Nav() {
   }, []);
 
   if (pathname.startsWith("/admin")) return null;
-  const isPresetDetail = /^\/presets\/[0-9a-fA-F]{24}\/?$/.test(pathname);
-  if (isPresetDetail) return null;
 
-  // Disable morphing on gallery detail pages
+  // Disable morphing on detail pages
   const isGalleryDetail = /^\/gallery\/[0-9a-fA-F]{24}\/?$/.test(pathname);
-  const activeScrolled = isScrolled && !isGalleryDetail;
+  const isPresetDetail = /^\/presets\/[0-9a-fA-F]{24}\/?$/.test(pathname);
+  const activeScrolled = isScrolled && !isGalleryDetail && !isPresetDetail;
 
   const springConfig = {
     type: "spring" as const,
@@ -93,7 +92,7 @@ export default function Nav() {
             damping: 30
           }}
           className={cn(
-            "pointer-events-auto relative flex flex-col overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]",
+            "pointer-events-auto relative flex flex-col overflow-hidden shadow-[0_12px_48px_rgba(0,0,0,0.32)]",
             "bg-background border border-white/10 transition-colors duration-500",
             activeScrolled && !open
               ? "mt-5 w-auto rounded-full px-2"

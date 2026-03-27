@@ -36,10 +36,10 @@ export default function Hero({ settings }: HeroProps) {
   const lqipUrl = cloudinaryPresetUrl(heroImage, "lqip");
 
   return (
-    <section className="relative h-screen w-full flex flex-col p-1 bg-background selection:bg-white selection:text-black overflow-hidden font-sans">
+    <section className="relative h-screen w-full flex flex-col bg-background selection:bg-white selection:text-black overflow-hidden font-sans">
 
-      {/* Main Container: Editorial Frame */}
-      <div className="relative flex-1 w-full rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.4)] border border-border/20 group/hero bg-zinc-950">
+      {/* Main Container: Full Width Frame */}
+      <div className="relative flex-1 w-full overflow-hidden group/hero bg-zinc-950">
 
         {/* Cinematic Background with Slow Parallax/Scale */}
         <div className="absolute inset-0 z-0 overflow-hidden">
@@ -110,7 +110,7 @@ export default function Hero({ settings }: HeroProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             >
-              <h1 className="text-white text-[clamp(1.85rem,6vw,3.5rem)] font-light leading-[1.1] tracking-tight">
+              <h1 className="text-white text-[clamp(1.85rem,6vw,3.5rem)] font-light leading-[0.95] tracking-tighter">
                 <span dangerouslySetInnerHTML={{ __html: mainHeadline }} className="[&_strong]:font-medium [&_em]:italic" />
               </h1>
             </motion.div>

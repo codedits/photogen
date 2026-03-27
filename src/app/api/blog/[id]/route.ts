@@ -5,6 +5,7 @@ import cloudinary from '../../../../lib/cloudinary';
 import { isAdminRequest } from '../../../../lib/auth';
 import getDatabase from '../../../../lib/mongodb';
 import { delCachePrefix } from '../../../../lib/simpleCache';
+import { invalidateCachePrefix } from '../../../../lib/multiLayerCache';
 import type { BlogDoc } from '../route';
 
 type BlogImageRef = { url: string; public_id: string };
@@ -237,6 +238,7 @@ export async function PATCH(
     cloudinaryCleanup(Array.from(new Set(removedIds)));
 
     delCachePrefix('blog:list:');
+    invalidateCachePrefix('home:');
     revalidatePath('/blog');
     revalidatePath(`/blog/${existing.slug}`);
     if (updateDoc.slug && updateDoc.slug !== existing.slug) {
@@ -284,6 +286,7 @@ export async function DELETE(
     cloudinaryCleanup(Array.from(new Set(imageIds)));
 
     delCachePrefix('blog:list:');
+    invalidateCachePrefix('home:');
     revalidatePath('/blog');
     revalidatePath(`/blog/${existing.slug}`);
 

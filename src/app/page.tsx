@@ -5,11 +5,12 @@ import FeaturedGallery from "../components/FeaturedGallery";
 import LatestBlog from "../components/LatestBlog";
 import { PageContainer, FullBleed } from "../components/layout/Primitives";
 import getDatabase from "../lib/mongodb";
+import { createRequestScopedCachedFn } from "../lib/multiLayerCache";
 import { Preset } from "../components/PresetCard";
 
 export const revalidate = false; // On-demand revalidation only
 
-async function getFeaturedPresets(): Promise<Preset[]> {
+async function fetchFeaturedPresetsFromDb(): Promise<Preset[]> {
   try {
     const db = await getDatabase();
     const coll = db.collection("presets");
@@ -29,7 +30,9 @@ async function getFeaturedPresets(): Promise<Preset[]> {
   }
 }
 
-async function getFeaturedGallery(): Promise<any[]> {
+const getFeaturedPresets = createRequestScopedCachedFn("home:featured-presets", 60, fetchFeaturedPresetsFromDb);
+
+async function fetchFeaturedGalleryFromDb(): Promise<any[]> {
   try {
     const db = await getDatabase();
     const coll = db.collection("gallery");
@@ -46,7 +49,9 @@ async function getFeaturedGallery(): Promise<any[]> {
   }
 }
 
-async function getLatestBlogPosts(): Promise<any[]> {
+const getFeaturedGallery = createRequestScopedCachedFn("home:featured-gallery", 60, fetchFeaturedGalleryFromDb);
+
+async function fetchLatestBlogPostsFromDb(): Promise<any[]> {
   try {
     const db = await getDatabase();
     const coll = db.collection("blog");
@@ -74,6 +79,8 @@ async function getLatestBlogPosts(): Promise<any[]> {
   }
 }
 
+const getLatestBlogPosts = createRequestScopedCachedFn("home:latest-blog", 45, fetchLatestBlogPostsFromDb);
+
 type HeroSettings = {
   introText?: string;
   mainHeadline?: string;
@@ -88,7 +95,7 @@ type HeroSettings = {
   secondaryCtaLink?: string;
 };
 
-async function getHeroSettings(): Promise<HeroSettings | null> {
+async function fetchHeroSettingsFromDb(): Promise<HeroSettings | null> {
   try {
     const db = await getDatabase();
     const settings = await db.collection("settings").findOne({ _id: "hero_settings" as any });
@@ -112,6 +119,8 @@ async function getHeroSettings(): Promise<HeroSettings | null> {
     return null;
   }
 }
+
+const getHeroSettings = createRequestScopedCachedFn("home:hero-settings", 30, fetchHeroSettingsFromDb);
 
 export default async function Home() {
   const [presets, featuredGallery, heroSettings, latestBlogPosts] = await Promise.all([

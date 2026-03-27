@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { isAdminRequest } from '../../../lib/auth';
 import getDatabase, { ensureGalleryIndexes } from '../../../lib/mongodb';
 import { delCachePrefix, getCache, setCache } from '../../../lib/simpleCache';
+import { invalidateCachePrefix } from '../../../lib/multiLayerCache';
 import { revalidatePath } from 'next/cache';
 
 // Gallery document type
@@ -186,6 +187,7 @@ export async function POST(req: NextRequest) {
 
     delCachePrefix('gallery:list:');
     delCachePrefix('gallery:count:');
+    invalidateCachePrefix('home:');
     revalidatePath('/gallery');
     
     return NextResponse.json({

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import getDatabase from "@/lib/mongodb";
 import { isAdminRequest } from "@/lib/auth";
+import { invalidateCachePrefix } from "@/lib/multiLayerCache";
 
 export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
@@ -55,6 +56,9 @@ export async function PATCH(req: Request) {
       },
       { upsert: true }
     );
+
+    invalidateCachePrefix("home:");
+    invalidateCachePrefix("contact:");
 
     return NextResponse.json({ ok: true });
   } catch (error) {

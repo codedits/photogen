@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { isAdminRequest } from '../../../lib/auth';
 import getDatabase, { ensureBlogIndexes } from '../../../lib/mongodb';
 import { delCachePrefix, getCache, setCache } from '../../../lib/simpleCache';
+import { invalidateCachePrefix } from '../../../lib/multiLayerCache';
 
 type BlogStatus = 'draft' | 'published';
 type BlogLayout = 'standard' | 'magazine' | 'minimal';
@@ -247,6 +248,7 @@ export async function POST(req: NextRequest) {
     const result = await coll.insertOne(doc);
 
     delCachePrefix('blog:list:');
+    invalidateCachePrefix('home:');
     revalidatePath('/blog');
     if (doc.status === 'published') {
       revalidatePath(`/blog/${doc.slug}`);

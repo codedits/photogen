@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import getDatabase from "@/lib/mongodb";
 import { isAdminRequest } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { invalidateCachePrefix } from "@/lib/multiLayerCache";
 
 export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
@@ -61,6 +62,7 @@ export async function PATCH(req: Request) {
       { upsert: true }
     );
 
+    invalidateCachePrefix("home:");
     // Trigger on-demand revalidation for the home page
     revalidatePath("/");
 

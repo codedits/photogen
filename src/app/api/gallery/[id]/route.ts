@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { isAdminRequest } from '../../../../lib/auth';
 import getDatabase from '../../../../lib/mongodb';
 import { delCachePrefix } from '../../../../lib/simpleCache';
+import { invalidateCachePrefix } from '../../../../lib/multiLayerCache';
 import type { GalleryDoc } from '../route';
 
 // Helper: Check if string is valid MongoDB ID
@@ -116,6 +117,7 @@ export async function PUT(
 
     delCachePrefix('gallery:list:');
     delCachePrefix('gallery:count:');
+    invalidateCachePrefix('home:');
     revalidatePath('/gallery');
     revalidatePath(`/gallery/${id}`);
     
@@ -166,6 +168,7 @@ export async function DELETE(
 
     delCachePrefix('gallery:list:');
     delCachePrefix('gallery:count:');
+    invalidateCachePrefix('home:');
     revalidatePath('/gallery');
     revalidatePath(`/gallery/${id}`);
     

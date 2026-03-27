@@ -70,6 +70,10 @@ export default function Nav() {
   const isPresetDetail = /^\/presets\/[0-9a-fA-F]{24}\/?$/.test(pathname);
   if (isPresetDetail) return null;
 
+  // Disable morphing on gallery detail pages
+  const isGalleryDetail = /^\/gallery\/[0-9a-fA-F]{24}\/?$/.test(pathname);
+  const activeScrolled = isScrolled && !isGalleryDetail;
+
   const springConfig = {
     type: "spring" as const,
     stiffness: 400,
@@ -85,87 +89,85 @@ export default function Nav() {
           animate={{ y: 0, opacity: 1 }}
           transition={{
             type: "spring",
-            stiffness: 260,
-            damping: 20
+            stiffness: 400,
+            damping: 30
           }}
           className={cn(
-            "pointer-events-auto relative flex flex-col overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.4)]",
-            "bg-background/70 backdrop-blur-3xl border border-white/10",
-            isScrolled && !open
-              ? "mt-4 w-auto min-w-[280px] max-w-fit rounded-full px-1.5"
-              : "w-[98vw] md:w-[94vw] max-w-[1600px] mt-0 rounded-b-[1.5rem] md:rounded-b-[2rem]",
+            "pointer-events-auto relative flex flex-col overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]",
+            "bg-background border border-white/10 transition-colors duration-500",
+            activeScrolled && !open
+              ? "mt-5 w-auto rounded-full px-2"
+              : "w-[98vw] md:w-[94vw] max-w-[1600px] mt-0 rounded-b-[1rem] md:rounded-b-[1.2rem]",
             open && "rounded-[2.5rem] mt-4 w-[96vw] md:w-[90vw]"
           )}
         >
           {/* TOP BAR */}
           <div className={cn(
             "flex items-center justify-between relative z-20",
-            isScrolled && !open ? "px-4 py-1.5 gap-6" : "px-6 py-3 md:px-10 md:py-4"
+            activeScrolled && !open ? "px-4 py-2 gap-8" : "px-6 py-2 md:px-10 md:py-3"
           )}>
-            {/* Left */}
-            <div className="flex items-center gap-4">
+            {/* Logo */}
+            <motion.div layout layoutId="nav-logo" className="shrink-0 group">
               <Link
                 href="/"
-                className="flex items-center gap-2 leading-none relative z-50 shrink-0"
+                className="flex items-center gap-2 leading-none relative z-50"
               >
-                <span className="text-[12px] md:text-[13px] tracking-tight text-foreground uppercase font-bold">
+                <span className="text-[15px] md:text-[16px] tracking-tight text-foreground uppercase font-black transition-transform group-hover:scale-105">
                   PhotoGen®
                 </span>
               </Link>
-            </div>
+            </motion.div>
 
-            {/* Centered/Right Links */}
-            <div className={cn(
-              "hidden md:flex flex-1 justify-center relative items-center",
-              isScrolled && !open ? "mx-4" : "mr-8 justify-end"
-            )}>
-              <motion.div 
-                layout
-                className={cn(
-                  "flex items-center gap-6 lg:gap-8",
-                  open ? "opacity-0 -translate-y-3 pointer-events-none" : "opacity-100 translate-y-0"
-                )}
-              >
-                {NAV_LINKS.map((link) => {
-                  const isActive = pathname.startsWith(link.href);
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={cn(
-                        "text-[13px] md:text-[14px] font-medium tracking-tight transition-colors hover:text-muted-foreground shrink-0",
-                        isActive ? "text-foreground" : "text-foreground/60"
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  );
-                })}
-              </motion.div>
-            </div>
+            {/* Links */}
+            <motion.div 
+              layout
+              layoutId="nav-links"
+              className={cn(
+                "hidden md:flex items-center relative transition-all duration-300",
+                activeScrolled && !open ? "gap-6 px-2" : "gap-10 ml-auto mr-12",
+                open && "opacity-0 pointer-events-none translate-y-2"
+              )}
+            >
+              {NAV_LINKS.map((link) => {
+                const isActive = pathname.startsWith(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={cn(
+                      "text-[15px] md:text-[16px] font-medium tracking-tight whitespace-nowrap transition-all duration-300 text-foreground relative py-1",
+                      isActive && "drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] dark:drop-shadow-[0_0_12px_rgba(255,255,255,0.5)]"
+                    )}
+                  >
+                    {link.label}
+                  </Link>
+                );
+              })}
+            </motion.div>
 
-            {/* Right Group */}
-            <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            {/* Actions */}
+            <motion.div layout layoutId="nav-actions" className="flex items-center gap-2 md:gap-4 shrink-0">
               <ThemeToggle className={cn(
-                isScrolled && !open ? "scale-75 origin-right" : "scale-100"
+                "transition-transform duration-300",
+                activeScrolled && !open ? "scale-90" : "scale-100"
               )} />
 
               <button
                 onClick={() => setOpen(!open)}
                 className={cn(
-                    "flex items-center justify-center rounded-full bg-secondary/40 text-foreground hover:bg-secondary transition-all border border-white/5",
-                    isScrolled && !open ? "w-[28px] h-[28px] p-1" : "w-[36px] h-[36px] p-2"
+                    "flex items-center justify-center rounded-full bg-secondary/30 text-foreground hover:bg-secondary transition-all border border-white/5",
+                    activeScrolled && !open ? "w-[30px] h-[30px]" : "w-[38px] h-[38px]"
                 )}
               >
                 <Plus
                   className={cn(
                     "transition-transform duration-500",
-                    isScrolled && !open ? "w-3 h-3" : "w-4 h-4",
+                    activeScrolled && !open ? "w-3.5 h-3.5" : "w-4.5 h-4.5",
                     open ? "rotate-45" : "rotate-0"
                   )}
                 />
               </button>
-            </div>
+            </motion.div>
           </div>
 
           {/* EXPANDED NAV PANEL */}

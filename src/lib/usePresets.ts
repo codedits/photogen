@@ -17,6 +17,19 @@ export type Preset = {
 // Stores data + timestamp; revalidates in background if staleMs exceeded.
 const presetCache = new Map<string, { data: Preset[]; hasMore: boolean; ts: number }>();
 
+function mergeUniqueById(prev: Preset[], incoming: Preset[]) {
+  if (!incoming.length) return prev;
+  const seen = new Set(prev.map((item) => item.id));
+  const next = [...prev];
+  for (const item of incoming) {
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      next.push(item);
+    }
+  }
+  return next;
+}
+
 export interface UsePresetsOptions {
   q?: string;
   limit?: number;
@@ -51,7 +64,7 @@ export function usePresets(opts: UsePresetsOptions = {}) {
     if (cached) {
       const isStale = now - cached.ts > staleMs;
       if (append) {
-        setItems(prev => prev.concat(cached.data));
+        setItems(prev => mergeUniqueById(prev, cached.data));
       } else {
         setItems(cached.data);
       }
@@ -80,7 +93,7 @@ export function usePresets(opts: UsePresetsOptions = {}) {
       const newHasMore: boolean = !!json.hasMore;
       presetCache.set(cKey, { data: newData, hasMore: newHasMore, ts: Date.now() });
       setHasMore(newHasMore);
-      setItems(prev => append ? prev.concat(newData) : newData);
+      setItems(prev => append ? mergeUniqueById(prev, newData) : newData);
     } catch (e: unknown) {
       // avoid using `any` here to satisfy eslint rules
       if ((e as unknown as { name?: string }).name === 'AbortError') return;

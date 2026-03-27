@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Check, Copy, Share2 } from 'lucide-react';
 
 interface BlogShareButtonsProps {
@@ -9,6 +9,12 @@ interface BlogShareButtonsProps {
 
 export default function BlogShareButtons({ title }: BlogShareButtonsProps) {
   const [copied, setCopied] = useState(false);
+  const [canNativeShare, setCanNativeShare] = useState(false);
+
+  // Detect native share capability after hydration
+  useEffect(() => {
+    setCanNativeShare(typeof navigator !== 'undefined' && 'share' in navigator);
+  }, []);
 
   const handleCopyLink = useCallback(async () => {
     try {
@@ -87,7 +93,7 @@ export default function BlogShareButtons({ title }: BlogShareButtonsProps) {
       </button>
 
       {/* Native share (mobile) */}
-      {typeof navigator !== 'undefined' && 'share' in navigator && (
+      {canNativeShare && (
         <button
           onClick={handleShareNative}
           className="inline-flex items-center justify-center rounded-full border border-border p-2 text-muted-foreground hover:border-foreground/30 hover:text-foreground transition-colors"

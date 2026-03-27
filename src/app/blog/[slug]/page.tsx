@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import getDatabase from '../../../lib/mongodb';
 import { cloudinaryPresetUrl } from '../../../lib/cloudinaryUrl';
+import { wrapImagesInFiguresRegex } from '../../../lib/imageCardUtils';
 import type { BlogDoc } from '../../api/blog/route';
 import BlogShareButtons from './BlogShareButtons';
 
@@ -127,11 +128,11 @@ export default async function BlogDetailPage({ params }: { params: Promise<Param
         </div>
       )}
 
-      <article className="mx-auto max-w-4xl px-6 py-12 md:py-20">
+      <article className="mx-auto max-w-5xl lg:max-w-6xl px-4 md:px-6 py-12 md:py-20">
         {/* Standard Layout Header */}
         {layout === 'standard' && (
           <>
-            <div className="mb-8">
+            <div className="mb-8 max-w-4xl">
               <div className="flex flex-wrap items-center gap-2 mb-5">
                 {post.tags?.slice(0, 4).map((tag: string) => (
                   <Link
@@ -152,7 +153,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<Param
             </div>
 
             {post.coverImage?.url && (
-              <div className="mb-10 overflow-hidden rounded-xl border border-border">
+              <div className="mb-10 overflow-hidden rounded-xl border border-border max-w-4xl">
                 <div className="relative aspect-video w-full overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -169,7 +170,7 @@ export default async function BlogDetailPage({ params }: { params: Promise<Param
 
         {/* Minimal Layout Header */}
         {layout === 'minimal' && (
-          <div className="mb-12 max-w-3xl">
+          <div className="mb-12 max-w-4xl">
             <div className="flex flex-wrap items-center gap-2 mb-6">
               {post.tags?.slice(0, 4).map((tag: string) => (
                 <Link
@@ -209,8 +210,8 @@ export default async function BlogDetailPage({ params }: { params: Promise<Param
 
         {/* Article content */}
         <div
-          className="prose max-w-none dark:prose-invert prose-headings:font-normal prose-a:text-foreground prose-a:underline prose-a:underline-offset-2 prose-p:text-foreground/90 [&_h1]:text-3xl [&_h1]:md:text-4xl [&_h1]:leading-tight [&_h1]:font-semibold [&_h1]:mt-12 [&_h1]:mb-6 [&_h2]:text-2xl [&_h2]:md:text-3xl [&_h2]:leading-tight [&_h2]:font-semibold [&_h2]:mt-10 [&_h2]:mb-5 [&_h3]:text-xl [&_h3]:md:text-2xl [&_h3]:leading-tight [&_h3]:font-semibold [&_h3]:mt-8 [&_h3]:mb-4 [&_p]:text-[1.05rem] [&_p]:leading-8 [&_ul]:my-6 [&_ul]:list-disc [&_ul]:ml-8 [&_ul]:pl-1 [&_ol]:my-6 [&_ol]:list-decimal [&_ol]:ml-8 [&_ol]:pl-1 [&_li]:pl-1 [&_li]:mb-2 [&_blockquote]:border-l-2 [&_blockquote]:border-foreground/20 [&_blockquote]:pl-6 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_pre]:bg-card [&_pre]:border [&_pre]:border-border [&_pre]:rounded-lg [&_pre]:p-4 [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_hr]:border-border [&_hr]:my-10 [&_img]:rounded-lg [&_img]:border [&_img]:border-border"
-          dangerouslySetInnerHTML={{ __html: post.contentHtml }}
+          className="prose max-w-none dark:prose-invert prose-headings:font-normal prose-a:text-foreground prose-a:underline prose-a:underline-offset-2 prose-p:text-foreground/90 [&_h1]:text-3xl [&_h1]:md:text-4xl [&_h1]:leading-tight [&_h1]:font-semibold [&_h1]:mt-12 [&_h1]:mb-6 [&_h2]:text-2xl [&_h2]:md:text-3xl [&_h2]:leading-tight [&_h2]:font-semibold [&_h2]:mt-10 [&_h2]:mb-5 [&_h3]:text-xl [&_h3]:md:text-2xl [&_h3]:leading-tight [&_h3]:font-semibold [&_h3]:mt-8 [&_h3]:mb-4 [&_p]:text-[1.05rem] [&_p]:leading-8 [&_ul]:my-6 [&_ul]:list-disc [&_ul]:ml-8 [&_ul]:pl-1 [&_ol]:my-6 [&_ol]:list-decimal [&_ol]:ml-8 [&_ol]:pl-1 [&_li]:pl-1 [&_li]:mb-2 [&_blockquote]:border-l-2 [&_blockquote]:border-foreground/20 [&_blockquote]:pl-6 [&_blockquote]:italic [&_blockquote]:text-muted-foreground [&_pre]:bg-card [&_pre]:border [&_pre]:border-border [&_pre]:rounded-lg [&_pre]:p-4 [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_hr]:border-border [&_hr]:my-10 [&_figure]:my-8 [&_figure]:rounded-xl [&_figure]:border [&_figure]:border-border [&_figure]:bg-card/50 [&_figure]:overflow-hidden [&_figure]:shadow-sm [&_figure]:hover:shadow-md [&_figure]:transition-all [&_figure]:duration-300 [&_figure]:p-0 [&_img]:m-0 [&_img]:rounded-none [&_img]:border-none [&_img]:shadow-none [&_figcaption]:text-center [&_figcaption]:text-sm [&_figcaption]:text-muted-foreground [&_figcaption]:italic [&_figcaption]:px-4 [&_figcaption]:pb-4 [&_figcaption]:pt-3"
+          dangerouslySetInnerHTML={{ __html: wrapImagesInFiguresRegex(post.contentHtml) }}
         />
 
         {/* Bottom tags & share */}

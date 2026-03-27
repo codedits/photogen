@@ -72,7 +72,7 @@ export default function RichTextEditor({
       }),
       Image.configure({
         HTMLAttributes: {
-          class: 'rounded-md border border-zinc-800 my-3 max-w-full h-auto',
+          class: 'w-full h-auto object-cover rounded-none border-none',
         },
       }),
       Placeholder.configure({

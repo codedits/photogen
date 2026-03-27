@@ -7,6 +7,7 @@ import Footer from "../components/Footer";
 import VercelAnalytics from "../components/VercelAnalytics";
 import { ensurePresetIndexes } from "../lib/mongodb";
 import { ThemeProvider } from "../components/ThemeProvider";
+import CustomCursor from "../components/CustomCursor";
 
 
 const dmSans = DM_Sans({
@@ -52,11 +53,11 @@ export default async function RootLayout({
   // Warm DB indexes / connection in the background during initial render.
   // We don't await aggressively to avoid slowing SSR; this kicks off the promise.
   try {
-    ensurePresetIndexes().catch(() => {});
-  } catch {}
+    ensurePresetIndexes().catch(() => { });
+  } catch { }
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${dmSans.variable} ${geistMono.variable}`}>
       <head>
         <link rel="icon" href="/gen.svg" />
         {/* Preconnect to Cloudinary to improve image fetch latency */}
@@ -69,15 +70,14 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body
-        className={`${dmSans.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground`}
-      >
+      <body className="font-sans antialiased bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
-        <Nav />
-        {children}
-        <LazyChatWidget />
-        <Footer />
-        <VercelAnalytics />
+          <CustomCursor />
+          <Nav />
+          {children}
+          <LazyChatWidget />
+          <Footer />
+          <VercelAnalytics />
         </ThemeProvider>
       </body>
     </html>

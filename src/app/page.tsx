@@ -13,7 +13,7 @@ async function getFeaturedPresets(): Promise<Preset[]> {
   try {
     const db = await getDatabase();
     const coll = db.collection("presets");
-    const docs = await coll.find({}).sort({ createdAt: -1 }).limit(3).toArray();
+    const docs = await coll.find({}).sort({ createdAt: -1 }).limit(4).toArray();
     
     return docs.map(doc => ({
       id: doc._id.toString(),
@@ -81,6 +81,11 @@ type HeroSettings = {
     url?: string;
     public_id?: string;
   };
+  overlayBrightness?: number;
+  ctaText?: string;
+  ctaLink?: string;
+  secondaryCtaText?: string;
+  secondaryCtaLink?: string;
 };
 
 async function getHeroSettings(): Promise<HeroSettings | null> {
@@ -96,6 +101,11 @@ async function getHeroSettings(): Promise<HeroSettings | null> {
         url: settings.image?.url,
         public_id: settings.image?.public_id,
       },
+      overlayBrightness: typeof settings.overlayBrightness === "number" ? settings.overlayBrightness : 0.85,
+      ctaText: settings.ctaText || "Gallery",
+      ctaLink: settings.ctaLink || "/gallery",
+      secondaryCtaText: settings.secondaryCtaText || "Studio",
+      secondaryCtaLink: settings.secondaryCtaLink || "/studio",
     };
   } catch (e) {
     console.error("Failed to fetch hero settings:", e);

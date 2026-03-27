@@ -66,6 +66,15 @@ const GalleryCard = ({
   parallax = false,
   height
 }: GalleryCardProps) => {
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    const mql = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, []);
+
   const enableEntranceAnimation = index < 12;
 
   const dateStr = item.uploadDate ? new Date(item.uploadDate).toLocaleDateString('en-US', {
@@ -127,7 +136,7 @@ const GalleryCard = ({
                   fill
                   sizes={sizes}
                   priority={priority}
-                  className="object-cover transition-all duration-700 opacity-80 group-hover:opacity-100"
+                  className="object-cover transition-all duration-700 opacity-100"
                   transformOpts={transformOpts}
                   noBlur={true}
                 />
@@ -136,10 +145,13 @@ const GalleryCard = ({
               <motion.div
                 className="w-full h-full relative"
                 variants={{
-                  rest: { scale: 1 },
-                  hover: { scale: 1.05 },
+                  rest: { scale: 1, filter: 'blur(0px)' },
+                  hover: { 
+                    scale: 1.02, 
+                    filter: isMobile ? 'blur(0px)' : 'blur(5px)' 
+                  },
                 }}
-                transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
+                transition={{ duration: 0.8, ease: [0.33, 1, 0.68, 1] }}
               >
                 <ImageWithLqip
                   src={item.images[0]?.url}
@@ -147,7 +159,7 @@ const GalleryCard = ({
                   fill
                   sizes={sizes}
                   priority={priority}
-                  className="object-cover transition-all duration-700 opacity-80 group-hover:opacity-100"
+                  className="object-cover transition-all duration-700 opacity-100"
                   transformOpts={transformOpts}
                   noBlur={true}
                 />
@@ -155,39 +167,72 @@ const GalleryCard = ({
             )}
 
             {/* --- OVERLAY GRADIENT (Cinematic fade) --- */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/90 pointer-events-none" />
+            <motion.div 
+              className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-colors duration-700 pointer-events-none" 
+            />
             
-            {/* --- BOTTOM CONTENT AREA --- */}
-            <div className="absolute bottom-0 left-0 right-0 p-5 z-20">
-              
-              {/* Decorative Line that fills on hover */}
-              <div className="w-full h-[1px] bg-white/20 mb-3 overflow-hidden text-glow">
-                <motion.div 
-                  className="h-full bg-white w-full origin-left"
-                  variants={{ rest: { scaleX: 0 }, hover: { scaleX: 1 }}}
-                  transition={{ duration: 0.4 }}
-                />
-              </div>
+            {/* --- DESKTOP CENTERED CONTENT --- */}
+            <div className="absolute inset-0 z-20 hidden md:flex flex-col items-center justify-center p-6 text-center">
+              <motion.div
+                variants={{
+                  rest: { opacity: 0 },
+                  hover: { 
+                    opacity: 1,
+                    transition: { staggerChildren: 0.05, delayChildren: 0.1 }
+                  }
+                }}
+                className="flex flex-col items-center"
+              >
+                <motion.h2 
+                  variants={{
+                    rest: { y: -20, opacity: 0 },
+                    hover: { y: 0, opacity: 1 }
+                  }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="text-xl md:text-2xl font-light text-white uppercase tracking-tighter mb-1 leading-tight"
+                >
+                  {item.name}
+                </motion.h2>
+                
+                <motion.p 
+                  variants={{
+                    rest: { y: 20, opacity: 0 },
+                    hover: { y: 0, opacity: 1 }
+                  }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="text-[9px] text-white/60 font-mono uppercase tracking-tight"
+                >
+                  {item.category} / {dateStr}
+                </motion.p>
+              </motion.div>
+            </div>
 
-              {/* Title & Arrow */}
+            {/* --- MOBILE/ORIGINAL BOTTOM OVERLAY --- */}
+            <div className="absolute bottom-0 left-0 right-0 p-5 z-20 md:hidden bg-gradient-to-t from-black/90 via-black/20 to-transparent">
               <div className="flex justify-between items-start mb-1">
-                <h2 className="text-xl md:text-2xl font-light text-white uppercase tracking-tighter leading-[0.9]">
+                <h2 className="text-xl font-light text-white uppercase tracking-tighter leading-none">
                   {item.name}
                 </h2>
-                <ArrowUpRight className="w-4 h-4 text-white/50 group-hover:text-white group-hover:translate-x-1 group-hover:-translate-y-1 transition-all duration-300" />
+                <ArrowUpRight className="w-4 h-4 text-white/50" />
               </div>
-              
-              {/* Tags / Metadata */}
-              <div className="flex items-center justify-between mt-2">
-                <p className="text-[10px] text-white/50 font-mono uppercase tracking-[0.2em] truncate max-w-[80%]">
-                  {item.category} / {dateStr}
-                </p>
-                
-                {/* Fake ID/Ref number for "Technical" look */}
-                <span className="text-[9px] text-white/30 font-mono">
-                  {item._id.substring(0, 4).toUpperCase()}
+              <p className="text-[10px] text-white/50 font-mono uppercase tracking-widest">
+                {item.category}
+              </p>
+            </div>
+
+            {/* --- DESKTOP BOTTOM RIGHT REFERENCE --- */}
+            <div className="absolute bottom-4 right-5 z-20 pointer-events-none hidden md:block">
+              <motion.div
+                variants={{
+                   rest: { opacity: 0.4, y: 0 },
+                   hover: { opacity: 0, y: 10 }
+                }}
+                className="flex flex-col items-end"
+              >
+                <span className="text-[9px] text-white/40 font-mono tracking-tighter uppercase">
+                  Ref_{item._id.substring(item._id.length - 4).toUpperCase()}
                 </span>
-              </div>
+              </motion.div>
             </div>
           </div>
         </Link>

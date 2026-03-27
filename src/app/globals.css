@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@media (pointer: fine) {
+  html, body, a, button, [role="button"], .group {
+    cursor: none !important;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 html {
@@ -157,6 +163,21 @@ body,
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Image card styling for blog figures */
+  figure {
+    margin: 0;
+    padding: 0;
+  }
+
+  figure img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    margin: 0;
+    padding: 0;
   }
 }
 

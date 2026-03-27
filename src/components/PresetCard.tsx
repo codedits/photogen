@@ -51,7 +51,7 @@ export default function PresetCard({ preset, className = "", priority = false }:
                rest: { scale: 1 },
                hover: { scale: 1.05 }
              }}
-             transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
+             transition={{ duration: 0.8, ease: [0.33, 1, 0.68, 1] }}
            >
              <ImageWithLqip
                 src={mainImage}
@@ -59,7 +59,7 @@ export default function PresetCard({ preset, className = "", priority = false }:
                 fill
                 className="object-cover transition-all duration-700 opacity-80 group-hover:opacity-100" 
                 transformOpts={{ w: 600, h: 800, fit: 'cover', q: 'auto:good' }}
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 25vw"
                 priority={priority}
              />
            </motion.div>
@@ -93,7 +93,7 @@ export default function PresetCard({ preset, className = "", priority = false }:
         <div className="absolute bottom-0 left-0 right-0 p-5 z-20">
            
            {/* Decorative Line that fills on hover */}
-           <div className="w-full h-[1px] bg-white/20 mb-3 overflow-hidden">
+           <div className="w-full h-[1px] bg-white/20 mb-3 overflow-hidden text-glow">
              <motion.div 
                className="h-full bg-white w-full origin-left"
                variants={{ rest: { scaleX: 0 }, hover: { scaleX: 1 }}}

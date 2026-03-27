@@ -120,7 +120,7 @@ export default async function BlogPage({
                     <img
                       src={cloudinaryPresetUrl(featured.coverImage.url, 'hero', { w: 1600, h: 960 })}
                       alt={featured.title}
-                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                       loading="eager"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10" />

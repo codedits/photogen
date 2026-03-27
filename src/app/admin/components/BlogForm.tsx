@@ -30,9 +30,9 @@ interface BlogFormProps {
 type LayoutOption = 'standard' | 'magazine' | 'minimal';
 
 const LAYOUT_OPTIONS: { value: LayoutOption; label: string; desc: string }[] = [
-  { value: 'standard', label: 'Standard', desc: 'Cover image above the title' },
-  { value: 'magazine', label: 'Magazine', desc: 'Full-bleed hero with overlay' },
-  { value: 'minimal', label: 'Minimal', desc: 'Text-focused, no hero image' },
+  { value: 'standard', label: 'Standard', desc: 'Cover image above the title. Wider layout (responsive)' },
+  { value: 'magazine', label: 'Magazine', desc: 'Full-bleed hero with overlay text. Best for visual-first posts' },
+  { value: 'minimal', label: 'Minimal', desc: 'Text-focused, no hero image. Maximum readability' },
 ];
 
 function slugify(value: string) {
@@ -332,7 +332,10 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
 
             {/* Body */}
             <div>
-              <label className="mb-1.5 block text-xs text-zinc-400">Body</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs text-zinc-400">Body</label>
+                <span className="text-[10px] text-zinc-600">💡 Inline images display as cards on desktop</span>
+              </div>
               <RichTextEditor
                 content={contentHtml}
                 onChange={(html) => {

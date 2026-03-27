@@ -19,7 +19,12 @@ export async function GET(req: Request) {
       image: {
         url: "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?scale-down-to=1024",
         public_id: ""
-      }
+      },
+      overlayBrightness: 0.85,
+      ctaText: "Gallery",
+      ctaLink: "/gallery",
+      secondaryCtaText: "Contact",
+      secondaryCtaLink: "/contact"
     };
 
     return NextResponse.json(settings || defaultSettings);
@@ -37,18 +42,22 @@ export async function PATCH(req: Request) {
     const body = await req.json();
     const db = await getDatabase();
     
-    const { introText, mainHeadline, image } = body;
+    // We update only allowed fields from the body
+    const allowedFields = [
+      'introText', 'mainHeadline', 'image', 'overlayBrightness',
+      'ctaText', 'ctaLink', 'secondaryCtaText', 'secondaryCtaLink'
+    ];
+    
+    const updateData: any = { updatedAt: new Date() };
+    allowedFields.forEach(field => {
+      if (body[field] !== undefined) {
+        updateData[field] = body[field];
+      }
+    });
 
     await db.collection("settings").updateOne(
       { _id: "hero_settings" as any },
-      { 
-        $set: { 
-          introText, 
-          mainHeadline, 
-          image,
-          updatedAt: new Date()
-        } 
-      },
+      { $set: updateData },
       { upsert: true }
     );
 

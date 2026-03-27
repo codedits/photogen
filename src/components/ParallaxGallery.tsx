@@ -84,14 +84,14 @@ function ParallaxRow({
           <motion.div
             key={`${src}-${i}`}
             className="group relative h-[350px] w-[240px] md:h-[500px] md:w-[350px] shrink-0 overflow-hidden bg-neutral-900"
-            whileHover={isMobileViewport ? undefined : { scale: 0.98 }}
-            transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
+            whileHover={isMobileViewport ? undefined : { scale: 1, filter: 'blur(8px)' }}
+            transition={{ duration: 0.8, ease: [0.33, 1, 0.68, 1] }}
           >
             <Image
               src={src}
               alt=""
               fill
-              className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.2,0,0,1)] group-hover:scale-105 opacity-90 md:opacity-80 group-hover:opacity-100"
+              className="object-cover transition-all duration-700 ease-[cubic-bezier(0.2,0,0,1)] group-hover:scale-[1.02] group-hover:blur opacity-90 md:opacity-80 group-hover:opacity-100"
               priority={i < priorityCount}
               quality={80}
               sizes="(max-width: 768px) 240px, 350px"
@@ -139,11 +139,11 @@ export default function ParallaxGallery() {
     <section ref={sectionRef} id="gallery" className="relative overflow-hidden bg-background py-8 md:py-12">
       {/* Intense DEEP Vignette Overlays */}
       {/* Intense DEEP Vignette Overlays - Shortened for "longness" reduction */}
-      <div className="absolute inset-x-0 top-0 z-30 h-16 md:h-64 bg-gradient-to-b from-background via-background/60 to-transparent pointer-events-none" />
-      <div className="absolute inset-x-0 bottom-0 z-30 h-16 md:h-64 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none" />
-      <div className="absolute inset-y-0 left-0 z-30 w-8 md:w-40 bg-gradient-to-r from-background via-background/60 to-transparent pointer-events-none" />
-      <div className="absolute inset-y-0 right-0 z-30 w-8 md:w-40 bg-gradient-to-l from-background via-background/60 to-transparent pointer-events-none" />
-      <div className="absolute inset-0 z-20 bg-background/40 pointer-events-none" />
+      <div className="absolute inset-x-0 top-0 z-30 h-16 md:h-64 bg-gradient-to-b from-background via-background/60 to-transparent pointer-events-none hidden dark:block" />
+      <div className="absolute inset-x-0 bottom-0 z-30 h-16 md:h-64 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none hidden dark:block" />
+      <div className="absolute inset-y-0 left-0 z-30 w-8 md:w-40 bg-gradient-to-r from-background via-background/60 to-transparent pointer-events-none hidden dark:block" />
+      <div className="absolute inset-y-0 right-0 z-30 w-8 md:w-40 bg-gradient-to-l from-background via-background/60 to-transparent pointer-events-none hidden dark:block" />
+      <div className="absolute inset-0 z-20 bg-background/40 pointer-events-none hidden dark:block" />
 
       {/* Center Floating Text */}
       <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center text-center">

@@ -13,6 +13,7 @@ const PresetForm = lazy(() => import('./components/PresetForm'));
 const GalleryForm = lazy(() => import('./components/GalleryForm'));
 const BlogForm = lazy(() => import('./components/BlogForm'));
 const SettingsManagement = lazy(() => import('./SettingsManagement'));
+const HeroSettingsManagement = lazy(() => import('./HeroSettingsManagement'));
 
 type PresetRow = {
   id: string;
@@ -39,7 +40,7 @@ type BlogRow = {
 };
 
 export type AdminView = 
-  | { type: 'list'; tab: 'presets' | 'gallery' | 'blog' | 'contact' }
+  | { type: 'list'; tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero' }
   | { type: 'create-preset' }
   | { type: 'edit-preset'; preset: PresetRow }
   | { type: 'create-gallery' }
@@ -193,7 +194,7 @@ export default function AdminPage() {
     addToast('Gallery item deleted', 'info');
   }, [addToast]);
 
-  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'blog' | 'contact') => {
+  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero') => {
     setView({ type: 'list', tab });
   }, []);
 
@@ -349,7 +350,7 @@ export default function AdminPage() {
         ? 'gallery'
         : view.type.includes('blog')
           ? 'blog'
-          : 'contact';
+          : 'presets';
 
   const title = view.type === 'list'
     ? activeTab === 'presets'
@@ -358,7 +359,9 @@ export default function AdminPage() {
         ? 'Gallery'
         : activeTab === 'blog'
           ? 'Blog'
-          : 'Contact Page'
+          : activeTab === 'contact'
+            ? 'Contact Page'
+            : 'Hero Section'
     : view.type.includes('preset')
       ? 'Edit Preset'
       : view.type.includes('gallery')
@@ -434,6 +437,9 @@ export default function AdminPage() {
                 )}
                 {view.type === 'list' && (activeTab as string) === 'contact' && (
                   <SettingsManagement />
+                )}
+                {view.type === 'list' && (activeTab as string) === 'hero' && (
+                  <HeroSettingsManagement />
                 )}
                 {view.type === 'create-preset' && (
                   <PresetForm 

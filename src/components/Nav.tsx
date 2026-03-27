@@ -78,49 +78,52 @@ export default function Nav() {
 
   return (
     <LayoutGroup>
-      <header className="fixed top-0 left-0 right-0 z-[999] pointer-events-none flex justify-center px-2 md:px-4">
+      <header className="fixed top-0 left-0 right-0 z-[999] pointer-events-none flex justify-center px-4">
         <motion.div
           layout
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ ...springConfig, delay: 0.5 }}
+          transition={{
+            type: "spring",
+            stiffness: 260,
+            damping: 20
+          }}
           className={cn(
-            "pointer-events-auto relative flex flex-col overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)]",
-            "w-[98vw] md:w-[90vw] max-w-[1550px]",
-            "bg-background/95 md:bg-background/90 md:backdrop-blur-xl border border-border shadow-md dark:shadow-[0_4px_24px_rgba(0,0,0,0.3)]",
-            "transition-[opacity,border-radius,margin] duration-500",
-            open
-              ? "rounded-[28px] mt-2 md:mt-4"
-              : "rounded-b-xl md:rounded-b-2xl",
-            isScrolled && !open ? "opacity-95" : "opacity-100"
+            "pointer-events-auto relative flex flex-col overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,0.4)]",
+            "bg-background/70 backdrop-blur-3xl border border-white/10",
+            isScrolled && !open
+              ? "mt-4 w-auto min-w-[280px] max-w-fit rounded-full px-1.5"
+              : "w-[98vw] md:w-[94vw] max-w-[1600px] mt-0 rounded-b-[1.5rem] md:rounded-b-[2rem]",
+            open && "rounded-[2.5rem] mt-4 w-[96vw] md:w-[90vw]"
           )}
         >
           {/* TOP BAR */}
-          <div className="flex items-center justify-between px-5 py-2 md:px-8 md:py-3 relative z-20">
+          <div className={cn(
+            "flex items-center justify-between relative z-20",
+            isScrolled && !open ? "px-4 py-1.5 gap-6" : "px-6 py-3 md:px-10 md:py-4"
+          )}>
             {/* Left */}
             <div className="flex items-center gap-4">
               <Link
                 href="/"
-                className="flex items-center gap-2 leading-none relative z-50"
+                className="flex items-center gap-2 leading-none relative z-50 shrink-0"
               >
-                <span className="text-[13px] md:text-[14px] tracking-tight text-foreground uppercase font-semibold">
+                <span className="text-[12px] md:text-[13px] tracking-tight text-foreground uppercase font-bold">
                   PhotoGen®
                 </span>
               </Link>
-
-              <div className="hidden sm:block min-w-[140px] text-[10px] md:text-[11px] font-mono text-muted-foreground uppercase tracking-wider mt-0.5">
-                {time || "\u00A0"}
-              </div>
             </div>
 
-            {/* Right-aligned Links (hide when open) */}
-            <div className="hidden md:flex flex-1 justify-end relative h-full items-center mr-8">
-              <div
+            {/* Centered/Right Links */}
+            <div className={cn(
+              "hidden md:flex flex-1 justify-center relative items-center",
+              isScrolled && !open ? "mx-4" : "mr-8 justify-end"
+            )}>
+              <motion.div 
+                layout
                 className={cn(
-                  "flex items-center gap-5 lg:gap-8 transition-all duration-300",
-                  open
-                    ? "opacity-0 -translate-y-3 pointer-events-none"
-                    : "opacity-100 translate-y-0"
+                  "flex items-center gap-6 lg:gap-8",
+                  open ? "opacity-0 -translate-y-3 pointer-events-none" : "opacity-100 translate-y-0"
                 )}
               >
                 {NAV_LINKS.map((link) => {
@@ -130,35 +133,34 @@ export default function Nav() {
                       key={link.href}
                       href={link.href}
                       className={cn(
-                        "text-[15px] md:text-[16px] font-medium tracking-tight transition-colors hover:text-muted-foreground",
-                        isActive ? "text-foreground" : "text-foreground"
+                        "text-[13px] md:text-[14px] font-medium tracking-tight transition-colors hover:text-muted-foreground shrink-0",
+                        isActive ? "text-foreground" : "text-foreground/60"
                       )}
                     >
                       {link.label}
                     </Link>
                   );
                 })}
-              </div>
+              </motion.div>
             </div>
 
-            {/* Right */}
-            <div className="flex items-center gap-2 md:gap-3">
-              <LiquidRiseCTA
-                href="/contact"
-                className="hidden sm:flex !w-auto !h-9 !rounded-full px-5 text-[10px]"
-              >
-                Inquiry
-              </LiquidRiseCTA>
-
-              <ThemeToggle className="ml-1" />
+            {/* Right Group */}
+            <div className="flex items-center gap-2 md:gap-3 shrink-0">
+              <ThemeToggle className={cn(
+                isScrolled && !open ? "scale-75 origin-right" : "scale-100"
+              )} />
 
               <button
                 onClick={() => setOpen(!open)}
-                className="flex items-center justify-center rounded-full p-2 bg-secondary text-foreground hover:bg-muted transition-colors border border-border w-[34px] h-[34px]"
+                className={cn(
+                    "flex items-center justify-center rounded-full bg-secondary/40 text-foreground hover:bg-secondary transition-all border border-white/5",
+                    isScrolled && !open ? "w-[28px] h-[28px] p-1" : "w-[36px] h-[36px] p-2"
+                )}
               >
                 <Plus
                   className={cn(
-                    "w-4 h-4 transition-transform duration-300",
+                    "transition-transform duration-500",
+                    isScrolled && !open ? "w-3 h-3" : "w-4 h-4",
                     open ? "rotate-45" : "rotate-0"
                   )}
                 />

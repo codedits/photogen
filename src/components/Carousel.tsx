@@ -69,13 +69,19 @@ export default function Carousel({
     return () => clearInterval(id);
   }, [autoPlay, intervalMs, paused, isFocus, len, next]);
 
-  // Ensure active thumbnail is visible
+  const isFirstRender = React.useRef(true);
+
+  // Ensure active thumbnail is visible (only after interaction or non-initial render)
   React.useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     const btn = thumbsRef.current[index];
     if (btn && typeof btn.scrollIntoView === 'function') {
       btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     }
-  }, [index, isFocus]);
+  }, [index]);
 
   const current = items[index];
 
@@ -103,7 +109,7 @@ export default function Carousel({
   if (!len) {
     return (
       <div className={`w-full ${className}`}>
-  <div className="w-full aspect-[9/16] max-h-[720px] sm:max-h-none sm:h-[520px] md:h-[520px] rounded-lg bg-slate-800 animate-pulse" />
+        <div className="w-full max-w-lg mx-auto aspect-[4/5] rounded-xl bg-muted animate-pulse" />
       </div>
     );
   }
@@ -113,13 +119,12 @@ export default function Carousel({
   return (
     <div className={`group ${className}`} ref={containerRef}
       role="region" aria-roledescription="carousel" aria-label="Image carousel"
-      tabIndex={0}
       onFocus={() => setIsFocus(true)} onBlur={() => setIsFocus(false)}
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
     >
       {/* Stage */}
       <div
-        className="relative w-full max-w-3xl aspect-[9/16] max-h-[720px] sm:max-h-none sm:h-[520px] md:h-[520px] rounded-xl overflow-hidden bg-background"
+        className="relative w-full max-w-lg aspect-[4/5] rounded-xl overflow-hidden bg-background mx-auto"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >

@@ -83,13 +83,16 @@ export default function Nav() {
     <LayoutGroup>
       <header className="fixed top-0 left-0 right-0 z-[999] pointer-events-none flex justify-center px-4">
         <motion.div
+          key={pathname}
           layout
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{
             type: "spring",
             stiffness: 400,
-            damping: 30
+            damping: 30,
+            opacity: { delay: 0.35, duration: 1 },
+            y: { delay: 0.45, duration: 1.2 }
           }}
           className={cn(
             "pointer-events-auto relative flex flex-col overflow-hidden shadow-[0_12px_48px_rgba(0,0,0,0.32)]",

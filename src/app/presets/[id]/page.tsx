@@ -7,6 +7,7 @@ import ImageWithLqip from '../../../components/ImageWithLqip';
 import GalleryImageGrid from '../../../components/GalleryImageGrid';
 import Carousel from '../../../components/Carousel';
 import LiquidRiseCTA from '../../../components/LiquidRiseCTA';
+import ScrollToTop from '../../../components/ScrollToTop';
 
 // --- TYPES ---
 type PresetDoc = {
@@ -100,6 +101,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground/20">
+      <ScrollToTop />
       
       {/* Global Grain Texture */}
       <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay"
@@ -108,8 +110,8 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
       <div className="max-w-[1600px] mx-auto px-[2px] md:px-8 lg:px-10 pt-28 md:pt-32 pb-10 md:pb-16 lg:pb-20 relative z-10">
         
         {/* Mobile Header: Carousel (Hidden on Desktop) */}
-        <div className="block lg:hidden mb-10">
-          <Carousel items={carouselItems} className="w-full !max-w-none !aspect-auto" showDots={true} showThumbs={true} autoPlay={false} />
+        <div className="block lg:hidden mb-10 w-full px-4">
+          <Carousel items={carouselItems} showDots={true} showThumbs={true} autoPlay={false} />
         </div>
 
         {/* Main Layout Grid */}

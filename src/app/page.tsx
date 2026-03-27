@@ -7,6 +7,7 @@ import { PageContainer, FullBleed } from "../components/layout/Primitives";
 import getDatabase from "../lib/mongodb";
 import { createRequestScopedCachedFn } from "../lib/multiLayerCache";
 import { Preset } from "../components/PresetCard";
+import LogoMarquee from "../components/LogoMarquee";
 
 export const revalidate = false; // On-demand revalidation only
 
@@ -145,6 +146,10 @@ export default async function Home() {
           <FeaturedGallery items={featuredGallery} />
         </FullBleed>
       )}
+
+      <FullBleed className="perf-section">
+        <LogoMarquee />
+      </FullBleed>
 
       <FullBleed className="perf-section">
         <PresetsSection presets={presets} />

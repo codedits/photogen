@@ -63,10 +63,10 @@ export default async function RootLayout({
         {/* Preconnect to Cloudinary to improve image fetch latency */}
         <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
-        {/* Inline script to apply dark class BEFORE first paint — eliminates FOUC */}
+        {/* Inline script to apply theme BEFORE first paint — eliminates light-mode flash */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light'){document.documentElement.classList.remove('dark')}else{document.documentElement.classList.add('dark')}}catch(e){document.documentElement.classList.add('dark')}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light'){document.documentElement.classList.add('light')}else{document.documentElement.classList.remove('light')}}catch(e){}})();`,
           }}
         />
       </head>

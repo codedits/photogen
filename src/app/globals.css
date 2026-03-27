@@ -74,44 +74,7 @@ html {
 :root {
   --radius: 0rem;
 
-  /* LIGHT THEME */
-  --background: #fafafa;
-  --foreground: #111111;
-  --card: #ffffff;
-  --card-foreground: #111111;
-  --popover: #ffffff;
-  --popover-foreground: #111111;
-  --primary: #111111;
-  --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #111111;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #111111;
-  --destructive: #ef4444;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #111111;
-
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-
-  --sidebar: #ffffff;
-  --sidebar-foreground: #111111;
-  --sidebar-primary: #111111;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f4f4f5;
-  --sidebar-accent-foreground: #111111;
-  --sidebar-border: #e4e4e7;
-  --sidebar-ring: #111111;
-}
-
-.dark {
-  /* DARK THEME (Current Aesthetic) */
+  /* DEFAULT: DARK THEME (Current Aesthetic) */
   --background: #000000;
   --foreground: #ffffff;
   --card: #0a0a0a;
@@ -147,6 +110,37 @@ html {
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #27272a;
   --sidebar-ring: #ffffff;
+}
+
+.light {
+  /* OPTIONAL LIGHT THEME */
+  --background: #fafafa;
+  --foreground: #111111;
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+  --primary: #111111;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #111111;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #111111;
+  --destructive: #ef4444;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #111111;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #111111;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: #111111;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #111111;
 }
 
 /* Prevent accidental horizontal scroll on small devices (Surgical fix for sticky positioning) */

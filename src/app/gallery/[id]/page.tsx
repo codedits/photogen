@@ -7,6 +7,7 @@ import ImageWithLqip from '../../../components/ImageWithLqip';
 import GalleryImageGrid from '../../../components/GalleryImageGrid';
 import type { GalleryDoc } from '../../api/gallery/route';
 import LiquidRiseCTA from '../../../components/LiquidRiseCTA';
+import LogoMarquee from '../../../components/LogoMarquee';
 
 // --- TYPES ---
 interface GalleryItem extends Omit<GalleryDoc, '_id'> {
@@ -149,11 +150,8 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
               <div className="w-full h-[1px] bg-border mt-4"></div>
 
               {/* Editorial Logos */}
-              <div className="flex items-center gap-6 opacity-30 grayscale flex-wrap pointer-events-none">
-                <div className="font-normal text-xl tracking-tighter">LUMINA</div>
-                <div className="font-normal text-xl tracking-tighter">STUDIO</div>
-                <div className="font-normal text-xl tracking-widest uppercase text-sm">Vogue</div>
-                <div className="font-normal text-xl tracking-tighter">KINFORK</div>
+              <div className="w-full">
+                <LogoMarquee variant="sidebar" />
               </div>
 
               {/* Technical Details */}

@@ -4,6 +4,7 @@ import { usePresets, clearPresetCache } from '../../lib/usePresets';
 import AdminSidebar from './components/AdminSidebar';
 import AdminHeader from './components/AdminHeader';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import ConfirmDialog from './components/ConfirmDialog';
 
 // Lazy load heavy components
 const PresetsManagement = lazy(() => import('./PresetsManagement'));
@@ -80,6 +81,9 @@ export default function AdminPage() {
   const [view, setView] = useState<AdminView>({ type: 'list', tab: 'presets' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [formDirty, setFormDirty] = useState(false);
+  const [pendingView, setPendingView] = useState<AdminView | null>(null);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   
   // Toast state
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -216,15 +220,38 @@ export default function AdminPage() {
     }
   }, [addToast]);
 
-  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero') => {
-    setView({ type: 'list', tab });
+  const requestViewChange = useCallback((nextView: AdminView) => {
+    const isEditingForm = view.type !== 'list';
+    if (isEditingForm && formDirty) {
+      setPendingView(nextView);
+      setShowUnsavedDialog(true);
+      return;
+    }
+    setView(nextView);
+  }, [formDirty, view.type]);
+
+  const confirmDiscardAndNavigate = useCallback(() => {
+    if (!pendingView) return;
+    setFormDirty(false);
+    setShowUnsavedDialog(false);
+    setView(pendingView);
+    setPendingView(null);
+  }, [pendingView]);
+
+  const cancelDiscardNavigation = useCallback(() => {
+    setShowUnsavedDialog(false);
+    setPendingView(null);
   }, []);
 
-  const openCreatePreset = useCallback(() => setView({ type: 'create-preset' }), []);
-  const openEditPreset = useCallback((preset: PresetRow) => setView({ type: 'edit-preset', preset }), []);
-  const openCreateGallery = useCallback(() => setView({ type: 'create-gallery' }), []);
-  const openEditGallery = useCallback((item: any) => setView({ type: 'edit-gallery', item }), []);
-  const openCreateBlog = useCallback(() => setView({ type: 'create-blog' }), []);
+  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero') => {
+    requestViewChange({ type: 'list', tab });
+  }, [requestViewChange]);
+
+  const openCreatePreset = useCallback(() => requestViewChange({ type: 'create-preset' }), [requestViewChange]);
+  const openEditPreset = useCallback((preset: PresetRow) => requestViewChange({ type: 'edit-preset', preset }), [requestViewChange]);
+  const openCreateGallery = useCallback(() => requestViewChange({ type: 'create-gallery' }), [requestViewChange]);
+  const openEditGallery = useCallback((item: any) => requestViewChange({ type: 'edit-gallery', item }), [requestViewChange]);
+  const openCreateBlog = useCallback(() => requestViewChange({ type: 'create-blog' }), [requestViewChange]);
   const openEditBlog = useCallback(async (post: { id: string }) => {
     try {
       const res = await fetch(`/api/blog/${post.id}`, { cache: 'no-store' });
@@ -232,14 +259,14 @@ export default function AdminPage() {
       if (!res.ok || !result?.post) {
         throw new Error(result?.error || 'Failed to load blog post');
       }
-      setView({ type: 'edit-blog', post: result.post });
+      requestViewChange({ type: 'edit-blog', post: result.post });
     } catch (err: any) {
       addToast(err?.message || 'Failed to load blog post', 'error');
     }
-  }, [addToast]);
-  const backToPresets = useCallback(() => setView({ type: 'list', tab: 'presets' }), []);
-  const backToGallery = useCallback(() => setView({ type: 'list', tab: 'gallery' }), []);
-  const backToBlog = useCallback(() => setView({ type: 'list', tab: 'blog' }), []);
+  }, [addToast, requestViewChange]);
+  const backToPresets = useCallback(() => requestViewChange({ type: 'list', tab: 'presets' }), [requestViewChange]);
+  const backToGallery = useCallback(() => requestViewChange({ type: 'list', tab: 'gallery' }), [requestViewChange]);
+  const backToBlog = useCallback(() => requestViewChange({ type: 'list', tab: 'blog' }), [requestViewChange]);
 
   const handleSaveBlog = useCallback(async (data: any) => {
     const isEdit = view.type === 'edit-blog';
@@ -403,7 +430,7 @@ export default function AdminPage() {
     ? [
         {
           label: view.type.includes('preset') ? 'Presets' : view.type.includes('gallery') ? 'Gallery' : 'Blog',
-          onClick: () => setView({
+          onClick: () => requestViewChange({
             type: 'list',
             tab: view.type.includes('preset') ? 'presets' : view.type.includes('gallery') ? 'gallery' : 'blog',
           }),
@@ -415,6 +442,16 @@ export default function AdminPage() {
   return (
     <ToastContext.Provider value={toastContextValue}>
       <div className="dark min-h-screen bg-background flex">
+        <ConfirmDialog
+          isOpen={showUnsavedDialog}
+          title="Discard unsaved changes?"
+          message="You have unsaved edits in this form. Leaving now will lose those changes."
+          confirmText="Discard and continue"
+          cancelText="Stay on form"
+          onConfirm={confirmDiscardAndNavigate}
+          onCancel={cancelDiscardNavigation}
+        />
+
         <AdminSidebar 
           activeTab={activeTab} 
           setActiveTab={handleSetActiveTab} 
@@ -477,6 +514,7 @@ export default function AdminPage() {
                     key="create"
                     onBack={backToPresets}
                     onSave={handleSavePreset}
+                    onDirtyChange={setFormDirty}
                   />
                 )}
                 {view.type === 'edit-preset' && (
@@ -486,6 +524,7 @@ export default function AdminPage() {
                     onBack={backToPresets}
                     onSave={handleSavePreset}
                     onDelete={handleDeletePreset}
+                    onDirtyChange={setFormDirty}
                   />
                 )}
                 {view.type === 'create-gallery' && (
@@ -493,6 +532,7 @@ export default function AdminPage() {
                     key="create"
                     onBack={backToGallery}
                     onSave={handleSaveGallery}
+                    onDirtyChange={setFormDirty}
                   />
                 )}
                 {view.type === 'edit-gallery' && (
@@ -502,6 +542,7 @@ export default function AdminPage() {
                     onBack={backToGallery}
                     onSave={handleSaveGallery}
                     onDelete={handleDeleteGallery}
+                    onDirtyChange={setFormDirty}
                   />
                 )}
                 {view.type === 'create-blog' && (
@@ -509,6 +550,7 @@ export default function AdminPage() {
                     key="create"
                     onBack={backToBlog}
                     onSave={handleSaveBlog}
+                    onDirtyChange={setFormDirty}
                   />
                 )}
                 {view.type === 'edit-blog' && (
@@ -518,6 +560,7 @@ export default function AdminPage() {
                     onBack={backToBlog}
                     onSave={handleSaveBlog}
                     onDelete={handleDeleteBlog}
+                    onDirtyChange={setFormDirty}
                   />
                 )}
               </Suspense>

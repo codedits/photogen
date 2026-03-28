@@ -38,7 +38,13 @@ export default function GalleryClientShell({ initialItems, totalCount }: Gallery
     featured: false,
     search: ''
   });
+  const [resetSignal, setResetSignal] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  const handleResetFilters = () => {
+    setFilters({ category: '', featured: false, search: '' });
+    setResetSignal((prev) => prev + 1);
+  };
 
   // Handle scroll for sticky header effect
   useEffect(() => {
@@ -101,7 +107,7 @@ export default function GalleryClientShell({ initialItems, totalCount }: Gallery
             : "border-transparent py-8"
         )}>
           <div className="max-w-7xl mx-auto px-6 md:px-12">
-            <GalleryFilters onFiltersChange={setFilters} />
+            <GalleryFilters onFiltersChange={setFilters} resetSignal={resetSignal} />
           </div>
         </div>
         
@@ -111,6 +117,7 @@ export default function GalleryClientShell({ initialItems, totalCount }: Gallery
             filters={memoizedFilters} 
             initialItems={initialItems} 
             initialTotal={totalCount} 
+            onResetFilters={handleResetFilters}
           />
         </div>
       </section>

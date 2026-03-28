@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import LiquidRiseCTA from "./LiquidRiseCTA";
@@ -23,6 +23,7 @@ export default function Nav() {
   const [open, setOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [time, setTime] = useState("");
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     setOpen(false);
@@ -74,9 +75,10 @@ export default function Nav() {
   const activeScrolled = isScrolled && !isGalleryDetail && !isPresetDetail;
 
   const springConfig = {
-    type: "spring" as const,
-    stiffness: 400,
-    damping: 30,
+    type: prefersReducedMotion ? "tween" as const : "spring" as const,
+    stiffness: prefersReducedMotion ? undefined : 400,
+    damping: prefersReducedMotion ? undefined : 30,
+    duration: prefersReducedMotion ? 0.15 : undefined,
   };
 
   return (
@@ -85,15 +87,19 @@ export default function Nav() {
         <motion.div
           key={pathname}
           layout
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{
-            type: "spring",
-            stiffness: 400,
-            damping: 30,
-            opacity: { delay: 0.35, duration: 1 },
-            y: { delay: 0.45, duration: 1.2 }
-          }}
+          initial={prefersReducedMotion ? { opacity: 0 } : { y: -100, opacity: 0 }}
+          animate={prefersReducedMotion ? { opacity: 1 } : { y: 0, opacity: 1 }}
+          transition={
+            prefersReducedMotion
+              ? { duration: 0.2 }
+              : {
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 30,
+                  opacity: { delay: 0.35, duration: 1 },
+                  y: { delay: 0.45, duration: 1.2 }
+                }
+          }
           className={cn(
             "pointer-events-auto relative flex flex-col overflow-hidden shadow-[0_12px_48px_rgba(0,0,0,0.32)]",
             "bg-background border border-white/10 transition-colors duration-500",
@@ -112,7 +118,7 @@ export default function Nav() {
             <motion.div layout layoutId="nav-logo" className="shrink-0 group">
               <Link
                 href="/"
-                className="flex items-center gap-2 leading-none relative z-50"
+                className="focus-ring flex items-center gap-2 leading-none relative z-50"
               >
                 <span className="text-[15px] md:text-[16px] tracking-tight text-foreground uppercase font-black transition-transform group-hover:scale-105">
                   PhotoGen®
@@ -137,7 +143,7 @@ export default function Nav() {
                     key={link.href}
                     href={link.href}
                     className={cn(
-                      "text-[15px] md:text-[16px] font-medium tracking-tight whitespace-nowrap transition-all duration-300 text-foreground relative py-1",
+                      "focus-ring text-[15px] md:text-[16px] font-medium tracking-tight whitespace-nowrap transition-all duration-300 text-foreground relative py-1",
                       isActive && "drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] dark:drop-shadow-[0_0_12px_rgba(255,255,255,0.5)]"
                     )}
                   >
@@ -156,8 +162,11 @@ export default function Nav() {
 
               <button
                 onClick={() => setOpen(!open)}
+                aria-label={open ? "Close navigation menu" : "Open navigation menu"}
+                aria-expanded={open}
+                aria-controls="site-nav-panel"
                 className={cn(
-                    "flex items-center justify-center rounded-full bg-secondary/30 text-foreground hover:bg-secondary transition-all border border-white/5",
+                    "focus-ring flex items-center justify-center rounded-full bg-secondary/30 text-foreground hover:bg-secondary transition-all border border-white/5",
                     activeScrolled && !open ? "w-[30px] h-[30px]" : "w-[38px] h-[38px]"
                 )}
               >
@@ -176,10 +185,11 @@ export default function Nav() {
           <AnimatePresence initial={false}>
             {open && (
               <motion.div
+                id="site-nav-panel"
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                transition={prefersReducedMotion ? { duration: 0.12 } : { duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                 className="overflow-hidden"
               >
                 <div className="px-6 md:px-8 pb-6 pt-2">
@@ -199,7 +209,7 @@ export default function Nav() {
                               <Link
                                 href={link.href}
                                 onClick={() => setOpen(false)}
-                                className="group flex items-center justify-between py-4 md:py-[18px]"
+                                className="focus-ring group flex items-center justify-between py-4 md:py-[18px]"
                               >
                                 <span className="text-[20px] md:text-[28px] lg:text-[34px] font-medium text-foreground tracking-tight group-hover:text-muted-foreground transition-colors">
                                   {link.label}
@@ -256,13 +266,13 @@ export default function Nav() {
                     <div className="flex flex-col gap-1 text-foreground font-medium tracking-tight">
                       <a
                         href="mailto:hello@photogen.studio"
-                        className="hover:text-muted-foreground transition-colors"
+                        className="focus-ring hover:text-muted-foreground transition-colors"
                       >
                         hello@photogen.studio
                       </a>
                       <a
                         href="tel:1234567890"
-                        className="hover:text-muted-foreground transition-colors"
+                        className="focus-ring hover:text-muted-foreground transition-colors"
                       >
                         (123) 456-7890
                       </a>
@@ -270,13 +280,13 @@ export default function Nav() {
 
                     <div className="flex flex-col items-start md:items-end gap-2.5">
                       <div className="flex gap-4 md:gap-5 font-medium text-foreground tracking-tight">
-                        <a href="#" className="hover:text-muted-foreground transition-colors">
+                        <a href="#" className="focus-ring hover:text-muted-foreground transition-colors">
                           Instagram
                         </a>
-                        <a href="#" className="hover:text-muted-foreground transition-colors">
+                        <a href="#" className="focus-ring hover:text-muted-foreground transition-colors">
                           Twitter/X
                         </a>
-                        <a href="#" className="hover:text-muted-foreground transition-colors">
+                        <a href="#" className="focus-ring hover:text-muted-foreground transition-colors">
                           Behance
                         </a>
                       </div>

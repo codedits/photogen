@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Image optimization
   images: {
+    // Use Cloudinary for responsive srcset generation instead of Next/Vercel optimizer.
+    loader: 'custom',
+    loaderFile: './src/lib/cloudinaryLoader.ts',
     remotePatterns: [
       { protocol: 'https', hostname: '**.cloudinary.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
@@ -17,7 +20,6 @@ const nextConfig: NextConfig = {
     qualities: [60, 75, 80, 85],
     // Cache images for 1 year
     minimumCacheTTL: 31536000,
-    unoptimized: true,
   },
 
   // Compression

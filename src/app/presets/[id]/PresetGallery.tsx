@@ -128,7 +128,6 @@ export default function PresetGallery({ images: rawImages, presetName }: PresetG
           alt="Ambience"
           fill
           className="object-cover opacity-20 blur-[50px] scale-110"
-          unoptimized
         />
       </div>
 
@@ -144,9 +143,9 @@ export default function PresetGallery({ images: rawImages, presetName }: PresetG
           }`}
           sizes="(max-width: 768px) 100vw, 70vw"
           priority
+          loading="eager"
           placeholder={blurData ? "blur" : "empty"}
           blurDataURL={blurData}
-          unoptimized
         />
       </div>
 

@@ -22,6 +22,7 @@ interface GalleryFiltersProps {
     featured: boolean;
     search: string;
   }) => void;
+  resetSignal?: number;
 }
 
 function useDebouncedValue<T>(value: T, delay = 220) {
@@ -35,7 +36,7 @@ function useDebouncedValue<T>(value: T, delay = 220) {
   return debounced;
 }
 
-function GalleryFilters({ onFiltersChange }: GalleryFiltersProps) {
+function GalleryFilters({ onFiltersChange, resetSignal = 0 }: GalleryFiltersProps) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [isFeatured, setIsFeatured] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,6 +50,13 @@ function GalleryFilters({ onFiltersChange }: GalleryFiltersProps) {
       search: debouncedSearchQuery,
     });
   }, [activeCategory, isFeatured, debouncedSearchQuery, onFiltersChange]);
+
+  useEffect(() => {
+    setActiveCategory('All');
+    setIsFeatured(false);
+    setSearchQuery('');
+    setIsSearchOpen(false);
+  }, [resetSignal]);
 
   const handleCategoryChange = useCallback((category: string) => {
     setActiveCategory(category);
@@ -65,12 +73,15 @@ function GalleryFilters({ onFiltersChange }: GalleryFiltersProps) {
   return (
     <div className="flex items-center justify-between w-full">
       {/* Category List - Minimal Horizontal Scroll */}
-      <div className="flex items-center gap-8 md:gap-12 overflow-x-auto no-scrollbar py-2 overflow-y-hidden">
+      <div role="tablist" aria-label="Gallery categories" className="flex items-center gap-8 md:gap-12 overflow-x-auto no-scrollbar py-2 overflow-y-hidden">
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
             onClick={() => handleCategoryChange(cat)}
-            className={`whitespace-nowrap text-[11px] md:text-[12px] uppercase tracking-widest transition-all duration-700 relative group ${
+            role="tab"
+            aria-selected={activeCategory === cat}
+            aria-label={`Filter by ${cat}`}
+            className={`focus-ring min-h-11 whitespace-nowrap text-[11px] md:text-[12px] uppercase tracking-widest transition-all duration-700 relative group ${
               activeCategory === cat ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -90,7 +101,9 @@ function GalleryFilters({ onFiltersChange }: GalleryFiltersProps) {
         {/* Featured Toggle */}
         <button
           onClick={toggleFeatured}
-          className={`text-[11px] md:text-[12px] uppercase tracking-widest transition-all duration-700 whitespace-nowrap ${
+          aria-pressed={isFeatured}
+          aria-label="Toggle featured filter"
+          className={`focus-ring min-h-11 text-[11px] md:text-[12px] uppercase tracking-widest transition-all duration-700 whitespace-nowrap ${
             isFeatured ? 'text-foreground font-medium italic' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -111,6 +124,7 @@ function GalleryFilters({ onFiltersChange }: GalleryFiltersProps) {
                   <input
                   type="text"
                   autoFocus
+                  aria-label="Search gallery"
                   placeholder="FILTER BY NAME"
                   value={searchQuery}
                   onChange={handleSearch}
@@ -121,7 +135,9 @@ function GalleryFilters({ onFiltersChange }: GalleryFiltersProps) {
           </AnimatePresence>
           <button 
             onClick={() => setIsSearchOpen(!isSearchOpen)}
-            className={`transition-all duration-700 ${isSearchOpen ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            aria-label={isSearchOpen ? 'Close gallery search' : 'Open gallery search'}
+            aria-expanded={isSearchOpen}
+            className={`focus-ring min-h-11 transition-all duration-700 ${isSearchOpen ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             <Search className="w-4 h-4" />
           </button>

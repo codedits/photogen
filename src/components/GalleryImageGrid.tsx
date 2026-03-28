@@ -34,6 +34,7 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
         <div className="flex flex-col gap-[2px]">
           {leftColImages.map((img, idx) => {
             const originalIndex = idx * 2;
+            const isPriority = originalIndex < 4;
             return (
               <div 
                 key={idx} 
@@ -48,8 +49,9 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
                   sizes="(max-width: 768px) 100vw, 50vw"
                   className="w-full h-auto object-cover transition-transform duration-[2s] ease-out group-hover:scale-[1.03]"
                   transformOpts={{ w: 800, q: 'auto:good' }}
-                  priority={idx === 0}
-                  noBlur={true}
+                  priority={isPriority}
+                  loading={isPriority ? 'eager' : 'lazy'}
+                  noBlur={!isPriority}
                 />
                 
 
@@ -68,6 +70,7 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
         <div className="flex flex-col gap-[2px] lg:mt-20">
           {rightColImages.map((img, idx) => {
             const originalIndex = idx * 2 + 1;
+            const isPriority = originalIndex < 4;
             return (
               <div 
                 key={idx} 
@@ -82,7 +85,9 @@ export default function GalleryImageGrid({ images, userName }: GalleryImageGridP
                   sizes="(max-width: 768px) 100vw, 50vw"
                   className="w-full h-auto object-cover transition-transform duration-[2s] ease-out group-hover:scale-[1.03]"
                   transformOpts={{ w: 800, q: 'auto:good' }}
-                  noBlur={true}
+                  priority={isPriority}
+                  loading={isPriority ? 'eager' : 'lazy'}
+                  noBlur={!isPriority}
                 />
 
 

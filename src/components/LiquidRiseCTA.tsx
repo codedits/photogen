@@ -22,7 +22,7 @@ export default function LiquidRiseCTA({ href, className, children, ...props }: L
   );
 
   const baseClass = cn(
-    'group/cta relative overflow-hidden rounded-full border border-border bg-background w-48 h-14 focus:outline-none flex transition-colors text-foreground',
+    'group/cta focus-ring relative overflow-hidden rounded-full border border-border bg-background w-48 h-14 flex transition-colors text-foreground',
     className
   );
 

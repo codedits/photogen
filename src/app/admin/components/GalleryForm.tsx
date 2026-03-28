@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Upload, Save, ArrowLeft, Trash2, Eye, EyeOff, MapPin, Info, Loader2, Image as ImageIcon, Settings, ArrowUp, ArrowDown, Star } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Upload, Save, ArrowLeft, Trash2, Eye, EyeOff, MapPin, Info, Loader2, Image as ImageIcon, Settings, ArrowUp, ArrowDown, Star, RotateCcw } from 'lucide-react';
 import ImageWithLqip from '../../../components/ImageWithLqip';
 import RichTextEditor from './RichTextEditor';
+import ConfirmDialog from './ConfirmDialog';
 
 const CATEGORIES = [
   { id: 'portrait', label: 'Portrait' },
@@ -21,6 +22,7 @@ interface GalleryFormProps {
   onBack: () => void;
   onSave: (data: any) => Promise<void>;
   onDelete?: (item: any) => Promise<void>;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 type UploadItem = {
@@ -41,7 +43,7 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
   return next;
 }
 
-export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryFormProps) {
+export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyChange }: GalleryFormProps) {
   const [formData, setFormData] = useState({
     name: item?.name || '',
     description: item?.description || '',
@@ -67,13 +69,64 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
   const [errors, setErrors] = useState<{ name?: string }>({});
   const [deleting, setDeleting] = useState<string[]>([]);
   const [removePublicIds, setRemovePublicIds] = useState<string[]>([]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState(false);
+  const [notice, setNotice] = useState<{ type: 'success' | 'info'; message: string } | null>(null);
 
   const dropRef = useRef<HTMLDivElement>(null);
   const uploadItemsRef = useRef<UploadItem[]>([]);
+  const initialSnapshotRef = useRef(
+    JSON.stringify({
+      formData: {
+        name: item?.name || '',
+        description: item?.description || '',
+        category: item?.category || 'portrait',
+        tags: (item?.tags || []).join(', '),
+        featured: item?.featured || false,
+        visibility: item?.visibility || 'public',
+        photographer: item?.photographer || '',
+        location: item?.location || '',
+        equipment: item?.equipment || '',
+        metadata: {
+          aperture: item?.metadata?.aperture || '',
+          shutter: item?.metadata?.shutter || '',
+          iso: item?.metadata?.iso?.toString() || '',
+          focal_length: item?.metadata?.focal_length || '',
+        },
+      },
+      images: (item?.images || []).map((img: any) => ({ url: img.url, public_id: img.public_id })),
+    })
+  );
 
   useEffect(() => {
     uploadItemsRef.current = uploadItems;
   }, [uploadItems]);
+
+  const currentSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        formData,
+        images: imagesLocal.map((img: any) => ({ url: img.url, public_id: img.public_id })),
+      }),
+    [formData, imagesLocal]
+  );
+
+  const isDirty = currentSnapshot !== initialSnapshotRef.current || uploadItems.length > 0;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isDirty]);
 
   useEffect(() => {
     return () => {
@@ -189,6 +242,15 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
     }
     URL.revokeObjectURL(it.previewUrl);
     setUploadItems((prev) => prev.filter((p) => p.id !== id));
+    setNotice({ type: 'info', message: 'Upload removed.' });
+  };
+
+  const retryUpload = (id: string) => {
+    const it = uploadItemsRef.current.find((u) => u.id === id);
+    if (!it || !it.file || it.status === 'uploading') return;
+    setUploadItems((prev) => prev.map((p) => (p.id === id ? { ...p, status: 'idle', error: undefined, progress: 0 } : p)));
+    setSubmitError(null);
+    startUpload(it);
   };
 
   const moveImage = (index: number, nextIndex: number) => {
@@ -231,14 +293,16 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
     
     setImagesLocal((list: any) => list.filter((i: any) => i.public_id !== pid));
     setDeleting((s) => s.filter((x) => x !== pid));
+    setNotice({ type: 'info', message: 'Image removed from current draft.' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+    setSubmitError(null);
 
     if (imagesLocal.length === 0) {
-      alert('Please upload at least one image');
+      setSubmitError('Please upload at least one image before saving.');
       return;
     }
 
@@ -256,15 +320,39 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
       };
       await onSave(payload);
       onBack();
-    } catch (err: any) {
-      alert(err.message || 'Failed to save gallery item');
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save gallery item');
     } finally {
       setBusy(false);
     }
   };
 
+  const confirmDelete = async () => {
+    if (!item || !onDelete || busy) return;
+    try {
+      setBusy(true);
+      await onDelete(item);
+      onBack();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to delete gallery item');
+    } finally {
+      setBusy(false);
+      setPendingDelete(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-5">
+      <ConfirmDialog
+        isOpen={pendingDelete}
+        title="Delete gallery item"
+        message={item ? `This will permanently delete "${item.name}".` : 'This will permanently delete this gallery item.'}
+        confirmText="Delete"
+        loading={busy}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(false)}
+      />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <button
@@ -277,15 +365,14 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
           <div>
             <h2 className="text-lg font-normal text-zinc-100">{item ? 'Edit Gallery Item' : 'Add Gallery Item'}</h2>
             <p className="text-sm text-zinc-500">Minimal publishing flow with clear ordering controls.</p>
+            {isDirty && <p className="text-xs text-amber-300 mt-1">Unsaved changes</p>}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {item && onDelete && (
             <button
-              onClick={() => {
-                if (confirm(`Delete "${item.name}"?`)) onDelete(item).then(onBack).catch(() => {});
-              }}
+              onClick={() => setPendingDelete(true)}
               className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300 hover:bg-red-950"
             >
               Delete
@@ -301,6 +388,21 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
           </button>
         </div>
       </div>
+
+      {submitError && (
+        <div aria-live="polite" className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          {submitError}
+        </div>
+      )}
+
+      {notice && (
+        <div
+          aria-live="polite"
+          className={`rounded-md px-3 py-2 text-sm border ${notice.type === 'success' ? 'border-emerald-900 bg-emerald-950/40 text-emerald-300' : 'border-zinc-700 bg-zinc-900/60 text-zinc-300'}`}
+        >
+          {notice.message}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <section className="space-y-5 lg:col-span-2">
@@ -468,13 +570,33 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
                       </div>
                     </div>
                     {(it.status === 'uploading' || it.status === 'error') && (
-                      <button
-                        type="button"
-                        onClick={() => cancelUpload(it.id)}
-                        className="w-full border-t border-zinc-800 px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900"
-                      >
-                        Remove
-                      </button>
+                      <div className="grid grid-cols-2 border-t border-zinc-800">
+                        {it.status === 'error' ? (
+                          <button
+                            type="button"
+                            onClick={() => retryUpload(it.id)}
+                            className="inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-900 border-r border-zinc-800"
+                          >
+                            <RotateCcw size={11} />
+                            Retry
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => cancelUpload(it.id)}
+                            className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900 border-r border-zinc-800"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => cancelUpload(it.id)}
+                          className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}

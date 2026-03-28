@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { ArrowLeft, BookOpenText, Clock, Eye, FileText, Hash, Layout, Loader2, Save, Trash2, Upload, X } from 'lucide-react';
 import ImageWithLqip from '../../../components/ImageWithLqip';
 import RichTextEditor from './RichTextEditor';
+import ConfirmDialog from './ConfirmDialog';
 
 export type BlogFormRow = {
   id: string;
@@ -25,6 +26,7 @@ interface BlogFormProps {
   onBack: () => void;
   onSave: (payload: any) => Promise<void>;
   onDelete?: (post: BlogFormRow) => Promise<void>;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 type LayoutOption = 'standard' | 'magazine' | 'minimal';
@@ -67,7 +69,7 @@ function TagPills({ tags, onRemove }: { tags: string[]; onRemove: (tag: string) 
   );
 }
 
-export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormProps) {
+export default function BlogForm({ post, onBack, onSave, onDelete, onDirtyChange }: BlogFormProps) {
   const [title, setTitle] = useState(post?.title || '');
   const [slug, setSlug] = useState(post?.slug || '');
   const [autoSlug, setAutoSlug] = useState(!post?.slug);
@@ -86,6 +88,24 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
   const [saving, setSaving] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [errors, setErrors] = useState<{ title?: string; slug?: string; content?: string }>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState(false);
+  const [notice, setNotice] = useState<{ type: 'success' | 'info'; message: string } | null>(null);
+  const initialSnapshotRef = useRef(
+    JSON.stringify({
+      title: post?.title || '',
+      slug: post?.slug || '',
+      excerpt: post?.excerpt || '',
+      contentHtml: post?.contentHtml || '',
+      tags: post?.tags || [],
+      status: post?.status || 'draft',
+      layout: post?.layout || 'standard',
+      coverImage: post?.coverImage || null,
+      inlineImages: post?.inlineImages || [],
+      seoTitle: post?.seoTitle || '',
+      seoDescription: post?.seoDescription || '',
+    })
+  );
 
   const textStats = useMemo(() => {
     const text = contentHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -94,6 +114,41 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
     const chars = text.length;
     return { words, readingMinutes, chars };
   }, [contentHtml]);
+
+  const currentSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        title,
+        slug,
+        excerpt,
+        contentHtml,
+        tags,
+        status,
+        layout,
+        coverImage,
+        inlineImages,
+        seoTitle,
+        seoDescription,
+      }),
+    [title, slug, excerpt, contentHtml, tags, status, layout, coverImage, inlineImages, seoTitle, seoDescription]
+  );
+
+  const isDirty = currentSnapshot !== initialSnapshotRef.current;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isDirty]);
 
   const addTag = useCallback((value: string) => {
     const trimmed = value.trim().toLowerCase();
@@ -151,11 +206,13 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
   const handleUploadCover = async (file?: File) => {
     if (!file) return;
     setUploadingCover(true);
+    setSubmitError(null);
     try {
       const uploaded = await uploadToCloudinary(file);
       setCoverImage(uploaded);
-    } catch (err: any) {
-      alert(err?.message || 'Failed to upload cover image');
+      setNotice({ type: 'success', message: 'Cover image uploaded.' });
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to upload cover image');
     } finally {
       setUploadingCover(false);
     }
@@ -167,6 +224,7 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
       if (prev.some((img) => img.public_id === uploaded.public_id)) return prev;
       return [...prev, uploaded];
     });
+    setNotice({ type: 'success', message: 'Inline image uploaded.' });
     return uploaded;
   };
 
@@ -182,6 +240,7 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!validate()) return;
+    setSubmitError(null);
 
     setSaving(true);
     try {
@@ -199,15 +258,39 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
         seoDescription: seoDescription.trim(),
       });
       onBack();
-    } catch (err: any) {
-      alert(err?.message || 'Failed to save blog post');
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save blog post');
     } finally {
       setSaving(false);
     }
   };
 
+  const confirmDelete = async () => {
+    if (!post || !onDelete || saving) return;
+    try {
+      setSaving(true);
+      await onDelete(post);
+      onBack();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to delete blog post');
+    } finally {
+      setSaving(false);
+      setPendingDelete(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl space-y-5">
+      <ConfirmDialog
+        isOpen={pendingDelete}
+        title="Delete blog post"
+        message={post ? `This will permanently delete "${post.title}".` : 'This will permanently delete this blog post.'}
+        confirmText="Delete"
+        loading={saving}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(false)}
+      />
+
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -221,6 +304,7 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
           <div>
             <h2 className="text-lg font-medium text-zinc-100">{post ? 'Edit Blog Post' : 'Create Blog Post'}</h2>
             <p className="text-sm text-zinc-500">Write, design, and publish your article.</p>
+            {isDirty && <p className="text-xs text-amber-300 mt-1">Unsaved changes</p>}
           </div>
         </div>
 
@@ -240,9 +324,7 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
 
           {post && onDelete && (
             <button
-              onClick={() => {
-                if (confirm(`Delete blog post \"${post.title}\"?`)) onDelete(post).then(onBack).catch(() => {});
-              }}
+              onClick={() => setPendingDelete(true)}
               className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300 hover:bg-red-950 transition-colors"
             >
               <Trash2 size={14} className="inline mr-1" />
@@ -260,6 +342,21 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
           </button>
         </div>
       </div>
+
+      {submitError && (
+        <div aria-live="polite" className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          {submitError}
+        </div>
+      )}
+
+      {notice && (
+        <div
+          aria-live="polite"
+          className={`rounded-md px-3 py-2 text-sm border ${notice.type === 'success' ? 'border-emerald-900 bg-emerald-950/40 text-emerald-300' : 'border-zinc-700 bg-zinc-900/60 text-zinc-300'}`}
+        >
+          {notice.message}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
         {/* Main column */}
@@ -482,7 +579,10 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
                 </div>
                 <button
                   type="button"
-                  onClick={() => setCoverImage(null)}
+                  onClick={() => {
+                    setCoverImage(null);
+                    setNotice({ type: 'info', message: 'Cover image removed.' });
+                  }}
                   className="m-2 inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 transition-colors"
                 >
                   <X size={12} />

@@ -3,6 +3,7 @@
 import React, { memo, useState, useEffect, useCallback, useMemo } from 'react';
 import { Camera, Star, Eye, EyeOff, MapPin, Edit2, Trash2, Image as ImageIcon, Search, Grid3X3, List, Filter, X } from 'lucide-react';
 import ImageWithLqip from '../../components/ImageWithLqip';
+import ConfirmDialog from './components/ConfirmDialog';
 
 interface GalleryManagementProps {
   onCreate: () => void;
@@ -30,6 +31,8 @@ function GalleryManagement({ onCreate, onEdit, onDelete }: GalleryManagementProp
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'private'>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchGalleryItems = useCallback(async () => {
     try {
@@ -62,8 +65,34 @@ function GalleryManagement({ onCreate, onEdit, onDelete }: GalleryManagementProp
     });
   }, [items, searchQuery, selectedCategory, visibilityFilter]);
 
+  const requestDelete = (item: any) => setPendingDelete(item);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete || deleting) return;
+    setDeleting(true);
+    try {
+      await onDelete(pendingDelete);
+      await fetchGalleryItems();
+    } catch (err) {
+      console.error('Failed to delete gallery item:', err);
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
+    }
+  };
+
   return (
     <div className="space-y-5">
+      <ConfirmDialog
+        isOpen={!!pendingDelete}
+        title="Delete gallery item"
+        message={pendingDelete ? `This will permanently delete "${pendingDelete.name}".` : ''}
+        confirmText="Delete"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => !deleting && setPendingDelete(null)}
+      />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-normal text-zinc-100">Gallery</h2>
@@ -200,9 +229,7 @@ function GalleryManagement({ onCreate, onEdit, onDelete }: GalleryManagementProp
                     Edit
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirm(`Delete "${item.name}"?`)) onDelete(item).then(fetchGalleryItems);
-                    }}
+                    onClick={() => requestDelete(item)}
                     className="rounded border border-red-900 bg-red-950/40 px-2 py-1.5 text-xs text-red-300"
                   >
                     Delete
@@ -240,16 +267,7 @@ function GalleryManagement({ onCreate, onEdit, onDelete }: GalleryManagementProp
                   <Edit2 size={14} />
                 </button>
                 <button
-                  onClick={() => {
-                    if (confirm(`Delete "${item.name}"?`)) {
-                      setItems(prev => prev.filter(i => i._id !== item._id));
-                      onDelete(item)
-                        .then(() => fetchGalleryItems())
-                        .catch(() => {
-                          setItems(prev => [...prev, item]);
-                        });
-                    }
-                  }}
+                  onClick={() => requestDelete(item)}
                   className="rounded border border-red-900 bg-red-950/40 p-1.5 text-red-300 hover:bg-red-950"
                   title="Delete"
                 >

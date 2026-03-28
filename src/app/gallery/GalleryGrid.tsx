@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Camera } from 'lucide-react';
+import { AlertCircle, Camera, RotateCcw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { GalleryDoc } from '../api/gallery/route';
 import GalleryCard from '../../components/GalleryCard';
@@ -15,6 +15,7 @@ interface GalleryGridProps {
    };
    initialItems?: GalleryItem[];
    initialTotal?: number;
+   onResetFilters?: () => void;
 }
 
 interface GalleryItem extends Omit<GalleryDoc, '_id'> {
@@ -23,7 +24,7 @@ interface GalleryItem extends Omit<GalleryDoc, '_id'> {
 
 // --- MAIN COMPONENT ---
 
-export default function GalleryGrid({ filters, initialItems, initialTotal }: GalleryGridProps) {
+export default function GalleryGrid({ filters, initialItems, initialTotal, onResetFilters }: GalleryGridProps) {
    const hasInitialData = !!(initialItems && initialItems.length > 0);
    const [items, setItems] = useState<GalleryItem[]>(initialItems || []);
    const [loading, setLoading] = useState(!hasInitialData);
@@ -37,6 +38,7 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
    const loadingRef = useRef(false);
    const abortRef = useRef<AbortController | null>(null);
    const ITEMS_PER_PAGE = 14; // Even number for better grid fit
+   const hasActiveFilters = !!(filters?.category || filters?.featured || filters?.search);
 
    const fetchItems = useCallback(async (reset = false) => {
       if (loadingRef.current && !reset) return;
@@ -62,7 +64,7 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
 
          const res = await fetch(`/api/gallery?${params}`, { signal: controller.signal });
          const data = await res.json();
-         if (!res.ok) throw new Error(data.error);
+         if (!res.ok) throw new Error(data?.error || 'Failed to load gallery items');
 
          if (reset) {
             setItems(data.items || []);
@@ -118,8 +120,10 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
       <div className="min-h-screen">
          {error ? (
             <div className="text-center py-32">
-               <p className="text-destructive font-mono text-[10px] uppercase tracking-widest mb-6">{error}</p>
-               <button onClick={() => fetchItems(true)} className="px-8 py-3 border border-border rounded-full text-foreground text-[10px] uppercase tracking-widest hover:bg-foreground hover:text-background transition-all">Retry Connection</button>
+               <AlertCircle className="w-10 h-10 mx-auto mb-5 text-destructive/70" />
+               <p className="text-destructive font-mono text-[10px] uppercase tracking-widest mb-2">Connection Error</p>
+               <p className="text-muted-foreground text-xs mb-6">{error}</p>
+               <button onClick={() => fetchItems(true)} className="focus-ring px-8 py-3 border border-border rounded-full text-foreground text-[10px] uppercase tracking-widest hover:bg-foreground hover:text-background transition-all">Retry Connection</button>
             </div>
          ) : (
             /* Refined Responsive Grid - 3 Columns on Desktop */
@@ -138,7 +142,21 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
 
          {/* Loading Indicators */}
          <div ref={observerRef} className="py-24 flex flex-col items-center justify-center w-full">
-            {loading && (
+            {loading && items.length === 0 && (
+               <div className="w-full max-w-[1400px] px-4 md:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[2px]">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                     <div key={i} className="relative aspect-[4/5] bg-card/40 border border-border/60 overflow-hidden">
+                        <motion.div
+                           className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                           animate={{ x: ['-100%', '100%'] }}
+                           transition={{ duration: 1.2, repeat: Infinity, ease: 'linear', delay: i * 0.08 }}
+                        />
+                     </div>
+                  ))}
+               </div>
+            )}
+
+            {loading && items.length > 0 && (
                <div className="flex flex-col items-center gap-6">
                   <div className="w-12 h-12 relative">
                      <motion.div
@@ -155,10 +173,22 @@ export default function GalleryGrid({ filters, initialItems, initialTotal }: Gal
                   <span className="text-[10px] uppercase tracking-[0.5em] text-muted-foreground">Loading Volume</span>
                </div>
             )}
+
             {!loading && items.length === 0 && !error && (
                <div className="text-center py-20">
                   <Camera className="w-12 h-12 mx-auto mb-6 text-muted-foreground/20" />
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-light">No frames found in this category</p>
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-light mb-3">
+                     {hasActiveFilters ? 'No frames match the current filters' : 'No frames found in this category'}
+                  </p>
+                  {hasActiveFilters && (
+                     <button
+                        onClick={onResetFilters}
+                        className="focus-ring inline-flex items-center gap-2 px-5 py-2 border border-border rounded-full text-[10px] uppercase tracking-[0.2em] text-foreground hover:bg-foreground hover:text-background transition-all"
+                     >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Clear Filters
+                     </button>
+                  )}
                </div>
             )}
          </div>

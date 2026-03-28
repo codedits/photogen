@@ -3,6 +3,7 @@
 import React, { memo, useState, useMemo } from 'react';
 import { Plus, Edit2, Trash2, LayoutGrid, Search, Grid3X3, List, ChevronDown, Filter, X } from 'lucide-react';
 import ImageWithLqip from '../../components/ImageWithLqip';
+import ConfirmDialog from './components/ConfirmDialog';
 
 type PresetRow = {
   id: string;
@@ -29,6 +30,8 @@ function PresetsManagement({ list, listLoading, hasMore, loadMore, onCreate, onE
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<PresetRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
@@ -53,8 +56,33 @@ function PresetsManagement({ list, listLoading, hasMore, loadMore, onCreate, onE
     setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
   };
 
+  const requestDelete = (preset: PresetRow) => setPendingDelete(preset);
+
+  const confirmDelete = async () => {
+    if (!pendingDelete || deleting) return;
+    setDeleting(true);
+    try {
+      await onDelete(pendingDelete);
+    } catch (err) {
+      console.error('Failed to delete preset:', err);
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
+    }
+  };
+
   return (
     <div className="space-y-5">
+      <ConfirmDialog
+        isOpen={!!pendingDelete}
+        title="Delete preset"
+        message={pendingDelete ? `This will permanently delete "${pendingDelete.name}".` : ''}
+        confirmText="Delete"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => !deleting && setPendingDelete(null)}
+      />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-normal text-zinc-100">Presets</h2>
@@ -194,9 +222,7 @@ function PresetsManagement({ list, listLoading, hasMore, loadMore, onCreate, onE
                       Edit
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(`Delete "${preset.name}"?`)) onDelete(preset).catch(() => {});
-                      }}
+                      onClick={() => requestDelete(preset)}
                       className="rounded border border-red-900 bg-red-950/40 px-2 py-1.5 text-xs text-red-300"
                     >
                       Delete
@@ -239,9 +265,7 @@ function PresetsManagement({ list, listLoading, hasMore, loadMore, onCreate, onE
                     <Edit2 size={14} />
                   </button>
                   <button
-                    onClick={() => {
-                      if (confirm(`Delete "${preset.name}"?`)) onDelete(preset).catch(() => {});
-                    }}
+                    onClick={() => requestDelete(preset)}
                     className="rounded border border-red-900 bg-red-950/40 p-1.5 text-red-300"
                     title="Delete"
                   >

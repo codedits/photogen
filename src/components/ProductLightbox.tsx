@@ -189,6 +189,9 @@ export function ProductLightbox({
     <>
       {isOpen && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Image lightbox viewer"
           className="fixed inset-0 z-[1000] bg-background flex flex-col animate-in fade-in duration-200"
         >
           {/* Top bar */}
@@ -201,7 +204,8 @@ export function ProductLightbox({
               <div className="flex items-center bg-foreground/10 backdrop-blur-md rounded-full px-2">
                 <button
                   onClick={() => setZoomLevel(prev => Math.max(prev - 0.5, 1))}
-                  className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Zoom out"
+                  className="focus-ring w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                   disabled={zoomLevel <= 1}
                 >
                   <ZoomOut className="w-5 h-5" />
@@ -211,7 +215,8 @@ export function ProductLightbox({
                 </span>
                 <button
                   onClick={() => setZoomLevel(prev => Math.min(prev + 0.5, 4))}
-                  className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Zoom in"
+                  className="focus-ring w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                   disabled={zoomLevel >= 4}
                 >
                   <ZoomIn className="w-5 h-5" />
@@ -220,7 +225,8 @@ export function ProductLightbox({
 
               <button
                 onClick={onClose}
-                className="w-10 h-10 flex items-center justify-center bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors shadow-lg"
+                aria-label="Close lightbox"
+                className="focus-ring w-10 h-10 flex items-center justify-center bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors shadow-lg"
               >
                 <X className="w-6 h-6 stroke-[2.5px]" />
               </button>
@@ -264,13 +270,15 @@ export function ProductLightbox({
             <>
               <button
                 onClick={goPrev}
-                className="absolute left-6 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center bg-foreground/20 backdrop-blur-md rounded-full hover:bg-foreground hover:text-background transition-all text-foreground shadow-xl"
+                aria-label="Previous image"
+                className="focus-ring absolute left-6 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center bg-foreground/20 backdrop-blur-md rounded-full hover:bg-foreground hover:text-background transition-all text-foreground shadow-xl"
               >
                 <ChevronLeft className="w-7 h-7" />
               </button>
               <button
                 onClick={goNext}
-                className="absolute right-6 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center bg-foreground/20 backdrop-blur-md rounded-full hover:bg-foreground hover:text-background transition-all text-foreground shadow-xl"
+                aria-label="Next image"
+                className="focus-ring absolute right-6 top-1/2 -translate-y-1/2 z-50 w-12 h-12 flex items-center justify-center bg-foreground/20 backdrop-blur-md rounded-full hover:bg-foreground hover:text-background transition-all text-foreground shadow-xl"
               >
                 <ChevronRight className="w-7 h-7" />
               </button>
@@ -285,8 +293,9 @@ export function ProductLightbox({
                   <button
                     key={idx}
                     onClick={() => setCurrentIndex(idx)}
+                    aria-label={`Show image ${idx + 1}`}
                     className={cn(
-                      'relative w-14 h-14 md:w-16 md:h-16 shrink-0 overflow-hidden border-2 transition-all bg-white/5',
+                      'focus-ring relative w-14 h-14 md:w-16 md:h-16 shrink-0 overflow-hidden border-2 transition-all bg-white/5',
                       idx === currentIndex
                         ? 'border-white opacity-100'
                         : 'border-transparent opacity-50 hover:opacity-80',

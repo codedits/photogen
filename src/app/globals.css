@@ -227,6 +227,16 @@ body {
   /* Chrome, Safari, Opera */
 }
 
+/* Reusable keyboard-visible focus treatment for interactive controls */
+.focus-ring {
+  outline: none;
+}
+
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 70%, transparent),
+    0 0 0 4px color-mix(in oklab, var(--background) 85%, transparent);
+}
+
 /* Violet button with subtle glow */
 .btn-violet {
   background: linear-gradient(180deg, rgb(83, 17, 250) 0%, rgb(91, 26, 243) 100%);

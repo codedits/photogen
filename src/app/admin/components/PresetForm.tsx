@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Upload, Save, ArrowLeft, Trash2, Image as ImageIcon, Link2, Info, Loader2, ArrowUp, ArrowDown, Star } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Upload, Save, ArrowLeft, Trash2, Image as ImageIcon, Link2, Info, Loader2, ArrowUp, ArrowDown, Star, RotateCcw } from 'lucide-react';
 import ImageWithLqip from '../../../components/ImageWithLqip';
 import RichTextEditor from './RichTextEditor';
+import ConfirmDialog from './ConfirmDialog';
 
 type PresetRow = {
   id: string;
@@ -20,6 +21,7 @@ interface PresetFormProps {
   onBack: () => void;
   onSave: (data: any) => Promise<void>;
   onDelete?: (preset: PresetRow) => Promise<void>;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 type UploadItem = {
@@ -41,7 +43,7 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
   return next;
 }
 
-export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetFormProps) {
+export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyChange }: PresetFormProps) {
   const [name, setName] = useState(preset?.name || '');
   const [description, setDescription] = useState(preset?.description || '');
   const [tags, setTags] = useState((preset?.tags || []).join(', '));
@@ -53,13 +55,54 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
   const [removePublicIds, setRemovePublicIds] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; dngUrl?: string }>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState(false);
+  const [notice, setNotice] = useState<{ type: 'success' | 'info'; message: string } | null>(null);
 
   const dropRef = useRef<HTMLDivElement>(null);
   const uploadItemsRef = useRef<UploadItem[]>([]);
+  const initialSnapshotRef = useRef(
+    JSON.stringify({
+      name: preset?.name || '',
+      description: preset?.description || '',
+      tags: (preset?.tags || []).join(', '),
+      dngUrl: preset?.dng?.url || '',
+      images: (preset?.images || []).map((img) => ({ url: img.url, public_id: img.public_id })),
+    })
+  );
 
   useEffect(() => {
     uploadItemsRef.current = uploadItems;
   }, [uploadItems]);
+
+  const currentSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        name,
+        description,
+        tags,
+        dngUrl,
+        images: imagesLocal.map((img) => ({ url: img.url, public_id: img.public_id })),
+      }),
+    [name, description, tags, dngUrl, imagesLocal]
+  );
+
+  const isDirty = currentSnapshot !== initialSnapshotRef.current || uploadItems.length > 0;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [isDirty]);
 
   useEffect(() => {
     return () => {
@@ -175,6 +218,15 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
     }
     URL.revokeObjectURL(it.previewUrl);
     setUploadItems((prev) => prev.filter((p) => p.id !== id));
+    setNotice({ type: 'info', message: 'Upload removed.' });
+  };
+
+  const retryUpload = (id: string) => {
+    const it = uploadItemsRef.current.find((u) => u.id === id);
+    if (!it || !it.file || it.status === 'uploading') return;
+    setUploadItems((prev) => prev.map((p) => (p.id === id ? { ...p, status: 'idle', error: undefined, progress: 0 } : p)));
+    setSubmitError(null);
+    startUpload(it);
   };
 
   const moveImage = (index: number, nextIndex: number) => {
@@ -210,6 +262,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
     
     setImagesLocal((list: any) => list.filter((i: any) => i.public_id !== pid));
     setDeleting((s) => s.filter((x) => x !== pid));
+    setNotice({ type: 'info', message: 'Image removed from current draft.' });
   };
 
   const validateForm = () => {
@@ -224,6 +277,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+    setSubmitError(null);
 
     setBusy(true);
     try {
@@ -238,15 +292,39 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
       };
       await onSave(data);
       onBack();
-    } catch (err: any) {
-      alert(err.message || 'Failed to save preset');
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to save preset');
     } finally {
       setBusy(false);
     }
   };
 
+  const confirmDelete = async () => {
+    if (!preset || !onDelete || busy) return;
+    try {
+      setBusy(true);
+      await onDelete(preset);
+      onBack();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to delete preset');
+    } finally {
+      setBusy(false);
+      setPendingDelete(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-5">
+      <ConfirmDialog
+        isOpen={pendingDelete}
+        title="Delete preset"
+        message={preset ? `This will permanently delete preset "${preset.name}".` : 'This will permanently delete this preset.'}
+        confirmText="Delete"
+        loading={busy}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(false)}
+      />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <button
@@ -259,15 +337,14 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
           <div>
             <h2 className="text-lg font-normal text-zinc-100">{preset ? 'Edit Preset' : 'Create Preset'}</h2>
             <p className="text-sm text-zinc-500">Clean metadata, clear previews, and ordered image set.</p>
+            {isDirty && <p className="text-xs text-amber-300 mt-1">Unsaved changes</p>}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {preset && onDelete && (
             <button
-              onClick={() => {
-                if (confirm(`Delete preset "${preset.name}"?`)) onDelete(preset).then(onBack).catch(() => {});
-              }}
+              onClick={() => setPendingDelete(true)}
               className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300 hover:bg-red-950"
             >
               Delete
@@ -283,6 +360,21 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
           </button>
         </div>
       </div>
+
+      {submitError && (
+        <div aria-live="polite" className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300">
+          {submitError}
+        </div>
+      )}
+
+      {notice && (
+        <div
+          aria-live="polite"
+          className={`rounded-md px-3 py-2 text-sm border ${notice.type === 'success' ? 'border-emerald-900 bg-emerald-950/40 text-emerald-300' : 'border-zinc-700 bg-zinc-900/60 text-zinc-300'}`}
+        >
+          {notice.message}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <section className="space-y-5 lg:col-span-2">
@@ -423,13 +515,33 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
                       </div>
                     </div>
                     {(it.status === 'uploading' || it.status === 'error') && (
-                      <button
-                        type="button"
-                        onClick={() => cancelUpload(it.id)}
-                        className="w-full border-t border-zinc-800 px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900"
-                      >
-                        Remove
-                      </button>
+                      <div className="grid grid-cols-2 border-t border-zinc-800">
+                        {it.status === 'error' ? (
+                          <button
+                            type="button"
+                            onClick={() => retryUpload(it.id)}
+                            className="inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-900 border-r border-zinc-800"
+                          >
+                            <RotateCcw size={11} />
+                            Retry
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => cancelUpload(it.id)}
+                            className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900 border-r border-zinc-800"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => cancelUpload(it.id)}
+                          className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}

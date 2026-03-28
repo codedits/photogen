@@ -39,7 +39,7 @@ export default function Hero({ settings }: HeroProps) {
     <section className="relative w-full flex flex-col bg-background selection:bg-white selection:text-black overflow-hidden font-sans">
 
       {/* Main Container: Full Width Frame with 9:16 Aspect on Mobile */}
-      <div className="relative w-full aspect-[9/16] md:aspect-auto md:h-screen overflow-hidden group/hero bg-zinc-950">
+      <div className="relative w-full h-[100dvh] md:h-screen overflow-hidden group/hero bg-zinc-950">
 
         {/* Cinematic Background with Slow Parallax/Scale */}
         <div className="absolute inset-0 z-0 overflow-hidden">

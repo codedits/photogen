@@ -59,36 +59,46 @@ export async function PUT(
     if (!id || !isValidObjectId(id)) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
-    
-    const body = await req.json();
+
+    const contentType = req.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return NextResponse.json({ error: 'Content-Type must be application/json' }, { status: 400 });
+    }
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const payload = body as any;
     const db = await getDatabase();
     const coll = db.collection<GalleryDoc>('gallery');
     
     // Build update object (only update provided fields)
     const updateDoc: any = {};
     
-    if (body.name?.trim()) updateDoc.name = body.name.trim();
-    if (body.description !== undefined) updateDoc.description = body.description?.trim() || '';
-    if (body.images?.length) {
-      updateDoc.images = body.images.map((img: any) => ({
+    if (payload.name?.trim()) updateDoc.name = payload.name.trim();
+    if (payload.description !== undefined) updateDoc.description = payload.description?.trim() || '';
+    if (payload.images?.length) {
+      updateDoc.images = payload.images.map((img: any) => ({
         url: img.url,
         public_id: img.public_id
       }));
     }
-    if (body.category?.trim()) updateDoc.category = body.category.trim();
-    if (Array.isArray(body.tags)) updateDoc.tags = body.tags.filter(Boolean);
-    if (body.featured !== undefined) updateDoc.featured = Boolean(body.featured);
-    if (body.visibility) updateDoc.visibility = body.visibility === 'private' ? 'private' : 'public';
-    if (body.photographer !== undefined) updateDoc.photographer = body.photographer?.trim() || '';
-    if (body.location !== undefined) updateDoc.location = body.location?.trim() || '';
-    if (body.equipment !== undefined) updateDoc.equipment = body.equipment?.trim() || '';
+    if (payload.category?.trim()) updateDoc.category = payload.category.trim();
+    if (Array.isArray(payload.tags)) updateDoc.tags = payload.tags.filter(Boolean);
+    if (payload.featured !== undefined) updateDoc.featured = Boolean(payload.featured);
+    if (payload.visibility) updateDoc.visibility = payload.visibility === 'private' ? 'private' : 'public';
+    if (payload.photographer !== undefined) updateDoc.photographer = payload.photographer?.trim() || '';
+    if (payload.location !== undefined) updateDoc.location = payload.location?.trim() || '';
+    if (payload.equipment !== undefined) updateDoc.equipment = payload.equipment?.trim() || '';
     
-    if (body.metadata) {
+    if (payload.metadata) {
       updateDoc.metadata = {
-        aperture: body.metadata?.aperture?.trim() || undefined,
-        shutter: body.metadata?.shutter?.trim() || undefined,
-        iso: body.metadata?.iso ? parseInt(body.metadata.iso) : undefined,
-        focal_length: body.metadata?.focal_length?.trim() || undefined,
+        aperture: payload.metadata?.aperture?.trim() || undefined,
+        shutter: payload.metadata?.shutter?.trim() || undefined,
+        iso: payload.metadata?.iso ? parseInt(payload.metadata.iso) : undefined,
+        focal_length: payload.metadata?.focal_length?.trim() || undefined,
       };
     }
     
@@ -98,10 +108,10 @@ export async function PUT(
     );
     
     // Process removals from Cloudinary
-    if (Array.isArray(body.removePublicIds) && body.removePublicIds.length > 0) {
+    if (Array.isArray(payload.removePublicIds) && payload.removePublicIds.length > 0) {
       setTimeout(async () => {
         try {
-          for (const pid of body.removePublicIds) {
+          for (const pid of payload.removePublicIds) {
             await cloudinary.uploader.destroy(pid);
             console.log(`Deleted removed image from Cloudinary: ${pid}`);
           }

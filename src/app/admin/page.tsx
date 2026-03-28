@@ -474,12 +474,14 @@ export default function AdminPage() {
                 )}
                 {view.type === 'create-preset' && (
                   <PresetForm 
+                    key="create"
                     onBack={backToPresets}
                     onSave={handleSavePreset}
                   />
                 )}
                 {view.type === 'edit-preset' && (
                   <PresetForm 
+                    key={view.preset.id}
                     preset={view.preset}
                     onBack={backToPresets}
                     onSave={handleSavePreset}
@@ -488,12 +490,14 @@ export default function AdminPage() {
                 )}
                 {view.type === 'create-gallery' && (
                   <GalleryForm 
+                    key="create"
                     onBack={backToGallery}
                     onSave={handleSaveGallery}
                   />
                 )}
                 {view.type === 'edit-gallery' && (
                   <GalleryForm 
+                    key={view.item._id || view.item.id}
                     item={view.item}
                     onBack={backToGallery}
                     onSave={handleSaveGallery}
@@ -502,12 +506,14 @@ export default function AdminPage() {
                 )}
                 {view.type === 'create-blog' && (
                   <BlogForm
+                    key="create"
                     onBack={backToBlog}
                     onSave={handleSaveBlog}
                   />
                 )}
                 {view.type === 'edit-blog' && (
                   <BlogForm
+                    key={view.post.id}
                     post={view.post}
                     onBack={backToBlog}
                     onSave={handleSaveBlog}

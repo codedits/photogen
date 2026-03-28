@@ -133,7 +133,17 @@ export async function PATCH(
       return NextResponse.json({ ok: false, error: 'Invalid ID' }, { status: 400 });
     }
 
-    const body = await req.json();
+    const contentType = req.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return NextResponse.json({ ok: false, error: 'Content-Type must be application/json' }, { status: 400 });
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 });
+    }
     const db = await getDatabase();
     const coll = db.collection<BlogDoc>('blog');
 
@@ -199,7 +209,8 @@ export async function PATCH(
 
     if (body?.layout !== undefined) {
       const validLayouts = ['standard', 'magazine', 'minimal'];
-      updateDoc.layout = validLayouts.includes(body.layout) ? body.layout : 'standard';
+      const layout = typeof body.layout === 'string' ? body.layout : '';
+      updateDoc.layout = validLayouts.includes(layout) ? layout : 'standard';
     }
 
     if (body?.coverImage !== undefined) {

@@ -16,8 +16,54 @@ type PresetDoc = {
   tags?: string[];
   image?: string | null;
   images?: { url: string; public_id: string }[];
+  dng?: { url: string; public_id?: string; format?: string } | null;
   createdAt?: Date;
 };
+
+type PresetImage = { url: string; public_id: string };
+
+function isUploadCandidate(value: string): boolean {
+  const v = value.trim();
+  return v.startsWith('data:') || /^https?:\/\//i.test(v);
+}
+
+function parseImageRefUnknown(input: unknown): PresetImage | null {
+  if (!input || typeof input !== 'object') return null;
+  const src = input as Record<string, unknown>;
+  const url = typeof src.url === 'string' ? src.url.trim() : '';
+  const publicId = typeof src.public_id === 'string' ? src.public_id.trim() : '';
+  if (!url || !publicId) return null;
+  return { url, public_id: publicId };
+}
+
+function parseImageRefString(input: string): PresetImage | null {
+  try {
+    return parseImageRefUnknown(JSON.parse(input));
+  } catch {
+    return null;
+  }
+}
+
+function dedupeImages(images: PresetImage[]): PresetImage[] {
+  const seen = new Set<string>();
+  const out: PresetImage[] = [];
+  for (const img of images) {
+    if (!img.public_id || seen.has(img.public_id)) continue;
+    seen.add(img.public_id);
+    out.push(img);
+  }
+  return out;
+}
+
+async function parseJsonBody(req: Request): Promise<Record<string, unknown> | null> {
+  try {
+    const body = await req.json();
+    if (!body || typeof body !== 'object') return {};
+    return body as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(req: Request) {
   try {
@@ -37,11 +83,11 @@ export async function GET(req: Request) {
       if (cached) return NextResponse.json(cached, { headers: { 'cache-control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=120', 'Vary': 'Accept-Encoding' } });
     }
     const db = await getDatabase();
-    await ensurePresetIndexes(db.databaseName);
+    try { await ensurePresetIndexes(db.databaseName); } catch (idxErr) { console.warn('ensurePresetIndexes failed in GET /api/presets', idxErr); }
     const coll = db.collection("presets");
     let filter: Filter<Document> = {};
     const createdSort = { createdAt: -1 } as const;
-    let projection: Record<string, 0 | 1 | { $meta: string }> = { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, createdAt: 1 };
+    let projection: Record<string, 0 | 1 | { $meta: string }> = { name: 1, description: 1, prompt: 1, tags: 1, image: 1, images: 1, dng: 1, createdAt: 1 };
     if (q) {
       // First try MongoDB text search (uses the text index created in ensurePresetIndexes)
       // This handles relevance ranking for multi-word queries.
@@ -65,6 +111,7 @@ export async function GET(req: Request) {
             tags: doc.tags || [],
             image: doc.image || null,
             images: Array.isArray(doc.images) ? doc.images : undefined,
+            dng: doc.dng || null,
             createdAt: doc.createdAt,
           };
         });
@@ -108,6 +155,7 @@ export async function GET(req: Request) {
         tags: doc.tags || [],
         image: doc.image || null,
         images: Array.isArray(doc.images) ? doc.images : undefined,
+        dng: doc.dng || null,
         createdAt: doc.createdAt,
       };
     });
@@ -122,6 +170,7 @@ export async function GET(req: Request) {
     }
     return NextResponse.json(resp, { headers: { 'cache-control': q ? 'no-store' : 'no-store' } });
   } catch (err: unknown) {
+    console.error('GET /api/presets failed', err);
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
@@ -135,7 +184,7 @@ export async function POST(req: Request) {
   }
   // Ensure indexes before inserting
   const dbForIdx = await getDatabase();
-  await ensurePresetIndexes(dbForIdx.databaseName);
+  try { await ensurePresetIndexes(dbForIdx.databaseName); } catch (idxErr) { console.warn('ensurePresetIndexes failed in POST /api/presets', idxErr); }
     const contentType = req.headers.get('content-type') || '';
     let name = '';
     let description = '';
@@ -143,6 +192,7 @@ export async function POST(req: Request) {
     let tags: string[] = [];
   type ImageRef = string | { public_id?: string; url?: string };
   let imagesRaw: ImageRef[] = [];
+  const invalidImageInputs: string[] = [];
   let uploadedDng: CloudinaryUploaded | undefined = undefined;
 
     if (contentType.includes('multipart/form-data')) {
@@ -153,11 +203,17 @@ export async function POST(req: Request) {
       const rawTags = form.get('tags');
       if (typeof rawTags === 'string') tags = rawTags.split(',').map((s) => s.trim()).filter(Boolean);
       const urlList = form.getAll('imageUrls').filter((v) => typeof v === 'string') as string[];
-      // allow callers to send JSON-stringified objects { public_id, url }
-      const parsed = urlList.map((s) => {
-        try { return JSON.parse(s) as ImageRef; } catch { return s as ImageRef; }
-      });
-      imagesRaw.push(...parsed);
+      // Accept either stringified image refs or true upload candidates; reject local-path-like strings.
+      for (const entry of urlList) {
+        const parsedRef = parseImageRefString(entry);
+        if (parsedRef) {
+          imagesRaw.push(parsedRef);
+          continue;
+        }
+        const normalized = entry.trim();
+        if (isUploadCandidate(normalized)) imagesRaw.push(normalized);
+        else invalidImageInputs.push(normalized || '[empty]');
+      }
       // DNG download URL is required (field name: dngUrl)
       const dngUrlField = form.get('dngUrl') || form.get('dngurl') || form.get('dng_url');
       if (!dngUrlField || typeof dngUrlField !== 'string' || !dngUrlField.trim()) {
@@ -174,28 +230,42 @@ export async function POST(req: Request) {
           imagesRaw.push(b64 as ImageRef);
         }
     } else if (contentType.includes('application/json')) {
-      const body = (await req.json()) as {
-        name?: string;
-        description?: string;
-        prompt?: string;
-        tags?: string | string[];
-        images?: Array<string | { public_id?: string; url?: string }>;
-        image?: string;
-        dngUrl?: string;
-      };
-      name = body?.name || '';
-      description = body?.description || '';
-      prompt = body?.prompt || '';
+      const body = await parseJsonBody(req);
+      if (!body) {
+        return NextResponse.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 });
+      }
+      name = typeof body.name === 'string' ? body.name : '';
+      description = typeof body.description === 'string' ? body.description : '';
+      prompt = typeof body.prompt === 'string' ? body.prompt : '';
       tags = Array.isArray(body?.tags)
         ? body.tags
         : typeof body?.tags === 'string'
           ? body.tags.split(',').map((s) => s.trim()).filter(Boolean)
           : [];
-  if (Array.isArray(body?.images)) imagesRaw = body.images as ImageRef[]; else if (body?.image) imagesRaw = [body.image as ImageRef];
+      const incomingImages = Array.isArray(body?.images)
+        ? body.images
+        : (Array.isArray(body?.imageUrls) ? body.imageUrls : (body?.image ? [body.image] : []));
+      for (const item of incomingImages) {
+        if (typeof item === 'string') {
+          const parsedRef = parseImageRefString(item);
+          if (parsedRef) {
+            imagesRaw.push(parsedRef);
+            continue;
+          }
+          const normalized = item.trim();
+          if (isUploadCandidate(normalized)) imagesRaw.push(normalized);
+          else invalidImageInputs.push(normalized || '[empty]');
+        } else {
+          const parsedRef = parseImageRefUnknown(item);
+          if (parsedRef) imagesRaw.push(parsedRef);
+        }
+      }
   // accept dngUrl in JSON body as well
   if (typeof body?.dngUrl === 'string' && body.dngUrl.trim()) {
     uploadedDng = { url: body.dngUrl.trim(), public_id: '', width: undefined, height: undefined, format: undefined } as unknown as CloudinaryUploaded;
   }
+    } else {
+      return NextResponse.json({ ok: false, error: 'Unsupported content type' }, { status: 415 });
     }
 
     if (!name.trim()) return NextResponse.json({ ok: false, error: 'Missing name' }, { status: 400 });
@@ -203,10 +273,19 @@ export async function POST(req: Request) {
   // Normalize and limit to max 8 images
   imagesRaw = imagesRaw.filter(Boolean) as ImageRef[];
   imagesRaw = imagesRaw.slice(0, 8);
+  if (invalidImageInputs.length) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Invalid image input(s): ${invalidImageInputs.slice(0, 3).join(', ')}. Use JSON image refs or http(s)/data URLs only.`,
+      },
+      { status: 400 }
+    );
+  }
 
     // uploaded will contain final {url, public_id} entries. If caller passed already-uploaded
     // image objects (with public_id), we'll reuse them and avoid re-uploading.
-    const uploaded: { url: string; public_id: string }[] = [];
+    const uploaded: PresetImage[] = [];
     function isUploadedObj(v: ImageRef): v is { public_id: string; url: string } {
       if (typeof v !== 'object' || v === null) return false;
       // use indexed access carefully
@@ -220,6 +299,7 @@ export async function POST(req: Request) {
       uploaded.push(...newly.map((n) => ({ url: n.url, public_id: n.public_id })));
     }
   if (alreadyUploaded.length) uploaded.unshift(...alreadyUploaded);
+    const imagesArr = dedupeImages(uploaded);
 
     // dngInfo is built from provided dngUrl (no upload)
     let dngInfo: { url: string; public_id?: string; format?: string } | undefined = undefined;
@@ -229,7 +309,6 @@ export async function POST(req: Request) {
 
     const db = await getDatabase();
     const coll = db.collection('presets');
-  const imagesArr = uploaded.map((u) => ({ url: u.url, public_id: u.public_id }));
   const cover = imagesArr.length ? imagesArr[0].url : (imagesRaw.length ? (typeof imagesRaw[0] === 'string' ? imagesRaw[0] : (imagesRaw[0]?.url || null)) : null);
   const doc: Document = {
       name,
@@ -249,6 +328,7 @@ export async function POST(req: Request) {
   revalidatePath(`/presets/${res.insertedId.toString()}`);
     return NextResponse.json({ ok: true, id: res.insertedId.toString(), images: doc.images });
   } catch (err: unknown) {
+    console.error('POST /api/presets failed', err);
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

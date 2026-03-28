@@ -143,17 +143,27 @@ export async function POST(req: NextRequest) {
     if (!isAdminRequest(req)) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
-    
-    const body = await req.json();
+
+    const contentType = req.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return NextResponse.json({ ok: false, error: 'Content-Type must be application/json' }, { status: 400 });
+    }
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const payload = body as any;
     
     // Validate required fields
-    if (!body.name?.trim()) {
+    if (!payload.name?.trim()) {
       return NextResponse.json({ ok: false, error: 'Name is required' }, { status: 400 });
     }
-    if (!body.images?.length) {
+    if (!payload.images?.length) {
       return NextResponse.json({ ok: false, error: 'At least one image is required' }, { status: 400 });
     }
-    if (!body.category?.trim()) {
+    if (!payload.category?.trim()) {
       return NextResponse.json({ ok: false, error: 'Category is required' }, { status: 400 });
     }
     
@@ -161,25 +171,25 @@ export async function POST(req: NextRequest) {
     const coll = db.collection<GalleryDoc>('gallery');
     
     const galleryDoc: Omit<GalleryDoc, '_id'> = {
-      name: body.name.trim(),
-      description: body.description?.trim() || '',
-      images: body.images.map((img: any) => ({
+      name: payload.name.trim(),
+      description: payload.description?.trim() || '',
+      images: payload.images.map((img: any) => ({
         url: img.url,
         public_id: img.public_id
       })),
-      category: body.category.trim(),
-      tags: Array.isArray(body.tags) ? body.tags.filter(Boolean) : [],
-      featured: Boolean(body.featured),
-      visibility: body.visibility === 'private' ? 'private' : 'public',
+      category: payload.category.trim(),
+      tags: Array.isArray(payload.tags) ? payload.tags.filter(Boolean) : [],
+      featured: Boolean(payload.featured),
+      visibility: payload.visibility === 'private' ? 'private' : 'public',
       uploadDate: new Date(),
-      photographer: body.photographer?.trim() || '',
-      location: body.location?.trim() || '',
-      equipment: body.equipment?.trim() || '',
+      photographer: payload.photographer?.trim() || '',
+      location: payload.location?.trim() || '',
+      equipment: payload.equipment?.trim() || '',
       metadata: {
-        aperture: body.metadata?.aperture?.trim() || undefined,
-        shutter: body.metadata?.shutter?.trim() || undefined,
-        iso: body.metadata?.iso ? parseInt(body.metadata.iso) : undefined,
-        focal_length: body.metadata?.focal_length?.trim() || undefined,
+        aperture: payload.metadata?.aperture?.trim() || undefined,
+        shutter: payload.metadata?.shutter?.trim() || undefined,
+        iso: payload.metadata?.iso ? parseInt(payload.metadata.iso) : undefined,
+        focal_length: payload.metadata?.focal_length?.trim() || undefined,
       }
     };
     

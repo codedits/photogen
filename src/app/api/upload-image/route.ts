@@ -59,9 +59,18 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   try {
   if (!isAdminRequest(req)) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
-    const body = await req.json();
-    const public_id = body?.public_id;
-    const resource_type = body?.resource_type;
+    const contentType = req.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return NextResponse.json({ ok: false, error: 'Content-Type must be application/json' }, { status: 400 });
+    }
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 });
+    }
+    const public_id = typeof body?.public_id === 'string' ? body.public_id.trim() : '';
+    const resource_type = typeof body?.resource_type === 'string' ? body.resource_type.trim() : '';
     if (!public_id) return NextResponse.json({ ok: false, error: 'Missing public_id' }, { status: 400 });
 
     const config = cloudinary.config();
@@ -69,9 +78,11 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ ok: false, error: 'Cloudinary credentials are missing on server.' }, { status: 500 });
     }
 
-    const opts: Record<string, unknown> = { invalidate: true };
-  if (resource_type) opts.resource_type = resource_type;
-  const res = await cloudinary.uploader.destroy(public_id, opts as unknown as Record<string, unknown>);
+    const opts: { invalidate: boolean; resource_type?: 'image' | 'video' | 'raw' | 'auto' } = { invalidate: true };
+    if (resource_type === 'image' || resource_type === 'video' || resource_type === 'raw' || resource_type === 'auto') {
+      opts.resource_type = resource_type;
+    }
+    const res = await cloudinary.uploader.destroy(public_id, opts);
     return NextResponse.json({ ok: true, result: res });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

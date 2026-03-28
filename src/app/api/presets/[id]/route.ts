@@ -28,10 +28,10 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
     if (!id) return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
     const _id = new ObjectId(id);
 
-  const db = await getDatabase();
-  await ensurePresetIndexes(db.databaseName);
+    const db = await getDatabase();
+    await ensurePresetIndexes(db.databaseName);
     const coll = db.collection("presets");
-  const existing = (await coll.findOne({ _id }, { projection: { name: 1, description: 1, prompt: 1, tags: 1, images: 1, dng: 1 } })) as PresetDoc | null;
+    const existing = (await coll.findOne({ _id }, { projection: { name: 1, description: 1, prompt: 1, tags: 1, images: 1, dng: 1 } })) as PresetDoc | null;
     if (!existing) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
     const contentType = req.headers.get('content-type') || '';
@@ -39,12 +39,11 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
     let description = existing.description || '';
     let prompt = existing.prompt || '';
     let tags: string[] = Array.isArray(existing.tags) ? existing.tags : [];
-    let images: { url: string; public_id: string }[] = Array.isArray(existing.images) ? existing.images : [];
-  let removePublicIds: string[] = [];
-  let newDngUrl: string | null = null;
+    let imagesRaw: (string | { url: string; public_id: string })[] = [];
+    let removePublicIds: string[] = [];
+    let newDngUrl: string | null = null;
     let toUpload: string[] = [];
-  // Capture orderPublicIds for multipart so we can apply after potential removals/uploads
-  let orderPublicIdsMultipart: string[] = [];
+    let orderPublicIdsManual: string[] = [];
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData();
@@ -56,18 +55,28 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
         if (typeof raw === 'string') tags = raw.split(',').map(s=>s.trim()).filter(Boolean);
       }
       removePublicIds = (form.getAll('removePublicIds').filter(v=>typeof v==='string') as string[]);
-  const orderPublicIds = (form.getAll('orderPublicIds').filter(v=>typeof v==='string') as string[]);
-      if (orderPublicIds.length) orderPublicIdsMultipart = orderPublicIds;
+      const orderPublicIds = (form.getAll('orderPublicIds').filter(v=>typeof v==='string') as string[]);
+      if (orderPublicIds.length) orderPublicIdsManual = orderPublicIds;
+      
       const urlList = form.getAll('imageUrls').filter((v) => typeof v === 'string') as string[];
-      toUpload.push(...urlList);
-  // Optional: allow replacing DNG via provided dngUrl field
-  const maybeDngUrl = form.get('dngUrl') || form.get('dngurl') || form.get('dng_url');
-  if (maybeDngUrl && typeof maybeDngUrl === 'string') newDngUrl = String(maybeDngUrl).trim();
-  const files = form.getAll('images') as File[];
-  for (const file of files.slice(0, 8)) {
+      // allow callers to send JSON-stringified objects { public_id, url }
+      const parsed = urlList.map((s) => {
+        try { 
+          const obj = JSON.parse(s);
+          if (obj && typeof obj.url === 'string' && typeof obj.public_id === 'string') return obj;
+          return s;
+        } catch { return s; }
+      });
+      imagesRaw.push(...parsed);
+
+      const maybeDngUrl = form.get('dngUrl') || form.get('dngurl') || form.get('dng_url');
+      if (maybeDngUrl && typeof maybeDngUrl === 'string') newDngUrl = String(maybeDngUrl).trim();
+
+      const files = form.getAll('images') as File[];
+      for (const file of files.slice(0, 8)) {
         const buf = Buffer.from(await file.arrayBuffer());
         const b64 = `data:${file.type || 'image/png'};base64,${buf.toString('base64')}`;
-        toUpload.push(b64);
+        imagesRaw.push(b64);
       }
     } else if (contentType.includes('application/json')) {
       const body = await req.json();
@@ -76,66 +85,73 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
       if (typeof body.prompt === 'string') prompt = body.prompt;
       if (Array.isArray(body.tags)) tags = body.tags; else if (typeof body.tags === 'string') tags = body.tags.split(',').map((s:string)=>s.trim()).filter(Boolean);
       if (Array.isArray(body.removePublicIds)) removePublicIds = body.removePublicIds;
-      if (Array.isArray(body.images)) toUpload = body.images;
-    if (typeof body.dngUrl === 'string') newDngUrl = body.dngUrl.trim();
-    const orderPublicIds = Array.isArray(body.orderPublicIds) ? body.orderPublicIds.filter((x:string)=>typeof x==='string') : [];
-      // Re-order existing images if orderPublicIds provided (non-destructive)
-      if (orderPublicIds.length && images.length) {
-        const map = new Map(images.map(img => [img.public_id, img] as const));
-        const picked: { url: string; public_id: string }[] = [];
-        for (const pid of orderPublicIds) {
-          if (map.has(pid)) { picked.push(map.get(pid)!); map.delete(pid); }
-        }
-        // append any remaining in prior order
-        const remaining = images.filter(img => map.has(img.public_id));
-        images = [...picked, ...remaining];
-      }
+      if (Array.isArray(body.images)) imagesRaw = body.images;
+      if (typeof body.dngUrl === 'string') newDngUrl = body.dngUrl.trim();
+      if (Array.isArray(body.orderPublicIds)) orderPublicIdsManual = body.orderPublicIds;
     }
 
-  // Remove requested images both from Cloudinary and local array
-  if (removePublicIds.length) {
+    // Helper to identify already-uploaded image objects
+    function isUploadedObj(v: any): v is { public_id: string; url: string } {
+      return v && typeof v === 'object' && typeof v.url === 'string' && typeof v.public_id === 'string';
+    }
+
+    // Remove requested images from Cloudinary (best effort)
+    if (removePublicIds.length) {
       for (const pid of removePublicIds) {
-    try { await cloudinary.uploader.destroy(pid); } catch {}
+        try { await cloudinary.uploader.destroy(pid); } catch {}
       }
-      images = images.filter(img => !removePublicIds.includes(img.public_id));
     }
 
-  // Reapply ordering if orderPublicIds came from multipart path (handled earlier for JSON)
-  if (orderPublicIdsMultipart.length && images.length) {
-    const map = new Map(images.map(img => [img.public_id, img] as const));
-    const picked: { url: string; public_id: string }[] = [];
-    for (const pid of orderPublicIdsMultipart) {
-      if (map.has(pid)) { picked.push(map.get(pid)!); map.delete(pid); }
-    }
-    const remaining = images.filter(img => map.has(img.public_id));
-    images = [...picked, ...remaining];
-  }
+    // Separate already-uploaded from new-to-upload
+    let finalImages: { url: string; public_id: string }[] = imagesRaw.filter(isUploadedObj);
+    const toUploadRaw = imagesRaw.filter((it): it is string => typeof it === 'string' && it.length > 0);
 
-  // Upload any new images
-    if (toUpload.length) {
-      const uploaded = await uploadImages(toUpload.slice(0, 8));
-      images.push(...uploaded.map(u => ({ url: u.url, public_id: u.public_id })));
+    // Upload new ones
+    if (toUploadRaw.length) {
+      const uploaded = await uploadImages(toUploadRaw.slice(0, 8));
+      finalImages.push(...uploaded.map(u => ({ url: u.url, public_id: u.public_id })));
     }
 
-    // Replace DNG if a new URL was provided
-    if (newDngUrl) {
-      // Do not upload; simply store the provided URL. Optionally clear previous Cloudinary entry if present.
-      try {
-        // If there was a previous public_id, attempt to remove it (best-effort)
-        if (existing.dng?.public_id) {
-          try { await cloudinary.uploader.destroy(existing.dng.public_id, { resource_type: 'raw' }); } catch {}
+    // Apply manual ordering if provided
+    if (orderPublicIdsManual.length && finalImages.length) {
+      const map = new Map(finalImages.map(img => [img.public_id, img] as const));
+      const picked: { url: string; public_id: string }[] = [];
+      for (const pid of orderPublicIdsManual) {
+        if (map.has(pid)) { 
+          picked.push(map.get(pid)!); 
+          map.delete(pid); 
         }
-        await coll.updateOne({ _id }, { $set: { dng: { url: newDngUrl, public_id: existing.dng?.public_id || '' }, images } });
-        revalidatePath('/');
-        revalidatePath('/presets');
-        revalidatePath(`/presets/${id}`);
-        return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
-      } catch {}
+      }
+      // append any remaining that weren't in the explicit order list
+      const remaining = finalImages.filter(img => map.has(img.public_id));
+      finalImages = [...picked, ...remaining];
     }
 
-  // set cover image to first image or null
-  const cover = images.length ? images[0].url : null;
-  await coll.updateOne({ _id }, { $set: { name, description, prompt, tags, images, image: cover } });
+    // Determine the final DNG object
+    const finalDng = newDngUrl 
+      ? { url: newDngUrl, public_id: '' } 
+      : (existing.dng || null);
+
+    // If new DNG URL was provided, attempt to destroy old Cloudinary entry if it existed
+    if (newDngUrl && existing.dng?.public_id) {
+      try { await cloudinary.uploader.destroy(existing.dng.public_id, { resource_type: 'raw' }); } catch {}
+    }
+
+    // set cover image to first image or null
+    const cover = finalImages.length ? finalImages[0].url : null;
+    
+    await coll.updateOne({ _id }, { 
+      $set: { 
+        name: name || '', 
+        description: description || '', 
+        prompt: prompt || '', 
+        tags: Array.isArray(tags) ? tags : [], 
+        images: finalImages, 
+        image: cover,
+        dng: finalDng
+      } 
+    });
+    
     try { delCachePrefix('presets:'); } catch {}
     revalidatePath('/');
     revalidatePath('/presets');

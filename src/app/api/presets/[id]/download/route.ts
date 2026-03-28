@@ -7,14 +7,19 @@ export async function GET(_req: Request, { params }: { params?: { id: string } |
     const p = (await (params as Promise<{ id: string }> | { id: string } | undefined)) || { id: '' };
     const { id } = p;
     if (!id) return NextResponse.json({ ok: false, error: 'Missing id' }, { status: 400 });
+    if (!ObjectId.isValid(id)) return NextResponse.json({ ok: false, error: 'Invalid id' }, { status: 400 });
     const db = await getDatabase();
     const coll = db.collection('presets');
     const doc = await coll.findOne({ _id: new ObjectId(id) });
     if (!doc || !doc.dng?.url) {
       return NextResponse.json({ ok: false, error: 'DNG not found for this preset' }, { status: 404 });
     }
+    const dngUrl = String(doc.dng.url || '').trim();
+    if (!/^https?:\/\//i.test(dngUrl)) {
+      return NextResponse.json({ ok: false, error: 'Invalid DNG URL' }, { status: 400 });
+    }
     // Proxy the file to enforce download via Content-Disposition
-    const upstream = await fetch(doc.dng.url, { cache: 'no-store' });
+    const upstream = await fetch(dngUrl, { cache: 'no-store' });
     if (!upstream.ok || !upstream.body) return NextResponse.json({ ok: false, error: 'Failed to fetch DNG' }, { status: 502 });
     const fileName = `preset_${id}.dng`;
     return new Response(upstream.body, {

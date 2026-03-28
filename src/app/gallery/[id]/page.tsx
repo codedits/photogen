@@ -128,7 +128,7 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
               </div>
 
               {/* Main Description */}
-              <div className="text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight text-muted-foreground [&_strong]:text-foreground [&_strong]:font-semibold [&_em]:text-foreground [&_em]:italic prose-p:mb-4 last:prose-p:mb-0">
+              <div className="prose prose-invert max-w-none text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight text-muted-foreground [&_strong]:text-foreground [&_strong]:font-semibold [&_em]:text-foreground [&_em]:italic prose-p:mb-4 last:prose-p:mb-0 prose-ul:list-disc prose-ul:pl-5 prose-ol:list-decimal prose-ol:pl-5 prose-li:mb-1 prose-li:marker:text-muted-foreground/50">
                 {item.description ? (
                   <div dangerouslySetInnerHTML={{ __html: item.description }} />
                 ) : (

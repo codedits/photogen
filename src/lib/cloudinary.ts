@@ -19,9 +19,23 @@ if (!resolvedConfig.cloud_name || !resolvedConfig.api_key || !resolvedConfig.api
 
 export type CloudinaryUploaded = { url: string; public_id: string; width?: number; height?: number; format?: string };
 
+function isRemoteOrDataUrl(value: string): boolean {
+  const v = value.trim();
+  return v.startsWith('data:') || /^https?:\/\//i.test(v);
+}
+
 export async function uploadImages(images: Array<string | Buffer>, folder = 'photogen/presets'): Promise<CloudinaryUploaded[]> {
-  const uploads = images.map((img) => {
-    const payload = typeof img === 'string' ? img : `data:image/png;base64,${img.toString('base64')}`;
+  const uploads = images.map((img, index) => {
+    let payload: string;
+    if (typeof img === 'string') {
+      const normalized = img.trim();
+      if (!isRemoteOrDataUrl(normalized)) {
+        throw new Error(`Invalid image upload input at index ${index}. Expected http(s) URL or data URI.`);
+      }
+      payload = normalized;
+    } else {
+      payload = `data:image/png;base64,${img.toString('base64')}`;
+    }
     return cloudinary.uploader.upload(payload, {
       folder,
       unique_filename: true,

@@ -123,7 +123,7 @@ export default function Hero({ settings }: HeroProps) {
               transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             >
               <h1 className="text-white text-[clamp(1.85rem,6vw,3.5rem)] font-light leading-[0.95] tracking-tighter">
-                <span dangerouslySetInnerHTML={{ __html: mainHeadline }} className="[&_strong]:font-medium [&_em]:italic" />
+                <span dangerouslySetInnerHTML={{ __html: mainHeadline }} className="[&_strong]:font-semibold [&_em]:italic" />
               </h1>
             </motion.div>
 

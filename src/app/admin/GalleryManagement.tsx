@@ -241,12 +241,19 @@ function GalleryManagement({ onCreate, onEdit, onDelete }: GalleryManagementProp
                 </button>
                 <button
                   onClick={() => {
-                    if (confirm(`Delete "${item.name}"?`)) onDelete(item).then(fetchGalleryItems);
+                    if (confirm(`Delete "${item.name}"?`)) {
+                      setItems(prev => prev.filter(i => i._id !== item._id));
+                      onDelete(item)
+                        .then(() => fetchGalleryItems())
+                        .catch(() => {
+                          setItems(prev => [...prev, item]);
+                        });
+                    }
                   }}
-                  className="rounded border border-red-900 bg-red-950/40 p-1.5 text-red-300"
+                  className="rounded border border-red-900 bg-red-950/40 p-1.5 text-red-300 hover:bg-red-950"
                   title="Delete"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={13} />
                 </button>
               </div>
             </div>

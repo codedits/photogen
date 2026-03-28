@@ -239,7 +239,14 @@ function BlogManagement({ onCreate, onEdit, onDelete }: BlogManagementProps) {
                       <button
                         onClick={() => {
                           if (confirm(`Delete \"${item.title}\"?`)) {
-                            onDelete(item).then(fetchPosts);
+                            // Optimistic removal
+                            setItems(prev => prev.filter(p => p.id !== item.id));
+                            onDelete(item)
+                              .then(() => fetchPosts())
+                              .catch(() => {
+                                // Rollback: re-insert the item
+                                setItems(prev => [...prev, item]);
+                              });
                           }
                         }}
                         className="rounded border border-red-900 bg-red-950/40 p-1.5 text-red-300 hover:bg-red-950 transition-colors"

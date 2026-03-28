@@ -111,6 +111,15 @@ export default function HeroSettingsManagement() {
       const data = await uploadRes.json();
 
       if (data.secure_url) {
+        // Destroy previous hero image from Cloudinary to prevent orphans
+        const prevPublicId = heroSettings.image?.public_id;
+        if (prevPublicId) {
+          fetch('/api/upload-image', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ public_id: prevPublicId }),
+          }).catch(() => {}); // best-effort, don't block UI
+        }
         setHeroSettings((prev) => ({
           ...prev,
           image: { url: data.secure_url, public_id: data.public_id },

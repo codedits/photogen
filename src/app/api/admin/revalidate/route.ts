@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
     // Default: Revalidate core paths
     revalidatePath('/gallery');
     revalidatePath('/presets');
+    revalidatePath('/blog');
     revalidatePath('/');
     
     return NextResponse.json({ ok: true, message: 'Revalidated core paths' });

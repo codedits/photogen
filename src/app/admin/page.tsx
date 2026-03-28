@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect, useCallback, useMemo, createContext, useContext, Suspense, lazy } from "react";
-import { usePresets } from '../../lib/usePresets';
+import React, { useState, useEffect, useCallback, useMemo, createContext, useContext, useRef, Suspense, lazy } from "react";
+import { usePresets, clearPresetCache } from '../../lib/usePresets';
 import AdminSidebar from './components/AdminSidebar';
 import AdminHeader from './components/AdminHeader';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -97,6 +97,9 @@ export default function AdminPage() {
     enabled: authed === true && view.type === 'list' && view.tab === 'presets'
   });
 
+  // Debounce double-click deletes
+  const deletingIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     fetch('/api/admin/session', { cache: 'no-store' })
       .then(r => r.json()).then(d => setAuthed(!!d?.ok)).catch(()=>setAuthed(false));
@@ -165,10 +168,20 @@ export default function AdminPage() {
   }, [addToast, refresh, view]);
 
   const handleDeletePreset = useCallback(async (preset: PresetRow) => {
-    const res = await fetch(`/api/presets/${preset.id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Delete failed');
-    refresh();
-    addToast('Preset deleted', 'info');
+    if (deletingIdRef.current === preset.id) return; // debounce
+    deletingIdRef.current = preset.id;
+    try {
+      const res = await fetch(`/api/presets/${preset.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      clearPresetCache();
+      refresh();
+      addToast('Preset deleted', 'info');
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to delete preset', 'error');
+      throw err; // re-throw so callers can handle
+    } finally {
+      deletingIdRef.current = null;
+    }
   }, [addToast, refresh]);
 
   const handleSaveGallery = useCallback(async (data: any) => {
@@ -189,9 +202,18 @@ export default function AdminPage() {
   }, [addToast, view]);
 
   const handleDeleteGallery = useCallback(async (item: any) => {
-    const res = await fetch(`/api/gallery/${item._id}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Delete failed');
-    addToast('Gallery item deleted', 'info');
+    if (deletingIdRef.current === item._id) return; // debounce
+    deletingIdRef.current = item._id;
+    try {
+      const res = await fetch(`/api/gallery/${item._id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      addToast('Gallery item deleted', 'info');
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to delete gallery item', 'error');
+      throw err; // re-throw so callers can handle rollback
+    } finally {
+      deletingIdRef.current = null;
+    }
   }, [addToast]);
 
   const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero') => {
@@ -239,10 +261,19 @@ export default function AdminPage() {
   }, [addToast, view]);
 
   const handleDeleteBlog = useCallback(async (post: { id: string }) => {
-    const res = await fetch(`/api/blog/${post.id}`, { method: 'DELETE' });
-    const result = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(result?.error || 'Delete failed');
-    addToast('Blog post deleted', 'info');
+    if (deletingIdRef.current === post.id) return; // debounce
+    deletingIdRef.current = post.id;
+    try {
+      const res = await fetch(`/api/blog/${post.id}`, { method: 'DELETE' });
+      const result = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(result?.error || 'Delete failed');
+      addToast('Blog post deleted', 'info');
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to delete blog post', 'error');
+      throw err; // re-throw so callers can handle rollback
+    } finally {
+      deletingIdRef.current = null;
+    }
   }, [addToast]);
 
   const [revalidating, setRevalidating] = useState(false);

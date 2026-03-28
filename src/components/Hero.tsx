@@ -36,10 +36,10 @@ export default function Hero({ settings }: HeroProps) {
   const lqipUrl = cloudinaryPresetUrl(heroImage, "lqip");
 
   return (
-    <section className="relative h-screen w-full flex flex-col bg-background selection:bg-white selection:text-black overflow-hidden font-sans">
+    <section className="relative w-full flex flex-col bg-background selection:bg-white selection:text-black overflow-hidden font-sans">
 
-      {/* Main Container: Full Width Frame */}
-      <div className="relative flex-1 w-full overflow-hidden group/hero bg-zinc-950">
+      {/* Main Container: Full Width Frame with 9:16 Aspect on Mobile */}
+      <div className="relative w-full aspect-[9/16] md:aspect-auto md:h-screen overflow-hidden group/hero bg-zinc-950">
 
         {/* Cinematic Background with Slow Parallax/Scale */}
         <div className="absolute inset-0 z-0 overflow-hidden">
@@ -56,23 +56,35 @@ export default function Hero({ settings }: HeroProps) {
           />
 
           <motion.div
-            initial={{ scale: 1.1, opacity: 0 }}
+            initial={{ scale: 1.05, opacity: 0 }}
             animate={{
-              scale: isLoaded ? 1 : 1.1,
+              scale: isLoaded ? 1 : 1.05,
               opacity: isLoaded ? 1 : 0
             }}
             transition={{
-              duration: 2,
+              duration: 1.5,
               ease: [0.16, 1, 0.3, 1],
-              opacity: { duration: 1.2 }
+              opacity: { duration: 0.8 }
             }}
             className="relative h-full w-full"
           >
+            {/* Mobile Image (9:16) */}
+            <Image
+              src={cloudinaryPresetUrl(heroImage, "hero_mobile")}
+              alt="Hero Background Mobile"
+              fill
+              className="object-cover md:hidden contrast-[1.05] grayscale-[0.02]"
+              style={{ filter: `brightness(${overlayBrightness})` }}
+              priority
+              quality={85}
+              onLoad={() => setIsLoaded(true)}
+            />
+            {/* Desktop Image (16:9) */}
             <Image
               src={cloudinaryPresetUrl(heroImage, "hero")}
-              alt="Hero Background"
+              alt="Hero Background Desktop"
               fill
-              className="object-cover contrast-[1.05] grayscale-[0.02]"
+              className="object-cover hidden md:block contrast-[1.05] grayscale-[0.02]"
               style={{ filter: `brightness(${overlayBrightness})` }}
               priority
               quality={85}

@@ -284,7 +284,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete }: GalleryF
           {item && onDelete && (
             <button
               onClick={() => {
-                if (confirm(`Delete "${item.name}"?`)) onDelete(item).then(onBack);
+                if (confirm(`Delete "${item.name}"?`)) onDelete(item).then(onBack).catch(() => {});
               }}
               className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300 hover:bg-red-950"
             >

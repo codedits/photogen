@@ -241,7 +241,7 @@ export default function BlogForm({ post, onBack, onSave, onDelete }: BlogFormPro
           {post && onDelete && (
             <button
               onClick={() => {
-                if (confirm(`Delete blog post \"${post.title}\"?`)) onDelete(post).then(onBack);
+                if (confirm(`Delete blog post \"${post.title}\"?`)) onDelete(post).then(onBack).catch(() => {});
               }}
               className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300 hover:bg-red-950 transition-colors"
             >

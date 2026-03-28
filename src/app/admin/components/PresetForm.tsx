@@ -266,7 +266,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete }: PresetF
           {preset && onDelete && (
             <button
               onClick={() => {
-                if (confirm(`Delete preset "${preset.name}"?`)) onDelete(preset).then(onBack);
+                if (confirm(`Delete preset "${preset.name}"?`)) onDelete(preset).then(onBack).catch(() => {});
               }}
               className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300 hover:bg-red-950"
             >

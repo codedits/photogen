@@ -195,7 +195,7 @@ function PresetsManagement({ list, listLoading, hasMore, loadMore, onCreate, onE
                     </button>
                     <button
                       onClick={() => {
-                        if (confirm(`Delete "${preset.name}"?`)) onDelete(preset);
+                        if (confirm(`Delete "${preset.name}"?`)) onDelete(preset).catch(() => {});
                       }}
                       className="rounded border border-red-900 bg-red-950/40 px-2 py-1.5 text-xs text-red-300"
                     >
@@ -240,7 +240,7 @@ function PresetsManagement({ list, listLoading, hasMore, loadMore, onCreate, onE
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm(`Delete "${preset.name}"?`)) onDelete(preset);
+                      if (confirm(`Delete "${preset.name}"?`)) onDelete(preset).catch(() => {});
                     }}
                     className="rounded border border-red-900 bg-red-950/40 p-1.5 text-red-300"
                     title="Delete"

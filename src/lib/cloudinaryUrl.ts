@@ -5,10 +5,11 @@
  */
 export type ThumbOpts = { w?: number; h?: number; fit?: 'cover' | 'crop' | 'fill' | 'scale' | 'contain'; q?: string | number; f?: 'auto' | string; dpr?: number | 'auto' };
 
-export type CloudinaryPreset = 'hero' | 'card' | 'content' | 'social' | 'lqip';
+export type CloudinaryPreset = 'hero' | 'hero_mobile' | 'card' | 'content' | 'social' | 'lqip';
 
 const PRESET_DEFAULTS: Record<CloudinaryPreset, ThumbOpts> = {
   hero: { w: 1920, h: 1080, fit: 'cover', q: 'auto:good', f: 'auto', dpr: 'auto' },
+  hero_mobile: { w: 1080, h: 1920, fit: 'cover', q: 'auto:good', f: 'auto', dpr: 'auto' },
   card: { w: 960, h: 640, fit: 'cover', q: 'auto:good', f: 'auto', dpr: 'auto' },
   content: { w: 1280, h: 960, fit: 'contain', q: 'auto:good', f: 'auto', dpr: 'auto' },
   social: { w: 1200, h: 630, fit: 'cover', q: 'auto:good', f: 'auto', dpr: 1 },

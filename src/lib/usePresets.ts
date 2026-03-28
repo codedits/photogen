@@ -15,7 +15,21 @@ export type Preset = {
 
 // Simple in-memory cache (SWR-like) keyed by q+page+limit.
 // Stores data + timestamp; revalidates in background if staleMs exceeded.
+const MAX_CACHE_ENTRIES = 50;
 const presetCache = new Map<string, { data: Preset[]; hasMore: boolean; ts: number }>();
+
+/** Clear the entire in-memory preset cache. Call after mutations (delete/create/edit). */
+export function clearPresetCache() {
+  presetCache.clear();
+}
+
+function enforcePresetCacheSize() {
+  while (presetCache.size > MAX_CACHE_ENTRIES) {
+    const oldest = presetCache.keys().next().value;
+    if (!oldest) break;
+    presetCache.delete(oldest);
+  }
+}
 
 function mergeUniqueById(prev: Preset[], incoming: Preset[]) {
   if (!incoming.length) return prev;
@@ -50,31 +64,38 @@ export function usePresets(opts: UsePresetsOptions = {}) {
 
   const key = `${q}\n${page}\n${limit}`;
 
-  const fetchPage = useCallback(async (targetPage: number, append: boolean) => {
+  const fetchPage = useCallback(async (targetPage: number, append: boolean, forceRefresh = false) => {
     if (!enabled) return;
+    // If forceRefresh, abort any in-flight and reset loadingRef
+    if (forceRefresh) {
+      if (abortRef.current) abortRef.current.abort();
+      loadingRef.current = false;
+    }
     if (loadingRef.current) return;
     loadingRef.current = true;
     setLoading(true);
     setError(null);
     const cKey = `${q}\n${targetPage}\n${limit}`;
 
-    // serve cache immediately if present and not stale
-    const cached = presetCache.get(cKey);
-    const now = Date.now();
-    if (cached) {
-      const isStale = now - cached.ts > staleMs;
-      if (append) {
-        setItems(prev => mergeUniqueById(prev, cached.data));
-      } else {
-        setItems(cached.data);
+    // serve cache immediately if present and not stale (skip if forceRefresh)
+    if (!forceRefresh) {
+      const cached = presetCache.get(cKey);
+      const now = Date.now();
+      if (cached) {
+        const isStale = now - cached.ts > staleMs;
+        if (append) {
+          setItems(prev => mergeUniqueById(prev, cached.data));
+        } else {
+          setItems(cached.data);
+        }
+        setHasMore(cached.hasMore);
+        if (!isStale) {
+          setLoading(false);
+          loadingRef.current = false;
+          return; // fresh
+        }
+        // stale -> continue to background revalidate
       }
-      setHasMore(cached.hasMore);
-      if (!isStale) {
-        setLoading(false);
-        loadingRef.current = false;
-        return; // fresh
-      }
-      // stale -> continue to background revalidate
     }
     // abort any in-flight
     if (abortRef.current) abortRef.current.abort();
@@ -92,6 +113,7 @@ export function usePresets(opts: UsePresetsOptions = {}) {
       const newData: Preset[] = json.presets || [];
       const newHasMore: boolean = !!json.hasMore;
       presetCache.set(cKey, { data: newData, hasMore: newHasMore, ts: Date.now() });
+      enforcePresetCacheSize();
       setHasMore(newHasMore);
       setItems(prev => append ? mergeUniqueById(prev, newData) : newData);
     } catch (e: unknown) {
@@ -120,10 +142,11 @@ export function usePresets(opts: UsePresetsOptions = {}) {
   }, [hasMore, page, fetchPage]);
 
   const refresh = useCallback(() => {
-    // force revalidate current pages sequentially (simple strategy)
-    setItems([]);
+    // Clear the cache so stale data isn't served back, then force-fetch from page 1.
+    // We do NOT clear items here — keep old items visible until new data arrives.
+    clearPresetCache();
     setPage(initialPage);
-    fetchPage(initialPage, false);
+    fetchPage(initialPage, false, true);
   }, [fetchPage, initialPage]);
 
   return { items, loading, error, page, hasMore, loadMore, refresh };

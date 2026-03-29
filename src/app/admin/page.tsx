@@ -160,7 +160,7 @@ export default function AdminPage() {
       data.orderPublicIds.forEach((pid: string) => form.append('orderPublicIds', pid));
     }
     
-    if (data.removePublicIds) {
+    if (data.removePublicIds && isEdit) {
       data.removePublicIds.forEach((pid: string) => form.append('removePublicIds', pid));
     }
 

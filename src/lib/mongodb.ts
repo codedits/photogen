@@ -73,6 +73,7 @@ export async function ensureGalleryIndexes(dbName = defaultDb) {
       coll.createIndex({ featured: -1, uploadDate: -1 }),
       coll.createIndex({ visibility: 1, uploadDate: -1 }),
       coll.createIndex({ name: 'text', description: 'text', tags: 'text' }, { name: 'gallery_text_idx' }),
+      coll.createIndex({ name: 1, category: 1 }, { unique: true, name: 'gallery_name_category_unique' }),
     ]);
   })();
   _idxPromises.set(`${dbName}_gallery`, p);

@@ -107,18 +107,15 @@ export async function PUT(
       { $set: updateDoc }
     );
     
-    // Process removals from Cloudinary
+    // Process removals from Cloudinary (awaited to prevent serverless cutoff)
     if (Array.isArray(payload.removePublicIds) && payload.removePublicIds.length > 0) {
-      setTimeout(async () => {
-        try {
-          for (const pid of payload.removePublicIds) {
-            await cloudinary.uploader.destroy(pid);
-            console.log(`Deleted removed image from Cloudinary: ${pid}`);
-          }
-        } catch (e) {
-          console.error('Failed to cleanup Cloudinary images for gallery:', e);
-        }
-      }, 0);
+      const deletePromises = payload.removePublicIds.map((pid: string) =>
+        cloudinary.uploader.destroy(pid, { invalidate: true }).catch((e: unknown) => {
+          console.error(`Failed to delete Cloudinary image ${pid}:`, e);
+          return null;
+        })
+      );
+      await Promise.allSettled(deletePromises);
     }
     
     if (result.matchedCount === 0) {
@@ -186,21 +183,17 @@ export async function DELETE(
     if (galleryItem.images && galleryItem.images.length > 0) {
       const publicIds = galleryItem.images
         .map(img => img.public_id)
-        .filter(Boolean); // Remove any undefined/null public_ids
+        .filter(Boolean);
         
       if (publicIds.length > 0) {
-        // Delete from Cloudinary in the background (don't wait for it)
-        setTimeout(async () => {
-          try {
-            for (const publicId of publicIds) {
-              await cloudinary.uploader.destroy(publicId);
-              console.log(`Deleted image from Cloudinary: ${publicId}`);
-            }
-          } catch (cloudinaryError) {
-            // Log the error but don't fail the API response since DB deletion succeeded
-            console.error('Failed to delete some images from Cloudinary:', cloudinaryError);
-          }
-        }, 0);
+        // Await Cloudinary cleanup to prevent serverless cutoff
+        const imgDeletes = publicIds.map((publicId) =>
+          cloudinary.uploader.destroy(publicId, { invalidate: true }).catch((e: unknown) => {
+            console.error(`Failed to delete Cloudinary image ${publicId}:`, e);
+            return null;
+          })
+        );
+        await Promise.allSettled(imgDeletes);
       }
     }
     

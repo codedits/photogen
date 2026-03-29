@@ -51,7 +51,12 @@ export async function GET(req: NextRequest) {
     const skip = Math.max(parseInt(url.searchParams.get('skip') || '0'), 0);
     const category = url.searchParams.get('category');
     const featured = url.searchParams.get('featured');
-    const visibility = url.searchParams.get('visibility') || 'public';
+    // Require admin auth to view private/all items
+    const isAdmin = isAdminRequest(req);
+    const requestedVisibility = url.searchParams.get('visibility') || 'public';
+    const visibility = (!isAdmin && (requestedVisibility === 'all' || requestedVisibility === 'private'))
+      ? 'public'
+      : requestedVisibility;
     const search = url.searchParams.get('q');
     
     // Build filter
@@ -62,7 +67,10 @@ export async function GET(req: NextRequest) {
     if (visibility === 'all') {
       // Admin view: don't filter by visibility
     } else if (visibility.includes(',')) {
-      filter.visibility = { $in: visibility.split(',') };
+      // For multi-value, strip 'private' if not admin
+      const vals = visibility.split(',').filter(v => isAdmin || v !== 'private');
+      if (vals.length) filter.visibility = { $in: vals };
+      else filter.visibility = 'public';
     } else {
       filter.visibility = visibility;
     }
@@ -207,7 +215,10 @@ export async function POST(req: NextRequest) {
       message: 'Gallery entry created successfully'
     });
     
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      return NextResponse.json({ ok: false, error: 'A gallery item with this name and category already exists' }, { status: 409 });
+    }
     console.error('Gallery POST error:', error);
     return NextResponse.json({ ok: false, error: 'Failed to create gallery entry' }, { status: 500 });
   }

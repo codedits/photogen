@@ -298,6 +298,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     if (!validateForm()) return;
     setSubmitError(null);
 
@@ -379,7 +380,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
             </button>
           )}
           <button
-            onClick={handleSubmit}
+            type="submit"
             disabled={busy}
             className="inline-flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-60"
           >

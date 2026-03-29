@@ -54,6 +54,7 @@ export default function RichTextEditor({
 }: RichTextEditorProps) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const isInternalUpdate = useRef(false);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -82,6 +83,7 @@ export default function RichTextEditor({
     ],
     content: content,
     onUpdate: ({ editor }) => {
+      isInternalUpdate.current = true;
       onChange(editor.getHTML());
     },
     editorProps: {
@@ -92,9 +94,10 @@ export default function RichTextEditor({
   });
 
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
+    if (editor && !isInternalUpdate.current && content !== editor.getHTML()) {
       editor.commands.setContent(content);
     }
+    isInternalUpdate.current = false;
   }, [content, editor]);
 
   if (!editor) {

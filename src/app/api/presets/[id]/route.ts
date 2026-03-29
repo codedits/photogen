@@ -47,9 +47,9 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
 
     if (contentType.includes('multipart/form-data')) {
       const form = await req.formData();
-      if (form.has('name')) name = String(form.get('name') || name);
-      if (form.has('description')) description = String(form.get('description') || description);
-      if (form.has('prompt')) prompt = String(form.get('prompt') || prompt);
+      if (form.has('name')) name = String(form.get('name') ?? name);
+      if (form.has('description')) description = String(form.get('description') ?? '');
+      if (form.has('prompt')) prompt = String(form.get('prompt') ?? '');
       if (form.has('tags')) {
         const raw = form.get('tags');
         if (typeof raw === 'string') tags = raw.split(',').map(s=>s.trim()).filter(Boolean);
@@ -180,22 +180,22 @@ export async function DELETE(req: Request, { params }: { params?: { id: string }
     if (!existing) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
     const images: { public_id: string }[] = Array.isArray(existing.images) ? existing.images : [];
-    // delete DNG first (try raw, then image, then fallback), await result so Cloudinary is cleaned up
+
+    // Delete from DB first (authoritative state), then Cloudinary (best-effort cleanup)
+    await coll.deleteOne({ _id });
+
+    // delete DNG (best effort, after DB deletion)
     const pid = existing.dng?.public_id;
     if (pid) {
       try {
-        // try raw (most likely for DNG/raw uploads)
         let res = await cloudinary.uploader.destroy(pid, { resource_type: 'raw', invalidate: true });
         if (!(res && (res.result === 'ok' || res.result === 'not_found'))) {
-          // try as image
           res = await cloudinary.uploader.destroy(pid, { resource_type: 'image', invalidate: true });
         }
         if (!(res && (res.result === 'ok' || res.result === 'not_found'))) {
-          // final fallback: try without resource_type
           await cloudinary.uploader.destroy(pid, { invalidate: true }).catch(() => null);
         }
       } catch (err) {
-        // Keep best-effort behavior but surface to logs for debugging
         console.error('Failed to delete DNG from Cloudinary for preset', id, err);
       }
     }
@@ -203,8 +203,6 @@ export async function DELETE(req: Request, { params }: { params?: { id: string }
     // delete images in parallel (best-effort)
     const imgDeletes = images.map((img) => img.public_id ? cloudinary.uploader.destroy(img.public_id, { invalidate: true }).catch(() => null) : Promise.resolve(null));
     await Promise.allSettled(imgDeletes);
-
-    await coll.deleteOne({ _id });
     // clear in-memory cache so list endpoints reflect deletion immediately
     try { delCachePrefix('presets:'); } catch {}
     revalidatePath('/');

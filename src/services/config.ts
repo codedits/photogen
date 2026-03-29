@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { cookies } from "next/headers";
 import type { NextResponse } from "next/server";
 import getDatabase from "@/lib/mongodb";
@@ -81,6 +81,7 @@ const THEME_VAR_MAP: Record<keyof ThemePalette, string> = {
 };
 
 const PALETTE_KEYS = Object.keys(THEME_VAR_MAP) as Array<keyof ThemePalette>;
+const THEME_SETTINGS_DOC_ID = "theme_tokens" as const;
 
 export const THEME_COOKIE_NAME = "pg_theme_tokens";
 
@@ -144,29 +145,31 @@ export const DEFAULT_THEME_CONFIG: ThemeConfig = {
   },
 };
 
+async function loadStoreConfigFromDb(): Promise<StoreConfig> {
+  try {
+    const db = await getDatabase();
+    const doc = (await db.collection("settings").findOne({ _id: THEME_SETTINGS_DOC_ID as any })) as
+      | ({
+          theme?: unknown;
+          updatedAt?: Date;
+        } & Record<string, unknown>)
+      | null;
+
+    const theme = normalizeThemeConfig(doc?.theme ?? doc ?? null);
+    const updatedAt = doc?.updatedAt instanceof Date ? doc.updatedAt.toISOString() : null;
+
+    return { theme, updatedAt };
+  } catch (error) {
+    console.error("Failed to load site config:", error);
+    return {
+      theme: DEFAULT_THEME_CONFIG,
+      updatedAt: null,
+    };
+  }
+}
+
 const getStoreConfigCached = unstable_cache(
-  async (): Promise<StoreConfig> => {
-    try {
-      const db = await getDatabase();
-      const doc = (await db.collection("settings").findOne({ _id: "theme_tokens" as any })) as
-        | ({
-            theme?: unknown;
-            updatedAt?: Date;
-          } & Record<string, unknown>)
-        | null;
-
-      const theme = normalizeThemeConfig(doc?.theme ?? doc ?? null);
-      const updatedAt = doc?.updatedAt instanceof Date ? doc.updatedAt.toISOString() : null;
-
-      return { theme, updatedAt };
-    } catch (error) {
-      console.error("Failed to load site config:", error);
-      return {
-        theme: DEFAULT_THEME_CONFIG,
-        updatedAt: null,
-      };
-    }
-  },
+  loadStoreConfigFromDb,
   ["site_config:v1"],
   {
     tags: ["site_config"],
@@ -278,6 +281,36 @@ export function syncThemeToResponseCookie(res: NextResponse, theme: ThemeConfig)
     ...getThemeCookieOptions(),
     value: getThemeCookiePayload(theme),
   });
+}
+
+export function revalidateThemeConfig() {
+  revalidateTag("site_config", "max");
+  revalidatePath("/", "layout");
+  revalidatePath("/");
+}
+
+export async function saveThemeConfig(theme: ThemeConfig) {
+  const db = await getDatabase();
+
+  await db.collection("settings").updateOne(
+    { _id: THEME_SETTINGS_DOC_ID as any },
+    {
+      $set: {
+        theme,
+        updatedAt: new Date(),
+      },
+    },
+    { upsert: true }
+  );
+
+  revalidateThemeConfig();
+}
+
+export async function updateThemeConfig(patch: unknown): Promise<ThemeConfig> {
+  const current = await loadStoreConfigFromDb();
+  const nextTheme = mergeThemeConfig(current.theme, patch);
+  await saveThemeConfig(nextTheme);
+  return nextTheme;
 }
 
 export async function getStoreConfig() {

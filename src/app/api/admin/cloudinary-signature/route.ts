@@ -1,13 +1,13 @@
-import { NextResponse } from 'next/server';
 import cloudinary from '../../../../lib/cloudinary';
 import { isAdminRequest } from '../../../../lib/auth';
+import { noStoreJson } from '@/lib/httpCache';
 
 const DEFAULT_FOLDER = 'photogen/uploads';
 
 export async function POST(req: Request) {
   try {
     if (!isAdminRequest(req)) {
-      return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+      return noStoreJson({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const cloudName = cloudinaryConfig.cloud_name || process.env.CLOUDINARY_CLOUD_NAME;
 
     if (!apiKey || !apiSecret || !cloudName) {
-      return NextResponse.json(
+      return noStoreJson(
         { ok: false, error: 'Cloudinary credentials are missing on server. Set CLOUDINARY_URL or individual CLOUDINARY_API_* variables in .env.local.' },
         { status: 500 }
       );
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
 
     const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
 
-    return NextResponse.json({
+    return noStoreJson({
       ok: true,
       signature,
       timestamp,
@@ -48,6 +48,6 @@ export async function POST(req: Request) {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return noStoreJson({ ok: false, error: message }, { status: 500 });
   }
 }

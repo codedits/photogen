@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { revalidatePath } from 'next/cache';
 import cloudinary from '../../../../lib/cloudinary';
 import { isAdminRequest } from '../../../../lib/auth';
 import getDatabase from '../../../../lib/mongodb';
-import { delCachePrefix } from '../../../../lib/simpleCache';
-import { invalidateCachePrefix } from '../../../../lib/multiLayerCache';
+import { invalidateBlogContent } from '../../../../lib/contentInvalidation';
 import type { BlogDoc } from '../route';
 
 type BlogImageRef = { url: string; public_id: string };
@@ -247,14 +245,13 @@ export async function PATCH(
 
     await cloudinaryCleanup(Array.from(new Set(removedIds)));
 
-    delCachePrefix('blog:list:');
-    invalidateCachePrefix('home:');
-    revalidatePath('/');
-    revalidatePath('/blog');
-    revalidatePath(`/blog/${existing.slug}`);
-    if (updateDoc.slug && updateDoc.slug !== existing.slug) {
-      revalidatePath(`/blog/${updateDoc.slug}`);
-    }
+    invalidateBlogContent({
+      detailPath: `/blog/${existing.slug}`,
+      extraPaths:
+        updateDoc.slug && updateDoc.slug !== existing.slug
+          ? [`/blog/${updateDoc.slug}`]
+          : [],
+    });
 
     return NextResponse.json({ ok: true, message: 'Blog post updated' });
   } catch (error: any) {
@@ -296,13 +293,10 @@ export async function DELETE(
     ].filter(Boolean);
     await cloudinaryCleanup(Array.from(new Set(imageIds)));
 
-    delCachePrefix('blog:list:');
-    invalidateCachePrefix('home:');
-    if (existing.status === 'published') {
-      revalidatePath('/');
-    }
-    revalidatePath('/blog');
-    revalidatePath(`/blog/${existing.slug}`);
+    invalidateBlogContent({
+      includeHome: existing.status === 'published',
+      detailPath: `/blog/${existing.slug}`,
+    });
 
     return NextResponse.json({ ok: true, message: 'Blog post deleted' });
   } catch (error) {

@@ -6,7 +6,8 @@ import { ObjectId, Document } from 'mongodb';
 import type { CloudinaryUploaded } from '../../../lib/cloudinary';
 import type { Filter } from 'mongodb';
 import { getCache, setCache } from '../../../lib/simpleCache';
-import { revalidatePath } from 'next/cache';
+import { applyCacheControl, CACHE_CONTROL } from '../../../lib/httpCache';
+import { invalidatePresetContent } from '../../../lib/contentInvalidation';
 
 type PresetDoc = {
   _id: ObjectId;
@@ -80,7 +81,11 @@ export async function GET(req: Request) {
     const cacheKey = `presets:q=${q}:page=${page}:limit=${limit}`;
     if (cachingEligible) {
       const cached = getCache<{ ok: boolean; presets: unknown[]; hasMore: boolean; page: number; limit: number }>(cacheKey);
-      if (cached) return NextResponse.json(cached, { headers: { 'cache-control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=120', 'Vary': 'Accept-Encoding' } });
+      if (cached) {
+        const response = NextResponse.json(cached);
+        applyCacheControl(response, CACHE_CONTROL.PUBLIC_LIST, true);
+        return response;
+      }
     }
     const db = await getDatabase();
     try { await ensurePresetIndexes(db.databaseName); } catch (idxErr) { console.warn('ensurePresetIndexes failed in GET /api/presets', idxErr); }
@@ -119,7 +124,7 @@ export async function GET(req: Request) {
         const sliced = hasMore ? out.slice(0, limit) : out;
         const resp = { ok: true, presets: sliced, hasMore, page, limit };
         // For search queries we don't long-cache; short no-store so clients controlled by SWR-like layer.
-        return NextResponse.json(resp, { headers: { 'cache-control': 'no-store' } });
+        return NextResponse.json(resp, { headers: { 'cache-control': CACHE_CONTROL.NO_STORE } });
       }
 
       // If no text results, fall back to a more permissive name/tags search using
@@ -166,9 +171,11 @@ export async function GET(req: Request) {
       // cache short-lived to improve repeated load latency
       // increased to 60s to reduce load during rapid navigation/testing.
       setCache(cacheKey, resp, 60);
-      return NextResponse.json(resp, { headers: { 'cache-control': 'public, max-age=30, s-maxage=60, stale-while-revalidate=120' } });
+      const response = NextResponse.json(resp);
+      applyCacheControl(response, CACHE_CONTROL.PUBLIC_LIST, true);
+      return response;
     }
-    return NextResponse.json(resp, { headers: { 'cache-control': q ? 'no-store' : 'no-store' } });
+    return NextResponse.json(resp, { headers: { 'cache-control': CACHE_CONTROL.NO_STORE } });
   } catch (err: unknown) {
     console.error('GET /api/presets failed', err);
     const message = err instanceof Error ? err.message : String(err);
@@ -322,10 +329,7 @@ export async function POST(req: Request) {
     };
 
   const res = await coll.insertOne(doc);
-  try { const { clearCache } = await import('../../../lib/simpleCache'); clearCache(); } catch {}
-  revalidatePath('/');
-  revalidatePath('/presets');
-  revalidatePath(`/presets/${res.insertedId.toString()}`);
+  invalidatePresetContent({ detailPath: `/presets/${res.insertedId.toString()}` });
     return NextResponse.json({ ok: true, id: res.insertedId.toString(), images: doc.images });
   } catch (err: unknown) {
     console.error('POST /api/presets failed', err);

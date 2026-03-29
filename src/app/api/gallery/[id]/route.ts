@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import cloudinary from '../../../../lib/cloudinary';
-import { revalidatePath } from 'next/cache';
 import { isAdminRequest } from '../../../../lib/auth';
 import getDatabase from '../../../../lib/mongodb';
-import { delCachePrefix } from '../../../../lib/simpleCache';
-import { invalidateCachePrefix } from '../../../../lib/multiLayerCache';
+import { invalidateGalleryContent } from '../../../../lib/contentInvalidation';
 import type { GalleryDoc } from '../route';
 
 // Helper: Check if string is valid MongoDB ID
@@ -173,12 +171,7 @@ export async function PUT(
       await Promise.allSettled(deletePromises);
     }
 
-    delCachePrefix('gallery:list:');
-    delCachePrefix('gallery:count:');
-    invalidateCachePrefix('home:');
-    revalidatePath('/');
-    revalidatePath('/gallery');
-    revalidatePath(`/gallery/${id}`);
+    invalidateGalleryContent({ detailPath: `/gallery/${id}` });
     
     return NextResponse.json({
       ok: true,
@@ -226,12 +219,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Gallery item not found' }, { status: 404 });
     }
 
-    delCachePrefix('gallery:list:');
-    delCachePrefix('gallery:count:');
-    invalidateCachePrefix('home:');
-    revalidatePath('/');
-    revalidatePath('/gallery');
-    revalidatePath(`/gallery/${id}`);
+    invalidateGalleryContent({ detailPath: `/gallery/${id}` });
     
     // Then try to delete images from Cloudinary (non-blocking)
     if (galleryItem.images && galleryItem.images.length > 0) {

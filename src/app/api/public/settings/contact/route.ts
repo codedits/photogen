@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import getDatabase from "@/lib/mongodb";
+import { CACHE_CONTROL, noStoreJson, publicCachedJson } from "@/lib/httpCache";
 
 export async function GET() {
   try {
@@ -19,12 +19,12 @@ export async function GET() {
     };
 
     if (!settings) {
-      return NextResponse.json(defaultSettings);
+      return publicCachedJson(defaultSettings, CACHE_CONTROL.PUBLIC_SETTINGS);
     }
 
     const { _id, updatedAt, formEmail, ...publicSettings } = settings as any;
-    return NextResponse.json(publicSettings);
+    return publicCachedJson(publicSettings, CACHE_CONTROL.PUBLIC_SETTINGS);
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch contact info" }, { status: 500 });
+    return noStoreJson({ error: "Failed to fetch contact info" }, { status: 500 });
   }
 }

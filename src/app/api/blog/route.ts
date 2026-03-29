@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
 import { isAdminRequest } from '../../../lib/auth';
 import getDatabase, { ensureBlogIndexes } from '../../../lib/mongodb';
-import { delCachePrefix, getCache, setCache } from '../../../lib/simpleCache';
-import { invalidateCachePrefix } from '../../../lib/multiLayerCache';
+import { getCache, setCache } from '../../../lib/simpleCache';
+import { invalidateBlogContent } from '../../../lib/contentInvalidation';
+import { applyCacheControl, CACHE_CONTROL } from '../../../lib/httpCache';
 
 type BlogStatus = 'draft' | 'published';
 type BlogLayout = 'standard' | 'magazine' | 'minimal';
@@ -135,8 +135,7 @@ export async function GET(req: NextRequest) {
       const cached = getCache<any>(cacheKey);
       if (cached) {
         const response = NextResponse.json(cached);
-        response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
-        response.headers.set('Vary', 'Accept-Encoding');
+        applyCacheControl(response, CACHE_CONTROL.PUBLIC_FEED, true);
         return response;
       }
     }
@@ -183,8 +182,7 @@ export async function GET(req: NextRequest) {
 
     const response = NextResponse.json(payload);
     if (canCache) {
-      response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
-      response.headers.set('Vary', 'Accept-Encoding');
+      applyCacheControl(response, CACHE_CONTROL.PUBLIC_FEED, true);
     }
     return response;
   } catch (error) {
@@ -256,13 +254,10 @@ export async function POST(req: NextRequest) {
 
     const result = await coll.insertOne(doc);
 
-    delCachePrefix('blog:list:');
-    invalidateCachePrefix('home:');
-    revalidatePath('/blog');
-    if (doc.status === 'published') {
-      revalidatePath('/');
-      revalidatePath(`/blog/${doc.slug}`);
-    }
+    invalidateBlogContent({
+      includeHome: doc.status === 'published',
+      detailPath: doc.status === 'published' ? `/blog/${doc.slug}` : undefined,
+    });
 
     return NextResponse.json({
       ok: true,

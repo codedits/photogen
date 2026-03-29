@@ -1,13 +1,12 @@
-import { NextResponse } from "next/server";
 import getDatabase from "@/lib/mongodb";
 import { isAdminRequest } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
-import { invalidateCachePrefix } from "@/lib/multiLayerCache";
+import { invalidateHomeContent } from "@/lib/contentInvalidation";
+import { noStoreJson } from "@/lib/httpCache";
 import cloudinary from "@/lib/cloudinary";
 
 export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return noStoreJson({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -29,15 +28,15 @@ export async function GET(req: Request) {
       secondaryCtaLink: "/contact"
     };
 
-    return NextResponse.json(settings || defaultSettings);
+    return noStoreJson(settings || defaultSettings);
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
+    return noStoreJson({ error: "Failed to fetch settings" }, { status: 500 });
   }
 }
 
 export async function PATCH(req: Request) {
   if (!isAdminRequest(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return noStoreJson({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -106,13 +105,11 @@ export async function PATCH(req: Request) {
       }
     }
 
-    invalidateCachePrefix("home:");
-    // Trigger on-demand revalidation for the home page
-    revalidatePath("/");
+    invalidateHomeContent();
 
-    return NextResponse.json({ ok: true });
+    return noStoreJson({ ok: true });
   } catch (error) {
     console.error("Hero settings update failed:", error);
-    return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
+    return noStoreJson({ error: "Failed to update settings" }, { status: 500 });
   }
 }

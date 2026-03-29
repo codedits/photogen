@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
 import { clearAdminCookie } from '../../../../lib/auth';
+import { noStoreJson } from '@/lib/httpCache';
 
 export async function POST() {
-  const res = NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
+  const res = noStoreJson({ ok: true });
   clearAdminCookie(res);
   return res;
 }

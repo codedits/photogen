@@ -3,10 +3,9 @@ import { isAdminRequest } from "../../../../lib/auth";
 import getDatabase, { ensurePresetIndexes } from "../../../../lib/mongodb";
 import { uploadImages } from "../../../../lib/cloudinary";
 import cloudinary from "../../../../lib/cloudinary";
-import { delCachePrefix } from '../../../../lib/simpleCache';
 import { ObjectId } from "mongodb";
-import { revalidatePath } from 'next/cache';
-import type { UploadApiOptions, UploadApiResponse } from 'cloudinary';
+import { invalidatePresetContent } from '../../../../lib/contentInvalidation';
+import { CACHE_CONTROL } from '../../../../lib/httpCache';
 
 type PresetDoc = {
   _id: ObjectId;
@@ -42,7 +41,6 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
     let imagesRaw: (string | { url: string; public_id: string })[] = [];
     let removePublicIds: string[] = [];
     let newDngUrl: string | null = null;
-    let toUpload: string[] = [];
     let orderPublicIdsManual: string[] = [];
 
     if (contentType.includes('multipart/form-data')) {
@@ -133,7 +131,7 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
 
     // If new DNG URL was provided, attempt to destroy old Cloudinary entry if it existed
     if (newDngUrl && existing.dng?.public_id) {
-      try { await cloudinary.uploader.destroy(existing.dng.public_id, { resource_type: 'raw' }); } catch {}
+      try { await cloudinary.uploader.destroy(existing.dng.public_id, { resource_type: 'raw', invalidate: true }); } catch {}
     }
 
     // set cover image to first image or null
@@ -153,15 +151,12 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
 
     if (removablePublicIds.length) {
       for (const pid of removablePublicIds) {
-        try { await cloudinary.uploader.destroy(pid); } catch {}
+        try { await cloudinary.uploader.destroy(pid, { invalidate: true }); } catch {}
       }
     }
-    
-    try { delCachePrefix('presets:'); } catch {}
-    revalidatePath('/');
-    revalidatePath('/presets');
-    revalidatePath(`/presets/${id}`);
-    return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
+
+    invalidatePresetContent({ detailPath: `/presets/${id}` });
+    return NextResponse.json({ ok: true }, { headers: { 'cache-control': CACHE_CONTROL.NO_STORE } });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
@@ -208,12 +203,9 @@ export async function DELETE(req: Request, { params }: { params?: { id: string }
     // delete images in parallel (best-effort)
     const imgDeletes = images.map((img) => img.public_id ? cloudinary.uploader.destroy(img.public_id, { invalidate: true }).catch(() => null) : Promise.resolve(null));
     await Promise.allSettled(imgDeletes);
-    // clear in-memory cache so list endpoints reflect deletion immediately
-    try { delCachePrefix('presets:'); } catch {}
-    revalidatePath('/');
-    revalidatePath('/presets');
-    revalidatePath(`/presets/${id}`);
-    return NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
+
+    invalidatePresetContent({ detailPath: `/presets/${id}` });
+    return NextResponse.json({ ok: true }, { headers: { 'cache-control': CACHE_CONTROL.NO_STORE } });
   } catch (_err: unknown) {
     const message = _err instanceof Error ? _err.message : String(_err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

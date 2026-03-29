@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
 import { isAdminRequest } from '../../../../lib/auth';
+import { noStoreJson } from '@/lib/httpCache';
 
 export async function GET(req: Request) {
   const ok = isAdminRequest(req);
-  return NextResponse.json({ ok }, { headers: { 'cache-control': 'no-store' } });
+  return noStoreJson({ ok });
 }

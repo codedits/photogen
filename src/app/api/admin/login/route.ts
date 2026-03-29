@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { setAdminCookie } from '../../../../lib/auth';
+import { noStoreJson } from '@/lib/httpCache';
 
 export async function POST(req: Request) {
   const contentType = req.headers.get('content-type') || '';
@@ -25,9 +25,9 @@ export async function POST(req: Request) {
   }
   const expected = process.env.ADMIN_PASSWORD || 'kauntalha1101';
   if (password !== expected) {
-    return NextResponse.json({ ok: false, error: 'Invalid password' }, { status: 401 });
+    return noStoreJson({ ok: false, error: 'Invalid password' }, { status: 401 });
   }
-  const res = NextResponse.json({ ok: true }, { headers: { 'cache-control': 'no-store' } });
+  const res = noStoreJson({ ok: true });
   setAdminCookie(res, remember);
   return res;
 }

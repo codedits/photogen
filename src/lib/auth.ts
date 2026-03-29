@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 
-const COOKIE_NAME = 'pg_admin';
+export const ADMIN_COOKIE_NAME = 'pg_admin';
 
 function getAdminPassword() {
   return process.env.ADMIN_PASSWORD || 'kauntalha1101';
@@ -35,7 +35,7 @@ export function isAdminRequest(req: Request): boolean {
   try {
     const cookie = req.headers.get('cookie');
     const map = parseCookieHeader(cookie);
-    const val = map[COOKIE_NAME];
+    const val = map[ADMIN_COOKIE_NAME];
     if (!val) return false;
     return val === adminToken();
   } catch {
@@ -46,7 +46,7 @@ export function isAdminRequest(req: Request): boolean {
 export function setAdminCookie(res: NextResponse, remember = true) {
   const secure = process.env.NODE_ENV === 'production';
   const base = {
-    name: COOKIE_NAME,
+    name: ADMIN_COOKIE_NAME,
     value: adminToken(),
     httpOnly: true,
     sameSite: 'strict' as const,
@@ -64,7 +64,7 @@ export function setAdminCookie(res: NextResponse, remember = true) {
 export function clearAdminCookie(res: NextResponse) {
   const secure = process.env.NODE_ENV === 'production';
   res.cookies.set({
-    name: COOKIE_NAME,
+    name: ADMIN_COOKIE_NAME,
     value: '',
     httpOnly: true,
     sameSite: 'strict',

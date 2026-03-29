@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import getDatabase from "@/lib/mongodb";
+import { noStoreJson } from "@/lib/httpCache";
 
 export async function POST(req: Request) {
   try {
@@ -10,11 +10,11 @@ export async function POST(req: Request) {
     const message = String(body?.message || "").trim();
 
     if (!name || !email || !message) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return noStoreJson({ error: "Missing required fields" }, { status: 400 });
     }
 
     if (!/^\S+@\S+\.\S+$/.test(email)) {
-      return NextResponse.json({ error: "Invalid email" }, { status: 400 });
+      return noStoreJson({ error: "Invalid email" }, { status: 400 });
     }
 
     const db = await getDatabase();
@@ -29,8 +29,8 @@ export async function POST(req: Request) {
     console.log("CONTACT FORM SUBMISSION:", { targetEmail, name, email, subject, message });
 
     // Success response
-    return NextResponse.json({ ok: true, message: "Message sent! We'll get back to you soon." });
+    return noStoreJson({ ok: true, message: "Message sent! We'll get back to you soon." });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
+    return noStoreJson({ error: "Failed to send message" }, { status: 500 });
   }
 }

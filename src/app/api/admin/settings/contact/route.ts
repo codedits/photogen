@@ -1,12 +1,11 @@
-import { NextResponse } from "next/server";
 import getDatabase from "@/lib/mongodb";
 import { isAdminRequest } from "@/lib/auth";
-import { invalidateCachePrefix } from "@/lib/multiLayerCache";
-import { revalidatePath } from "next/cache";
+import { invalidateContactContent } from "@/lib/contentInvalidation";
+import { noStoreJson } from "@/lib/httpCache";
 
 export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return noStoreJson({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -27,10 +26,10 @@ export async function GET(req: Request) {
     };
 
     if (!settings) {
-      return NextResponse.json(defaultSettings);
+      return noStoreJson(defaultSettings);
     }
 
-    return NextResponse.json({
+    return noStoreJson({
       email: typeof (settings as any).email === 'string' ? (settings as any).email : defaultSettings.email,
       phone: typeof (settings as any).phone === 'string' ? (settings as any).phone : defaultSettings.phone,
       address: typeof (settings as any).address === 'string' ? (settings as any).address : defaultSettings.address,
@@ -42,13 +41,13 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
+    return noStoreJson({ error: "Failed to fetch settings" }, { status: 500 });
   }
 }
 
 export async function PATCH(req: Request) {
   if (!isAdminRequest(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return noStoreJson({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -80,12 +79,10 @@ export async function PATCH(req: Request) {
       { upsert: true }
     );
 
-    invalidateCachePrefix("home:");
-    invalidateCachePrefix("contact:");
-    revalidatePath('/contact');
+    invalidateContactContent();
 
-    return NextResponse.json({ ok: true });
+    return noStoreJson({ ok: true });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
+    return noStoreJson({ error: "Failed to update settings" }, { status: 500 });
   }
 }

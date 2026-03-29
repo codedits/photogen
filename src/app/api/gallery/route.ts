@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdminRequest } from '../../../lib/auth';
 import getDatabase, { ensureGalleryIndexes } from '../../../lib/mongodb';
-import { delCachePrefix, getCache, setCache } from '../../../lib/simpleCache';
-import { invalidateCachePrefix } from '../../../lib/multiLayerCache';
-import { revalidatePath } from 'next/cache';
+import { getCache, setCache } from '../../../lib/simpleCache';
+import { invalidateGalleryContent } from '../../../lib/contentInvalidation';
+import { applyCacheControl, CACHE_CONTROL } from '../../../lib/httpCache';
 
 // Gallery document type
 export type GalleryDoc = {
@@ -112,8 +112,7 @@ export async function GET(req: NextRequest) {
       const cached = getCache<{ success: boolean; items: GalleryDoc[]; total: number; pagination: { total: number; skip: number; limit: number; hasMore: boolean } }>(listCacheKey);
       if (cached) {
         const response = NextResponse.json(cached);
-        response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
-        response.headers.set('Vary', 'Accept-Encoding');
+        applyCacheControl(response, CACHE_CONTROL.PUBLIC_FEED, true);
         return response;
       }
     }
@@ -160,8 +159,7 @@ export async function GET(req: NextRequest) {
 
     // Cache public requests for 120 seconds
     if (visibility === 'public') {
-      response.headers.set('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
-      response.headers.set('Vary', 'Accept-Encoding');
+      applyCacheControl(response, CACHE_CONTROL.PUBLIC_FEED, true);
     }
 
     return response;
@@ -233,11 +231,7 @@ export async function POST(req: NextRequest) {
     
     const result = await coll.insertOne(galleryDoc);
 
-    delCachePrefix('gallery:list:');
-    delCachePrefix('gallery:count:');
-    invalidateCachePrefix('home:');
-    revalidatePath('/');
-    revalidatePath('/gallery');
+    invalidateGalleryContent();
     
     return NextResponse.json({
       ok: true,

@@ -78,6 +78,8 @@ export default function FeaturedGallery({ items }: FeaturedGalleryProps) {
               className="w-full"
               sizes="(max-width: 768px) 100vw, 50vw"
               parallax={false}
+              width={2000}
+              quality="auto:best"
             />
           ))}
         </div>

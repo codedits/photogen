@@ -26,6 +26,7 @@ interface GalleryCardProps {
   width?: number; // Base width for Cloudinary transform
   height?: number | string; 
   parallax?: boolean;
+  quality?: string;
 }
 
 const ParallaxMedia = memo(function ParallaxMedia({
@@ -64,7 +65,8 @@ const GalleryCard = ({
   sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
   width = 1200,
   parallax = false,
-  height
+  height,
+  quality = "auto:good"
 }: GalleryCardProps) => {
   const [isMobile, setIsMobile] = React.useState(false);
   React.useEffect(() => {
@@ -102,7 +104,7 @@ const GalleryCard = ({
   const transformOpts = { 
     w: width, 
     h: cloudinaryHeight || 800,
-    q: 'auto:good' 
+    q: quality 
   };
 
   return (

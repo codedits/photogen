@@ -1,26 +1,33 @@
+import { Skeleton, GallerySkeleton } from "@/components/ui/Skeleton";
+
 export default function PresetsLoading() {
   return (
-    <main className="min-h-screen w-full text-foreground bg-background relative">
-      <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 lg:px-16 pt-32 pb-24">
-        <header className="mb-16 pb-8 border-b border-border">
-          <div className="h-3 w-16 bg-card/60 border border-border animate-pulse" />
-          <div className="mt-6 h-10 w-56 bg-card/60 border border-border animate-pulse" />
-          <div className="mt-4 h-4 w-72 bg-card/60 border border-border animate-pulse" />
-        </header>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} className="border border-border bg-card/40 rounded-xl overflow-hidden">
-              <div className="aspect-[4/5] bg-background/60 animate-pulse" />
-              <div className="p-4 space-y-3">
-                <div className="h-4 w-2/3 bg-background/60 animate-pulse" />
-                <div className="h-3 w-full bg-background/60 animate-pulse" />
-                <div className="h-3 w-3/4 bg-background/60 animate-pulse" />
+    <main className="min-h-screen bg-background text-foreground">
+      <section className="mx-auto max-w-7xl px-6 pt-32 pb-16">
+        <Skeleton className="h-4 w-24 mb-4" />
+        <Skeleton className="h-14 w-[min(600px,90%)] mb-6" />
+        <Skeleton className="h-6 w-[min(400px,85%)] mb-12" />
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 mt-12">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-2xl border border-border bg-card overflow-hidden">
+              <Skeleton className="aspect-video w-full rounded-none" />
+              <div className="p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <Skeleton className="h-7 w-1/3" />
+                  <Skeleton className="h-5 w-16" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+                <div className="flex gap-2 pt-2">
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </section>
     </main>
   );
 }

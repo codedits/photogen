@@ -10,6 +10,7 @@ import { ensurePresetIndexes } from "../lib/mongodb";
 import { ThemeProvider } from "../components/ThemeProvider";
 import CustomCursor from "../components/CustomCursor";
 import { getStoreConfig, getThemeCookieBootstrapScript, toThemeCssVariables } from "@/services/config";
+import { Providers } from "../components/Providers";
 
 
 const dmSans = DM_Sans({
@@ -87,14 +88,16 @@ export default async function RootLayout({
         />
       </head>
       <body className="font-sans antialiased bg-background text-foreground">
-        <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
-          <CustomCursor />
-          <Nav />
-          {children}
-          <LazyChatWidget />
-          <Footer />
-          <VercelAnalytics />
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
+            <CustomCursor />
+            <Nav />
+            {children}
+            <LazyChatWidget />
+            <Footer />
+            <VercelAnalytics />
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );

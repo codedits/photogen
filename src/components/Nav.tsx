@@ -85,7 +85,6 @@ export default function Nav() {
     <LayoutGroup>
       <header className="fixed top-0 left-0 right-0 z-[999] pointer-events-none flex justify-center px-4">
         <motion.div
-          key={pathname}
           layout
           initial={prefersReducedMotion ? { opacity: 0 } : { y: -100, opacity: 0 }}
           animate={prefersReducedMotion ? { opacity: 1 } : { y: 0, opacity: 1 }}

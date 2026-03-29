@@ -34,6 +34,10 @@ const nextConfig: NextConfig = {
   // Optimize packages
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion'],
+    staleTimes: {
+      dynamic: 300,
+      static: 3600,
+    },
   },
 };
 

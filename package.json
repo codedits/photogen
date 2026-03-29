@@ -11,6 +11,7 @@
     "test:mongo": "node ./scripts/test-mongo.cjs"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.95.2",
     "@tiptap/extension-image": "^3.20.5",
     "@tiptap/extension-link": "^3.20.5",
     "@tiptap/extension-placeholder": "^3.20.5",
@@ -39,6 +40,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-virtualized-auto-sizer": "^1.0.4",
+    "@types/react-window": "^1.8.8",
     "eslint": "^9",
     "eslint-config-next": "^16.0.7",
     "tailwindcss": "^4.1.13",

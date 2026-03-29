@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
+import React, { useEffect, useState, useDeferredValue } from "react";
 import PresetCard from "./PresetCard";
 import Link from "next/link";
 import { AutoSizer } from "react-virtualized-auto-sizer";
 import { Grid, type CellComponentProps } from "react-window";
+import { useQuery } from "@tanstack/react-query";
 
 type PresetShape = {
   id: string;
@@ -18,42 +19,24 @@ type PresetShape = {
 
 export default function LiveSearchPresets({ initial = [] }: { initial?: PresetShape[] }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PresetShape[]>(initial);
-  const [loading, setLoading] = useState(false);
-  const [isPending, startTransition] = useTransition();
-
-  // debounce
+  
+  // debounce (using handrolled for fine-grained search control if needed, but useQuery handles most)
   const debouncedQuery = useDebounce(query, 300);
-  const deferredResults = useDeferredValue(results);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const { data: results = initial, isLoading } = useQuery({
+    queryKey: ['presets', debouncedQuery],
+    queryFn: async ({ signal }) => {
+      const url = debouncedQuery ? `/api/presets?q=${encodeURIComponent(debouncedQuery)}` : `/api/presets`;
+      const res = await fetch(url, { signal });
+      if (!res.ok) throw new Error('Failed to fetch');
+      const json = await res.json();
+      return json.presets as PresetShape[];
+    },
+    staleTime: 5 * 60 * 1000, 
+  });
 
-    async function run() {
-      setLoading(true);
-      try {
-        // fallback to server search for broader results / when no initial data
-        const url = debouncedQuery ? `/api/presets?q=${encodeURIComponent(debouncedQuery)}` : `/api/presets`;
-        const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
-        const data = await res.json();
-        if (data?.ok && Array.isArray(data.presets)) {
-          startTransition(() => setResults(data.presets));
-        }
-      } catch (err) {
-        if ((err as Error)?.name === 'AbortError') return;
-        // ignore
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    run();
-    return () => controller.abort();
-  }, [debouncedQuery]);
-
-  const shouldVirtualize = deferredResults.length > 16;
-
-  const cardItems = useMemo(() => deferredResults, [deferredResults]);
+  const shouldVirtualize = results.length > 16;
+  const cardItems = results;
 
   return (
     <div>
@@ -67,14 +50,14 @@ export default function LiveSearchPresets({ initial = [] }: { initial?: PresetSh
         <button type="button" onClick={() => setQuery('')} className="px-3 py-2 rounded bg-secondary hover:bg-secondary/80 transition-colors text-foreground">Clear</button>
       </div>
 
-      {(loading || isPending) && <div className="text-sm text-muted-foreground mb-2">Searching…</div>}
+      {isLoading && <div className="text-sm text-muted-foreground mb-2 animate-pulse">Searching…</div>}
 
       {shouldVirtualize ? (
         <div className="h-[75vh] w-full">
           <AutoSizer
-            renderProp={({ height, width }) => {
-              const safeWidth = width ?? 0;
-              const safeHeight = height ?? 0;
+            renderProp={({ height, width }: { height: number | undefined; width: number | undefined }) => {
+              const safeWidth = width || 0;
+              const safeHeight = height || 0;
 
               if (safeWidth === 0 || safeHeight === 0) {
                 return null;
@@ -139,7 +122,7 @@ function VirtualPresetCell({
 
   return (
     <div style={{ ...style, padding: 10 }}>
-      <Link href={`/presets/${preset.id}`} prefetch={false} className="group inline-block rounded-2xl w-full">
+      <Link href={`/presets/${preset.id}`} prefetch className="group inline-block rounded-2xl w-full">
         <PresetCard
           preset={{
             id: preset.id,

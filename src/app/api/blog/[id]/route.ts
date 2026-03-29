@@ -298,6 +298,9 @@ export async function DELETE(
 
     delCachePrefix('blog:list:');
     invalidateCachePrefix('home:');
+    if (existing.status === 'published') {
+      revalidatePath('/');
+    }
     revalidatePath('/blog');
     revalidatePath(`/blog/${existing.slug}`);
 

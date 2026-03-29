@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import getDatabase from "@/lib/mongodb";
 import { isAdminRequest } from "@/lib/auth";
 import { invalidateCachePrefix } from "@/lib/multiLayerCache";
+import { revalidatePath } from "next/cache";
 
 export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
@@ -81,6 +82,7 @@ export async function PATCH(req: Request) {
 
     invalidateCachePrefix("home:");
     invalidateCachePrefix("contact:");
+    revalidatePath('/contact');
 
     return NextResponse.json({ ok: true });
   } catch (error) {

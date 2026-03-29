@@ -260,6 +260,7 @@ export async function POST(req: NextRequest) {
     invalidateCachePrefix('home:');
     revalidatePath('/blog');
     if (doc.status === 'published') {
+      revalidatePath('/');
       revalidatePath(`/blog/${doc.slug}`);
     }
 

@@ -15,6 +15,7 @@ const GalleryForm = lazy(() => import('./components/GalleryForm'));
 const BlogForm = lazy(() => import('./components/BlogForm'));
 const SettingsManagement = lazy(() => import('./SettingsManagement'));
 const HeroSettingsManagement = lazy(() => import('./HeroSettingsManagement'));
+const ThemeSettingsManagement = lazy(() => import('./ThemeSettingsManagement'));
 
 type PresetRow = {
   id: string;
@@ -41,7 +42,7 @@ type BlogRow = {
 };
 
 export type AdminView = 
-  | { type: 'list'; tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero' }
+  | { type: 'list'; tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero' | 'theme' }
   | { type: 'create-preset' }
   | { type: 'edit-preset'; preset: PresetRow }
   | { type: 'create-gallery' }
@@ -267,7 +268,7 @@ export default function AdminPage() {
     const currentView = viewRef.current;
     const isEditingForm =
       currentView.type !== 'list' ||
-      (currentView.type === 'list' && (currentView.tab === 'contact' || currentView.tab === 'hero'));
+      (currentView.type === 'list' && (currentView.tab === 'contact' || currentView.tab === 'hero' || currentView.tab === 'theme'));
 
     if (!options?.skipUnsavedGuard && isEditingForm && formDirtyRef.current) {
       setPendingView(nextView);
@@ -298,7 +299,7 @@ export default function AdminPage() {
     setPendingView(null);
   }, []);
 
-  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero') => {
+  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero' | 'theme') => {
     requestViewChange({ type: 'list', tab });
   }, [requestViewChange]);
 
@@ -474,7 +475,9 @@ export default function AdminPage() {
           ? 'Blog'
           : activeTab === 'contact'
             ? 'Contact Page'
-            : 'Hero Section'
+            : activeTab === 'hero'
+              ? 'Hero Section'
+              : 'Theme System'
     : view.type.includes('preset')
       ? 'Edit Preset'
       : view.type.includes('gallery')
@@ -563,6 +566,9 @@ export default function AdminPage() {
                 )}
                 {view.type === 'list' && (activeTab as string) === 'hero' && (
                   <HeroSettingsManagement onDirtyChange={handleFormDirtyChange} />
+                )}
+                {view.type === 'list' && (activeTab as string) === 'theme' && (
+                  <ThemeSettingsManagement onDirtyChange={handleFormDirtyChange} />
                 )}
                 {view.type === 'create-preset' && (
                   <PresetForm 

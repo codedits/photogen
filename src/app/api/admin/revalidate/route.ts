@@ -16,6 +16,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Default: Revalidate core paths
+    revalidatePath('/', 'layout');
+    revalidatePath('/contact');
     revalidatePath('/gallery');
     revalidatePath('/presets');
     revalidatePath('/blog');

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { DM_Sans, Geist_Mono } from "next/font/google";
+import type { CSSProperties } from "react";
 import "./globals.css";
 import Nav from "../components/Nav";
 import LazyChatWidget from "../components/LazyChatWidget";
@@ -8,6 +9,7 @@ import VercelAnalytics from "../components/VercelAnalytics";
 import { ensurePresetIndexes } from "../lib/mongodb";
 import { ThemeProvider } from "../components/ThemeProvider";
 import CustomCursor from "../components/CustomCursor";
+import { getStoreConfig, getThemeCookieBootstrapScript, toThemeCssVariables } from "@/services/config";
 
 
 const dmSans = DM_Sans({
@@ -50,6 +52,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const config = await getStoreConfig();
+  const rootThemeStyle = toThemeCssVariables(config.theme) as CSSProperties;
+
   // Warm DB indexes / connection in the background during initial render.
   // We don't await aggressively to avoid slowing SSR; this kicks off the promise.
   try {
@@ -57,12 +62,23 @@ export default async function RootLayout({
   } catch { }
 
   return (
-    <html lang="en" suppressHydrationWarning className={`${dmSans.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${dmSans.variable} ${geistMono.variable}`}
+      style={rootThemeStyle}
+    >
       <head>
         <link rel="icon" href="/gen.svg" />
         {/* Preconnect to Cloudinary to improve image fetch latency */}
         <link rel="preconnect" href="https://res.cloudinary.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+        {/* Cookie-mirrored token override to apply fresh admin theme values before paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: getThemeCookieBootstrapScript(),
+          }}
+        />
         {/* Inline script to apply theme BEFORE first paint — eliminates light-mode flash */}
         <script
           dangerouslySetInnerHTML={{

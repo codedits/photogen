@@ -236,6 +236,7 @@ export async function POST(req: NextRequest) {
     delCachePrefix('gallery:list:');
     delCachePrefix('gallery:count:');
     invalidateCachePrefix('home:');
+    revalidatePath('/');
     revalidatePath('/gallery');
     
     return NextResponse.json({

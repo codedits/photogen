@@ -18,9 +18,12 @@ export async function GET() {
       }
     };
 
-    // Strip internal fields like formEmail for public consumption if needed
-    // though it's generally fine to show a public submissions email.
-    return NextResponse.json(settings || defaultSettings);
+    if (!settings) {
+      return NextResponse.json(defaultSettings);
+    }
+
+    const { _id, updatedAt, formEmail, ...publicSettings } = settings as any;
+    return NextResponse.json(publicSettings);
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch contact info" }, { status: 500 });
   }

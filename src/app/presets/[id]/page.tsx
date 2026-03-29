@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { cache } from 'react';
 import { ObjectId } from 'mongodb';
 import Link from 'next/link';
-import { ArrowLeft, Download, Hash, Info, Layers, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Download, Hash, Info, Layers, AlertCircle, Camera, CheckCircle2 } from 'lucide-react';
 import getDatabase from '../../../lib/mongodb';
-import PresetGallery from './PresetGallery'; // Import the component from Part 1
+import ImageWithLqip from '../../../components/ImageWithLqip';
+import GalleryImageGrid from '../../../components/GalleryImageGrid';
+import Carousel from '../../../components/Carousel';
+import LiquidRiseCTA from '../../../components/LiquidRiseCTA';
+import ScrollToTop from '../../../components/ScrollToTop';
 
 // --- TYPES ---
 type PresetDoc = {
@@ -13,6 +17,7 @@ type PresetDoc = {
   images?: { url: string; public_id: string }[];
   tags?: string[];
   dng?: { url: string; public_id?: string; format?: string } | null;
+  category?: string; // Adding for consistent mapping
 };
 
 // --- DATABASE HELPERS ---
@@ -20,7 +25,7 @@ function isValidObjectId(id: string) {
   return /^[0-9a-fA-F]{24}$/.test(id);
 }
 
-async function getPreset(id: string) {
+const getPreset = cache(async (id: string) => {
   if (!id || !isValidObjectId(id)) return null;
   try {
     const db = await getDatabase();
@@ -31,7 +36,7 @@ async function getPreset(id: string) {
     console.error("DB Error:", e);
     return null;
   }
-}
+});
 
 // --- SSG / ISR CONFIG ---
 export const revalidate = false; // On-demand revalidation only
@@ -55,9 +60,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const preset = await getPreset(id);
 
   if (!preset) {
-    return {
-      title: 'Preset Not Found | PhotoGen',
-    };
+    return { title: 'Asset Not Found | PhotoGen' };
   }
 
   return {
@@ -71,7 +74,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 // --- MAIN PAGE COMPONENT ---
 export default async function PresetDetail({ params }: { params: Promise<{ id: string }> }) {
-  // Await params for Next.js 15 compatibility
   const resolvedParams = await params;
   const id = resolvedParams?.id || '';
   const preset = await getPreset(id);
@@ -79,19 +81,13 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
   // --- 404 STATE ---
   if (!preset) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-white space-y-6">
-        <div className="relative">
-          <Layers className="w-16 h-16 text-neutral-800" />
-          <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground space-y-6">
+        <Layers className="w-16 h-16 text-muted-foreground/60" />
         <div className="text-center">
           <h2 className="text-xl font-light tracking-tighter uppercase mb-2">Asset Not Found</h2>
-          <p className="text-neutral-500 text-xs font-mono uppercase tracking-widest mb-8">
-            ID: {id || 'UNDEFINED'}
-          </p>
-          <Link
-            href="/presets"
-            className="px-6 py-3 border border-white/20 hover:bg-white hover:text-black hover:border-transparent text-xs font-normal uppercase tracking-[0.2em] transition-all"
+          <Link 
+            href="/presets" 
+            className="px-6 py-3 border border-border hover:bg-foreground hover:text-background text-xs font-normal uppercase tracking-[0.2em] transition-all"
           >
             Return to Index
           </Link>
@@ -100,130 +96,134 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
     );
   }
 
-  // Safe data extraction
   const images = Array.isArray(preset.images) ? preset.images : [];
+  const carouselItems = images.map(img => ({ url: img.url, alt: preset.name }));
 
   return (
-    <main className="min-h-screen bg-background text-foreground selection:bg-foreground/20">
-
+    <main className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground/20">
+      <ScrollToTop />
+      
       {/* Global Grain Texture */}
       <div className="fixed inset-0 z-0 opacity-[0.03] pointer-events-none mix-blend-overlay"
         style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }} />
 
-      {/* --- FLOATING NAV --- */}
-      <nav className="fixed top-0 left-0 h-16 px-6 z-50 flex items-center">
-        <Link
-          href="/presets"
-          className="group flex items-center gap-2 px-4 py-2 bg-background/50 backdrop-blur-md border border-border rounded-full hover:bg-foreground hover:text-background transition-all"
-        >
-          <ArrowLeft className="w-3 h-3 transition-transform group-hover:-translate-x-1" />
-          <span className="text-[10px] uppercase tracking-widest font-normal">Back</span>
-        </Link>
-      </nav>
-
-      {/* --- SPLIT LAYOUT --- */}
-      <div className="flex flex-col lg:flex-row min-h-screen">
-
-        {/* LEFT: IMMERSIVE GALLERY (65% width) */}
-        <div className="w-full lg:w-[65%] xl:w-[70%] relative z-10">
-          <PresetGallery images={images} presetName={preset.name || 'Untitled'} />
+      <div className="max-w-[1600px] mx-auto px-[2px] md:px-8 lg:px-10 pt-28 md:pt-32 pb-10 md:pb-16 lg:pb-20 relative z-10">
+        
+        {/* Mobile Header: Carousel (Hidden on Desktop) */}
+        <div className="block lg:hidden mb-10 w-full px-4">
+          <Carousel items={carouselItems} showDots={true} showThumbs={true} autoPlay={false} />
         </div>
 
-        {/* RIGHT: DETAILS SIDEBAR (35% width) */}
-        <aside className="w-full lg:w-[35%] xl:w-[30%] bg-background border-l-0 lg:border-l border-border flex flex-col relative z-20">
-
-          <div className="p-8 lg:p-12 flex-grow">
-
-            {/* Header Block */}
-            <div className="mb-12 pt-8 lg:pt-16">
-              <div className="flex items-center gap-2 text-emerald-500 mb-4">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-[9px] uppercase tracking-widest font-mono text-muted-foreground">Active Asset</span>
-              </div>
-
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-medium uppercase tracking-tighter leading-[0.85] text-foreground mb-6">
-                {preset.name || 'Untitled'}
-              </h1>
-
-              <div className="w-12 h-[1px] bg-border" />
-            </div>
-
-            {/* Description */}
-            <div className="mb-12">
-              <h3 className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground mb-3 font-mono">
-                <Info className="w-3 h-3" /> Info
-              </h3>
-              <p className="text-sm leading-7 text-muted-foreground font-light">
-                {preset.description || (
-                  <span className="italic opacity-50">No description provided for this grading asset.</span>
-                )}
-              </p>
-            </div>
-
-            {/* Tags */}
-            <div className="mb-12">
-              <h3 className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground mb-3 font-mono">
-                <Hash className="w-3 h-3" /> Attributes
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {preset.tags && preset.tags.length > 0 ? (
-                  preset.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-2 py-1 bg-secondary border border-border text-[10px] uppercase tracking-wider text-muted-foreground"
-                    >
-                      {tag}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-[10px] text-muted-foreground/50 font-mono">NULL</span>
-                )}
-              </div>
-            </div>
-
-            {/* Metadata (Visual Filler) */}
-            <div className="grid grid-cols-2 gap-4 pt-8 border-t border-border">
-              <div>
-                <span className="block text-[9px] uppercase tracking-widest text-muted-foreground mb-1">ID</span>
-                <span className="font-mono text-[10px] text-muted-foreground">{preset._id.toString().slice(-6).toUpperCase()}</span>
-              </div>
-              <div>
-                <span className="block text-[9px] uppercase tracking-widest text-muted-foreground mb-1">Type</span>
-                <span className="font-mono text-[10px] text-muted-foreground">DIGITAL ASSET</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Sticky Bottom Actions */}
-          <div className="sticky bottom-0 p-8 bg-background/90 backdrop-blur-lg border-t border-border">
-            {preset.dng?.url ? (
-              <a
-                href={preset.dng.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group relative w-full flex items-center justify-center gap-3 py-4 bg-foreground text-background hover:bg-foreground/90 transition-colors"
+        {/* Main Layout Grid */}
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 relative items-start">
+          
+          {/* --- LEFT SIDEBAR (Fixed/Sticky on Desktop) --- */}
+          <aside className="w-full lg:w-[380px] xl:w-[420px] flex-shrink-0 lg:sticky lg:top-32 flex flex-col pb-10 lg:pb-0 px-4 md:px-0 order-2 lg:order-1">
+            
+            <div className="flex flex-col gap-10">
+              {/* Back Link */}
+              <Link 
+                href="/presets" 
+                className="group flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors duration-500 mb-4"
               >
-                <span className="text-xs font-normal uppercase tracking-[0.2em]">Download Asset</span>
-                <Download className="w-4 h-4" />
-                {/* Hover Effect Line */}
-                <div className="absolute bottom-0 left-0 h-[2px] w-0 bg-background transition-all duration-300 group-hover:w-full" />
-              </a>
-            ) : (
-              <button disabled className="w-full flex items-center justify-center gap-2 py-4 bg-secondary text-muted-foreground cursor-not-allowed border border-border">
-                <AlertCircle className="w-4 h-4" />
-                <span className="text-xs font-normal uppercase tracking-[0.2em]">Unavailable</span>
-              </button>
-            )}
-            <p className="text-center mt-3 text-[9px] text-muted-foreground uppercase tracking-widest">
-              Commercial  License Included
-            </p>
-          </div>
+                <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
+                <span className="text-[11px] uppercase tracking-[0.4em]">Back to Index</span>
+              </Link>
 
-        </aside>
+              {/* Header: Preset Info */}
+              <div className="flex items-center gap-3">
+                <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-border/50 transition-colors">
+                  {images[0] && (
+                    <ImageWithLqip 
+                      src={images[0].url} 
+                      alt="Preset Thumbnail" 
+                      fill
+                      className="object-cover"
+                      transformOpts={{ w: 100, q: 20 }}
+                      noBlur={true}
+                    />
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-foreground font-normal text-[17px] tracking-tight leading-tight">{preset.name || 'Untitled'}</h1>
+                  <p className="text-muted-foreground text-[14px] uppercase tracking-widest mt-1 opacity-80">Grading / Preset</p>
+                </div>
+              </div>
+
+              {/* Main Description */}
+              <div className="text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight text-muted-foreground [&_strong]:text-foreground [&_strong]:font-semibold [&_em]:text-foreground [&_em]:italic prose-p:mb-4 last:prose-p:mb-0">
+                {preset.description ? (
+                  <div dangerouslySetInnerHTML={{ __html: preset.description }} />
+                ) : (
+                  <p>Refined color grading for cinematic visual narratives.</p>
+                )}
+              </div>
+
+              {/* Action: Download */}
+              <div className="flex flex-col items-start gap-6">
+                <div className="flex items-center gap-2 text-muted-foreground text-[14px]">
+                  <CheckCircle2 className="w-4 h-4 text-[#10b981]" />
+                  Commercial License Included.
+                </div>
+                
+                {preset.dng?.url ? (
+                  <LiquidRiseCTA href={preset.dng.url}>
+                    <div className="flex items-center gap-2">
+                       Download Preset <Download className="w-3.5 h-3.5" />
+                    </div>
+                  </LiquidRiseCTA>
+                ) : (
+                  <div className="flex items-center gap-2 text-muted-foreground text-[14px] italic opacity-50 px-6 py-3 border border-border/20 rounded-full">
+                    Asset Unavailable
+                  </div>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="w-full h-[1px] bg-border mt-4"></div>
+
+              {/* Technical Details */}
+              <div className="mt-8 flex flex-col gap-6">
+                <div>
+                  <h3 className="text-foreground font-normal text-[17px] mb-3">Attributes.</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {preset.tags && preset.tags.length > 0 ? (
+                      preset.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2.5 py-1 bg-secondary/50 border border-border/50 text-[10px] uppercase tracking-wider text-muted-foreground rounded-sm"
+                        >
+                          {tag}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground/50 font-mono tracking-widest uppercase">General</span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-8 pt-4">
+                  <div>
+                    <span className="text-foreground font-normal text-sm block mb-1">ID: {preset._id.toString().slice(-6).toUpperCase()}</span>
+                    <span className="text-muted-foreground text-[13px] uppercase tracking-wider">Asset Hash</span>
+                  </div>
+                  <div>
+                    <span className="text-foreground font-normal text-sm block mb-1">DNG / XMP</span>
+                    <span className="text-muted-foreground text-[13px] uppercase tracking-wider">Format</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </aside>
+
+          {/* --- RIGHT CONTENT (Desktop: Masonry Grid, Hidden on Mobile for images as they are in carousel) --- */}
+          <main className="flex-1 hidden lg:block overflow-hidden order-1 lg:order-2">
+            <GalleryImageGrid images={images} userName={preset.name || 'User'} />
+          </main>
+        </div>
       </div>
+
     </main>
   );
 }

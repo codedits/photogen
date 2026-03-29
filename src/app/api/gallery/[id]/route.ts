@@ -13,6 +13,32 @@ function isValidObjectId(id: string) {
   return /^[0-9a-fA-F]{24}$/.test(id);
 }
 
+type GalleryImageRef = { url: string; public_id: string };
+
+function sanitizeGalleryImage(input: unknown): GalleryImageRef | null {
+  if (!input || typeof input !== 'object') return null;
+  const src = input as Record<string, unknown>;
+  const url = typeof src.url === 'string' ? src.url.trim() : '';
+  const publicId = typeof src.public_id === 'string' ? src.public_id.trim() : '';
+  if (!url || !publicId) return null;
+  return { url, public_id: publicId };
+}
+
+function normalizeTags(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((tag) => String(tag || '').trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 30);
+}
+
+function parseIso(input: unknown): number | undefined {
+  if (input === undefined || input === null || input === '') return undefined;
+  const parsed = Number.parseInt(String(input), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+  return parsed;
+}
+
 // GET: Get single gallery item by ID
 export async function GET(
   req: NextRequest,
@@ -28,7 +54,6 @@ export async function GET(
     
     const db = await getDatabase();
     const coll = db.collection<GalleryDoc>('gallery');
-    
     const item = await coll.findOne({ _id: new ObjectId(id) });
     
     if (!item) {
@@ -73,20 +98,35 @@ export async function PUT(
     const payload = body as any;
     const db = await getDatabase();
     const coll = db.collection<GalleryDoc>('gallery');
+    const existing = await coll.findOne({ _id: new ObjectId(id) });
+    if (!existing) {
+      return NextResponse.json({ error: 'Gallery item not found' }, { status: 404 });
+    }
     
     // Build update object (only update provided fields)
     const updateDoc: any = {};
     
-    if (payload.name?.trim()) updateDoc.name = payload.name.trim();
+    if (payload.name !== undefined) {
+      const nextName = typeof payload.name === 'string' ? payload.name.trim() : '';
+      if (!nextName) {
+        return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+      }
+      updateDoc.name = nextName;
+    }
     if (payload.description !== undefined) updateDoc.description = payload.description?.trim() || '';
-    if (payload.images?.length) {
-      updateDoc.images = payload.images.map((img: any) => ({
-        url: img.url,
-        public_id: img.public_id
-      }));
+    if (Array.isArray(payload.images)) {
+      const nextImages = payload.images
+        .map((img: unknown) => sanitizeGalleryImage(img))
+        .filter(Boolean) as GalleryImageRef[];
+
+      if (nextImages.length === 0) {
+        return NextResponse.json({ error: 'At least one image is required' }, { status: 400 });
+      }
+
+      updateDoc.images = nextImages;
     }
     if (payload.category?.trim()) updateDoc.category = payload.category.trim();
-    if (Array.isArray(payload.tags)) updateDoc.tags = payload.tags.filter(Boolean);
+    if (payload.tags !== undefined) updateDoc.tags = normalizeTags(payload.tags);
     if (payload.featured !== undefined) updateDoc.featured = Boolean(payload.featured);
     if (payload.visibility) updateDoc.visibility = payload.visibility === 'private' ? 'private' : 'public';
     if (payload.photographer !== undefined) updateDoc.photographer = payload.photographer?.trim() || '';
@@ -97,7 +137,7 @@ export async function PUT(
       updateDoc.metadata = {
         aperture: payload.metadata?.aperture?.trim() || undefined,
         shutter: payload.metadata?.shutter?.trim() || undefined,
-        iso: payload.metadata?.iso ? parseInt(payload.metadata.iso) : undefined,
+        iso: parseIso(payload.metadata?.iso),
         focal_length: payload.metadata?.focal_length?.trim() || undefined,
       };
     }
@@ -106,20 +146,28 @@ export async function PUT(
       { _id: new ObjectId(id) },
       { $set: updateDoc }
     );
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: 'Gallery item not found' }, { status: 404 });
+    }
     
+    const existingImageIds = new Set((existing.images || []).map((img: { public_id: string }) => img.public_id).filter(Boolean));
+    const currentImages = Array.isArray(updateDoc.images) ? updateDoc.images : (existing.images || []);
+    const currentImageIds = new Set(currentImages.map((img: { public_id: string }) => img.public_id).filter(Boolean));
+    const requestedRemovals: string[] = Array.isArray(payload.removePublicIds)
+      ? payload.removePublicIds.filter((pid: unknown): pid is string => typeof pid === 'string' && pid.trim().length > 0)
+      : [];
+    const removablePublicIds = requestedRemovals.filter((pid) => existingImageIds.has(pid) && !currentImageIds.has(pid));
+
     // Process removals from Cloudinary (awaited to prevent serverless cutoff)
-    if (Array.isArray(payload.removePublicIds) && payload.removePublicIds.length > 0) {
-      const deletePromises = payload.removePublicIds.map((pid: string) =>
+    if (removablePublicIds.length > 0) {
+      const deletePromises = removablePublicIds.map((pid: string) =>
         cloudinary.uploader.destroy(pid, { invalidate: true }).catch((e: unknown) => {
           console.error(`Failed to delete Cloudinary image ${pid}:`, e);
           return null;
         })
       );
       await Promise.allSettled(deletePromises);
-    }
-    
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ error: 'Gallery item not found' }, { status: 404 });
     }
 
     delCachePrefix('gallery:list:');
@@ -129,6 +177,7 @@ export async function PUT(
     revalidatePath(`/gallery/${id}`);
     
     return NextResponse.json({
+      ok: true,
       success: true,
       message: 'Gallery item updated successfully'
     });
@@ -198,6 +247,7 @@ export async function DELETE(
     }
     
     return NextResponse.json({
+      ok: true,
       success: true,
       message: 'Gallery item deleted successfully'
     });

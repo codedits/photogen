@@ -2,7 +2,12 @@
 @import "tw-animate-css";
 
 @media (pointer: fine) {
-  html, body, a, button, [role="button"], .group {
+  html.custom-cursor-active, 
+  html.custom-cursor-active body, 
+  html.custom-cursor-active a, 
+  html.custom-cursor-active button, 
+  html.custom-cursor-active [role="button"], 
+  html.custom-cursor-active .group {
     cursor: none !important;
   }
 }

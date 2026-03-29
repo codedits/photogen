@@ -61,7 +61,6 @@ export function usePresets(opts: UsePresetsOptions = {}) {
   const [hasMore, setHasMore] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
   const loadingRef = useRef(false);
-  const pageRef = useRef(initialPage);
 
   const key = `${q}\n${page}\n${limit}`;
 
@@ -137,17 +136,15 @@ export function usePresets(opts: UsePresetsOptions = {}) {
 
   const loadMore = useCallback(() => {
     if (!hasMore || loadingRef.current) return;
-    const next = pageRef.current + 1;
-    pageRef.current = next;
+    const next = page + 1;
     setPage(next);
     fetchPage(next, true);
-  }, [hasMore, fetchPage]);
+  }, [hasMore, page, fetchPage]);
 
   const refresh = useCallback(() => {
     // Clear the cache so stale data isn't served back, then force-fetch from page 1.
     // We do NOT clear items here — keep old items visible until new data arrives.
     clearPresetCache();
-    pageRef.current = initialPage;
     setPage(initialPage);
     fetchPage(initialPage, false, true);
   }, [fetchPage, initialPage]);

@@ -1,10 +1,11 @@
 "use client";
 
-import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUpDown, BookOpenText, Calendar, Clock, Edit2, ExternalLink,
   Eye, EyeOff, Plus, Search, Trash2, X,
 } from 'lucide-react';
+import ConfirmDialog from './components/ConfirmDialog';
 
 export type BlogRow = {
   id: string;
@@ -29,30 +30,43 @@ interface BlogManagementProps {
 type SortKey = 'newest' | 'oldest' | 'title';
 
 function BlogManagement({ onCreate, onEdit, onDelete }: BlogManagementProps) {
+  const isMountedRef = useRef(true);
   const [items, setItems] = useState<BlogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'all' | 'published' | 'draft'>('all');
   const [sort, setSort] = useState<SortKey>('newest');
   const [toggling, setToggling] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<BlogRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const fetchPosts = useCallback(async () => {
+  const fetchPosts = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const res = await fetch('/api/blog?status=all&limit=100', { cache: 'no-store' });
+      const res = await fetch('/api/blog?status=all&limit=100', { cache: 'no-store', signal });
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && isMountedRef.current && !signal?.aborted) {
         setItems((data.posts || []) as BlogRow[]);
       }
     } catch (err) {
-      console.error('Failed to load blog posts', err);
+      if ((err as Error)?.name !== 'AbortError') {
+        console.error('Failed to load blog posts', err);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && !signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchPosts();
+    isMountedRef.current = true;
+    const controller = new AbortController();
+    fetchPosts(controller.signal);
+    return () => {
+      isMountedRef.current = false;
+      controller.abort();
+    };
   }, [fetchPosts]);
 
   const handleToggleStatus = useCallback(async (post: BlogRow) => {
@@ -64,7 +78,7 @@ function BlogManagement({ onCreate, onEdit, onDelete }: BlogManagementProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus }),
       });
-      if (res.ok) {
+      if (res.ok && isMountedRef.current) {
         setItems((prev) =>
           prev.map((p) =>
             p.id === post.id ? { ...p, status: nextStatus, publishedAt: nextStatus === 'published' ? new Date().toISOString() : null } : p
@@ -74,9 +88,31 @@ function BlogManagement({ onCreate, onEdit, onDelete }: BlogManagementProps) {
     } catch (err) {
       console.error('Toggle status failed:', err);
     } finally {
-      setToggling(null);
+      if (isMountedRef.current) {
+        setToggling(null);
+      }
     }
   }, []);
+
+  const requestDelete = useCallback((post: BlogRow) => {
+    setPendingDelete(post);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!pendingDelete || deleting) return;
+    setDeleting(true);
+    try {
+      await onDelete(pendingDelete);
+      await fetchPosts();
+    } catch (err) {
+      console.error('Delete failed:', err);
+    } finally {
+      if (isMountedRef.current) {
+        setDeleting(false);
+        setPendingDelete(null);
+      }
+    }
+  }, [deleting, fetchPosts, onDelete, pendingDelete]);
 
   const filtered = useMemo(() => {
     let result = items.filter((item) => {
@@ -111,6 +147,16 @@ function BlogManagement({ onCreate, onEdit, onDelete }: BlogManagementProps) {
 
   return (
     <div className="space-y-5">
+      <ConfirmDialog
+        isOpen={!!pendingDelete}
+        title="Delete blog post"
+        message={pendingDelete ? `This will permanently delete "${pendingDelete.title}".` : ''}
+        confirmText="Delete"
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => !deleting && setPendingDelete(null)}
+      />
+
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -237,18 +283,7 @@ function BlogManagement({ onCreate, onEdit, onDelete }: BlogManagementProps) {
                         <Edit2 size={13} />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`Delete \"${item.title}\"?`)) {
-                            // Optimistic removal
-                            setItems(prev => prev.filter(p => p.id !== item.id));
-                            onDelete(item)
-                              .then(() => fetchPosts())
-                              .catch(() => {
-                                // Rollback: re-insert the item
-                                setItems(prev => [...prev, item]);
-                              });
-                          }
-                        }}
+                        onClick={() => requestDelete(item)}
                         className="rounded border border-red-900 bg-red-950/40 p-1.5 text-red-300 hover:bg-red-950 transition-colors"
                         title="Delete"
                       >

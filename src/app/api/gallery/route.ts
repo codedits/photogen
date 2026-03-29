@@ -28,6 +28,32 @@ export type GalleryDoc = {
   };
 };
 
+type GalleryImageRef = { url: string; public_id: string };
+
+function sanitizeGalleryImage(input: unknown): GalleryImageRef | null {
+  if (!input || typeof input !== 'object') return null;
+  const src = input as Record<string, unknown>;
+  const url = typeof src.url === 'string' ? src.url.trim() : '';
+  const publicId = typeof src.public_id === 'string' ? src.public_id.trim() : '';
+  if (!url || !publicId) return null;
+  return { url, public_id: publicId };
+}
+
+function normalizeTags(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((tag) => String(tag || '').trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 30);
+}
+
+function parseIso(input: unknown): number | undefined {
+  if (input === undefined || input === null || input === '') return undefined;
+  const parsed = Number.parseInt(String(input), 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+  return parsed;
+}
+
 // Ensure indexes only once per server lifecycle (not per request)
 let indexesEnsured: Promise<void> | null = null;
 function ensureIndexesOnce() {
@@ -168,7 +194,11 @@ export async function POST(req: NextRequest) {
     if (!payload.name?.trim()) {
       return NextResponse.json({ ok: false, error: 'Name is required' }, { status: 400 });
     }
-    if (!payload.images?.length) {
+    const images = Array.isArray(payload.images)
+      ? payload.images.map((img: unknown) => sanitizeGalleryImage(img)).filter(Boolean) as GalleryImageRef[]
+      : [];
+
+    if (images.length === 0) {
       return NextResponse.json({ ok: false, error: 'At least one image is required' }, { status: 400 });
     }
     if (!payload.category?.trim()) {
@@ -181,12 +211,9 @@ export async function POST(req: NextRequest) {
     const galleryDoc: Omit<GalleryDoc, '_id'> = {
       name: payload.name.trim(),
       description: payload.description?.trim() || '',
-      images: payload.images.map((img: any) => ({
-        url: img.url,
-        public_id: img.public_id
-      })),
+      images,
       category: payload.category.trim(),
-      tags: Array.isArray(payload.tags) ? payload.tags.filter(Boolean) : [],
+      tags: normalizeTags(payload.tags),
       featured: Boolean(payload.featured),
       visibility: payload.visibility === 'private' ? 'private' : 'public',
       uploadDate: new Date(),
@@ -196,7 +223,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         aperture: payload.metadata?.aperture?.trim() || undefined,
         shutter: payload.metadata?.shutter?.trim() || undefined,
-        iso: payload.metadata?.iso ? parseInt(payload.metadata.iso) : undefined,
+        iso: parseIso(payload.metadata?.iso),
         focal_length: payload.metadata?.focal_length?.trim() || undefined,
       }
     };
@@ -211,7 +238,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       success: true,
-      id: result.insertedId,
+      id: result.insertedId.toString(),
       message: 'Gallery entry created successfully'
     });
     

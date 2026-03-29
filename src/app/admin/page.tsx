@@ -49,6 +49,10 @@ export type AdminView =
   | { type: 'create-blog' }
   | { type: 'edit-blog'; post: BlogRow };
 
+type ViewChangeOptions = {
+  skipUnsavedGuard?: boolean;
+};
+
 // Toast Context for global notifications
 type Toast = { id: string; message: string; type: 'success' | 'error' | 'info' };
 const ToastContext = createContext<{ addToast: (message: string, type: Toast['type']) => void }>({ addToast: () => {} });
@@ -84,16 +88,36 @@ export default function AdminPage() {
   const [formDirty, setFormDirty] = useState(false);
   const [pendingView, setPendingView] = useState<AdminView | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  const viewRef = useRef<AdminView>(view);
+  const formDirtyRef = useRef(false);
   
   // Toast state
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastTimeoutsRef = useRef<number[]>([]);
   const addToast = useCallback((message: string, type: Toast['type']) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+    const timeoutId = window.setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+      toastTimeoutsRef.current = toastTimeoutsRef.current.filter((tid) => tid !== timeoutId);
+    }, 4000);
+    toastTimeoutsRef.current.push(timeoutId);
   }, []);
   const removeToast = useCallback((id: string) => setToasts(prev => prev.filter(t => t.id !== id)), []);
   const toastContextValue = useMemo(() => ({ addToast }), [addToast]);
+
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+
+  useEffect(() => {
+    formDirtyRef.current = formDirty;
+  }, [formDirty]);
+
+  const handleFormDirtyChange = useCallback((dirty: boolean) => {
+    formDirtyRef.current = dirty;
+    setFormDirty(dirty);
+  }, []);
 
   const { items: list, loading: listLoading, hasMore, loadMore, refresh } = usePresets({ 
     limit: 50, 
@@ -105,8 +129,27 @@ export default function AdminPage() {
   const deletingIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/admin/session', { cache: 'no-store' })
-      .then(r => r.json()).then(d => setAuthed(!!d?.ok)).catch(()=>setAuthed(false));
+    const controller = new AbortController();
+    fetch('/api/admin/session', { cache: 'no-store', signal: controller.signal })
+      .then(r => r.json())
+      .then(d => {
+        if (!controller.signal.aborted) {
+          setAuthed(!!d?.ok);
+        }
+      })
+      .catch((err) => {
+        if ((err as Error)?.name !== 'AbortError') {
+          setAuthed(false);
+        }
+      });
+
+    return () => {
+      controller.abort();
+      for (const timeoutId of toastTimeoutsRef.current) {
+        window.clearTimeout(timeoutId);
+      }
+      toastTimeoutsRef.current = [];
+    };
   }, []);
 
   const doLogin = async (e: React.FormEvent) => {
@@ -135,9 +178,9 @@ export default function AdminPage() {
     addToast('Logged out successfully', 'info');
   }, [addToast]);
 
-  const handleSavePreset = useCallback(async (data: any) => {
-    const isEdit = view.type === 'edit-preset';
-    const url = isEdit ? `/api/presets/${(view as any).preset.id}` : '/api/presets';
+  const handleSavePreset = useCallback(async (data: any, presetId?: string) => {
+    const isEdit = Boolean(presetId);
+    const url = isEdit ? `/api/presets/${presetId}` : '/api/presets';
     const method = isEdit ? 'PATCH' : 'POST';
 
     const form = new FormData();
@@ -169,7 +212,7 @@ export default function AdminPage() {
     if (!res.ok) throw new Error(result.error || 'Failed to save preset');
     refresh();
     addToast('Preset saved successfully', 'success');
-  }, [addToast, refresh, view]);
+  }, [addToast, refresh]);
 
   const handleDeletePreset = useCallback(async (preset: PresetRow) => {
     if (deletingIdRef.current === preset.id) return; // debounce
@@ -188,9 +231,9 @@ export default function AdminPage() {
     }
   }, [addToast, refresh]);
 
-  const handleSaveGallery = useCallback(async (data: any) => {
-    const isEdit = view.type === 'edit-gallery';
-    const url = isEdit ? `/api/gallery/${(view as any).item._id}` : '/api/gallery';
+  const handleSaveGallery = useCallback(async (data: any, itemId?: string) => {
+    const isEdit = Boolean(itemId);
+    const url = isEdit ? `/api/gallery/${itemId}` : '/api/gallery';
     const method = isEdit ? 'PUT' : 'POST';
 
     const res = await fetch(url, {
@@ -203,7 +246,7 @@ export default function AdminPage() {
       throw new Error(result.error || 'Failed to save gallery item');
     }
     addToast('Gallery item saved successfully', 'success');
-  }, [addToast, view]);
+  }, [addToast]);
 
   const handleDeleteGallery = useCallback(async (item: any) => {
     if (deletingIdRef.current === item._id) return; // debounce
@@ -220,20 +263,32 @@ export default function AdminPage() {
     }
   }, [addToast]);
 
-  const requestViewChange = useCallback((nextView: AdminView) => {
-    const isEditingForm = view.type !== 'list';
-    if (isEditingForm && formDirty) {
+  const requestViewChange = useCallback((nextView: AdminView, options?: ViewChangeOptions) => {
+    const currentView = viewRef.current;
+    const isEditingForm =
+      currentView.type !== 'list' ||
+      (currentView.type === 'list' && (currentView.tab === 'contact' || currentView.tab === 'hero'));
+
+    if (!options?.skipUnsavedGuard && isEditingForm && formDirtyRef.current) {
       setPendingView(nextView);
       setShowUnsavedDialog(true);
       return;
     }
+
+    formDirtyRef.current = false;
+    setFormDirty(false);
+    setShowUnsavedDialog(false);
+    setPendingView(null);
+    viewRef.current = nextView;
     setView(nextView);
-  }, [formDirty, view.type]);
+  }, []);
 
   const confirmDiscardAndNavigate = useCallback(() => {
     if (!pendingView) return;
+    formDirtyRef.current = false;
     setFormDirty(false);
     setShowUnsavedDialog(false);
+    viewRef.current = pendingView;
     setView(pendingView);
     setPendingView(null);
   }, [pendingView]);
@@ -264,13 +319,13 @@ export default function AdminPage() {
       addToast(err?.message || 'Failed to load blog post', 'error');
     }
   }, [addToast, requestViewChange]);
-  const backToPresets = useCallback(() => requestViewChange({ type: 'list', tab: 'presets' }), [requestViewChange]);
-  const backToGallery = useCallback(() => requestViewChange({ type: 'list', tab: 'gallery' }), [requestViewChange]);
-  const backToBlog = useCallback(() => requestViewChange({ type: 'list', tab: 'blog' }), [requestViewChange]);
+  const backToPresets = useCallback((options?: ViewChangeOptions) => requestViewChange({ type: 'list', tab: 'presets' }, options), [requestViewChange]);
+  const backToGallery = useCallback((options?: ViewChangeOptions) => requestViewChange({ type: 'list', tab: 'gallery' }, options), [requestViewChange]);
+  const backToBlog = useCallback((options?: ViewChangeOptions) => requestViewChange({ type: 'list', tab: 'blog' }, options), [requestViewChange]);
 
-  const handleSaveBlog = useCallback(async (data: any) => {
-    const isEdit = view.type === 'edit-blog';
-    const url = isEdit ? `/api/blog/${(view as any).post.id}` : '/api/blog';
+  const handleSaveBlog = useCallback(async (data: any, postId?: string) => {
+    const isEdit = Boolean(postId);
+    const url = isEdit ? `/api/blog/${postId}` : '/api/blog';
     const method = isEdit ? 'PATCH' : 'POST';
 
     const res = await fetch(url, {
@@ -285,7 +340,7 @@ export default function AdminPage() {
     }
 
     addToast(isEdit ? 'Blog post updated' : 'Blog post created', 'success');
-  }, [addToast, view]);
+  }, [addToast]);
 
   const handleDeleteBlog = useCallback(async (post: { id: string }) => {
     if (deletingIdRef.current === post.id) return; // debounce
@@ -504,17 +559,17 @@ export default function AdminPage() {
                   />
                 )}
                 {view.type === 'list' && (activeTab as string) === 'contact' && (
-                  <SettingsManagement />
+                  <SettingsManagement onDirtyChange={handleFormDirtyChange} />
                 )}
                 {view.type === 'list' && (activeTab as string) === 'hero' && (
-                  <HeroSettingsManagement />
+                  <HeroSettingsManagement onDirtyChange={handleFormDirtyChange} />
                 )}
                 {view.type === 'create-preset' && (
                   <PresetForm 
                     key="create"
                     onBack={backToPresets}
-                    onSave={handleSavePreset}
-                    onDirtyChange={setFormDirty}
+                    onSave={(data) => handleSavePreset(data)}
+                    onDirtyChange={handleFormDirtyChange}
                   />
                 )}
                 {view.type === 'edit-preset' && (
@@ -522,17 +577,17 @@ export default function AdminPage() {
                     key={view.preset.id}
                     preset={view.preset}
                     onBack={backToPresets}
-                    onSave={handleSavePreset}
+                    onSave={(data) => handleSavePreset(data, view.preset.id)}
                     onDelete={handleDeletePreset}
-                    onDirtyChange={setFormDirty}
+                    onDirtyChange={handleFormDirtyChange}
                   />
                 )}
                 {view.type === 'create-gallery' && (
                   <GalleryForm 
                     key="create"
                     onBack={backToGallery}
-                    onSave={handleSaveGallery}
-                    onDirtyChange={setFormDirty}
+                    onSave={(data) => handleSaveGallery(data)}
+                    onDirtyChange={handleFormDirtyChange}
                   />
                 )}
                 {view.type === 'edit-gallery' && (
@@ -540,17 +595,17 @@ export default function AdminPage() {
                     key={view.item._id || view.item.id}
                     item={view.item}
                     onBack={backToGallery}
-                    onSave={handleSaveGallery}
+                    onSave={(data) => handleSaveGallery(data, view.item._id || view.item.id)}
                     onDelete={handleDeleteGallery}
-                    onDirtyChange={setFormDirty}
+                    onDirtyChange={handleFormDirtyChange}
                   />
                 )}
                 {view.type === 'create-blog' && (
                   <BlogForm
                     key="create"
                     onBack={backToBlog}
-                    onSave={handleSaveBlog}
-                    onDirtyChange={setFormDirty}
+                    onSave={(data) => handleSaveBlog(data)}
+                    onDirtyChange={handleFormDirtyChange}
                   />
                 )}
                 {view.type === 'edit-blog' && (
@@ -558,9 +613,9 @@ export default function AdminPage() {
                     key={view.post.id}
                     post={view.post}
                     onBack={backToBlog}
-                    onSave={handleSaveBlog}
+                    onSave={(data) => handleSaveBlog(data, view.post.id)}
                     onDelete={handleDeleteBlog}
-                    onDirtyChange={setFormDirty}
+                    onDirtyChange={handleFormDirtyChange}
                   />
                 )}
               </Suspense>

@@ -1,44 +1,101 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Save, Loader2, Mail, Globe, Instagram, Twitter, Linkedin } from "lucide-react";
 import { useToast } from "./page";
 
-export default function SettingsManagement() {
+type SettingsState = {
+  email: string;
+  phone: string;
+  address: string;
+  formEmail: string;
+  socials: {
+    instagram: string;
+    twitter: string;
+    linkedin: string;
+  };
+};
+
+interface SettingsManagementProps {
+  onDirtyChange?: (dirty: boolean) => void;
+}
+
+const defaultSettings: SettingsState = {
+  email: "",
+  phone: "",
+  address: "",
+  formEmail: "",
+  socials: {
+    instagram: "",
+    twitter: "",
+    linkedin: "",
+  },
+};
+
+export default function SettingsManagement({ onDirtyChange }: SettingsManagementProps) {
   const { addToast } = useToast();
+  const isMountedRef = useRef(true);
+  const initialSnapshotRef = useRef(JSON.stringify(defaultSettings));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState({
-    email: "",
-    phone: "",
-    address: "",
-    formEmail: "",
-    socials: {
-      instagram: "",
-      twitter: "",
-      linkedin: ""
-    }
-  });
+  const [settings, setSettings] = useState<SettingsState>(defaultSettings);
+
+  const currentSnapshot = useMemo(() => JSON.stringify(settings), [settings]);
+  const isDirty = !loading && currentSnapshot !== initialSnapshotRef.current;
 
   useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    const controller = new AbortController();
+
     const fetchData = async () => {
       try {
         // Fetch Contact Settings
-        const contactRes = await fetch('/api/admin/settings/contact');
+        const contactRes = await fetch('/api/admin/settings/contact', {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
         const contactData = await contactRes.json();
-        if (!contactData.error) setSettings(contactData);
+        if (!contactData.error && isMountedRef.current && !controller.signal.aborted) {
+          const normalized: SettingsState = {
+            email: typeof contactData?.email === 'string' ? contactData.email : defaultSettings.email,
+            phone: typeof contactData?.phone === 'string' ? contactData.phone : defaultSettings.phone,
+            address: typeof contactData?.address === 'string' ? contactData.address : defaultSettings.address,
+            formEmail: typeof contactData?.formEmail === 'string' ? contactData.formEmail : defaultSettings.formEmail,
+            socials: {
+              instagram: typeof contactData?.socials?.instagram === 'string' ? contactData.socials.instagram : defaultSettings.socials.instagram,
+              twitter: typeof contactData?.socials?.twitter === 'string' ? contactData.socials.twitter : defaultSettings.socials.twitter,
+              linkedin: typeof contactData?.socials?.linkedin === 'string' ? contactData.socials.linkedin : defaultSettings.socials.linkedin,
+            },
+          };
+          setSettings(normalized);
+          initialSnapshotRef.current = JSON.stringify(normalized);
+        }
 
       } catch (err) {
-        console.error("Failed to fetch settings:", err);
+        if ((err as Error)?.name !== 'AbortError') {
+          console.error("Failed to fetch settings:", err);
+        }
       } finally {
-        setLoading(false);
+        if (isMountedRef.current && !controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
     fetchData();
+
+    return () => {
+      isMountedRef.current = false;
+      controller.abort();
+    };
   }, []);
 
-  const handleSaveContact = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveContactSettings = useCallback(async () => {
+    if (saving) return;
     setSaving(true);
     try {
       const res = await fetch('/api/admin/settings/contact', {
@@ -47,12 +104,21 @@ export default function SettingsManagement() {
         body: JSON.stringify(settings)
       });
       if (!res.ok) throw new Error("Failed to save");
+      initialSnapshotRef.current = currentSnapshot;
+      onDirtyChange?.(false);
       addToast("Studio settings updated", "success");
     } catch (err) {
       addToast("Failed to update studio settings", "error");
     } finally {
-      setSaving(false);
+      if (isMountedRef.current) {
+        setSaving(false);
+      }
     }
+  }, [addToast, currentSnapshot, onDirtyChange, saving, settings]);
+
+  const handleSaveContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await saveContactSettings();
   };
 
 
@@ -76,7 +142,8 @@ export default function SettingsManagement() {
       <div className="space-y-6">
           <div className="flex items-center justify-end">
             <button
-              onClick={handleSaveContact}
+              type="button"
+              onClick={() => { void saveContactSettings(); }}
               disabled={saving}
               className="flex items-center gap-2 px-4 py-2 bg-zinc-100 text-zinc-900 rounded-md font-medium hover:bg-white transition-colors disabled:opacity-50"
             >
@@ -85,7 +152,7 @@ export default function SettingsManagement() {
             </button>
           </div>
 
-          <form onSubmit={handleSaveContact} className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
+          <form onSubmit={handleSaveContactSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
             {/* Contact Info Group */}
             <div className="space-y-6 bg-zinc-900/50 p-6 rounded-xl border border-zinc-800">
               <h3 className="text-sm font-normal text-zinc-400 uppercase tracking-wider flex items-center gap-2">

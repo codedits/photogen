@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, Image as ImageIcon, Loader2, Save, SunMedium, Upload } from "lucide-react";
 import { useToast } from "./page";
 import RichTextEditor from "./components/RichTextEditor";
@@ -19,6 +19,10 @@ type HeroSettings = {
   secondaryCtaLink: string;
 };
 
+interface HeroSettingsManagementProps {
+  onDirtyChange?: (dirty: boolean) => void;
+}
+
 const defaultSettings: HeroSettings = {
   introText: "",
   mainHeadline: "",
@@ -33,40 +37,87 @@ const defaultSettings: HeroSettings = {
   secondaryCtaLink: "/contact",
 };
 
-export default function HeroSettingsManagement() {
+export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsManagementProps) {
   const { addToast } = useToast();
+  const isMountedRef = useRef(true);
+  const initialImagePublicIdRef = useRef("");
+  const latestImagePublicIdRef = useRef("");
+  const initialSnapshotRef = useRef(JSON.stringify(defaultSettings));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [heroSettings, setHeroSettings] = useState<HeroSettings>(defaultSettings);
 
+  const currentSnapshot = useMemo(() => JSON.stringify(heroSettings), [heroSettings]);
+  const isDirty = !loading && currentSnapshot !== initialSnapshotRef.current;
+
   useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    latestImagePublicIdRef.current = heroSettings.image?.public_id || "";
+  }, [heroSettings.image?.public_id]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    const controller = new AbortController();
+
     const fetchHero = async () => {
       try {
-        const heroRes = await fetch("/api/admin/settings/hero", { cache: "no-store" });
+        const heroRes = await fetch("/api/admin/settings/hero", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
         const heroData = await heroRes.json();
-        if (!heroData.error) {
-          setHeroSettings({
+        if (!heroData.error && isMountedRef.current && !controller.signal.aborted) {
+          const merged = {
             ...defaultSettings,
             ...heroData,
             image: {
               ...defaultSettings.image,
               ...(heroData.image || {}),
             },
-          });
+          };
+          setHeroSettings(merged);
+          initialImagePublicIdRef.current = merged.image?.public_id || "";
+          initialSnapshotRef.current = JSON.stringify(merged);
+          latestImagePublicIdRef.current = merged.image?.public_id || "";
         }
       } catch (err) {
-        console.error("Failed to fetch hero settings:", err);
-        addToast("Failed to load hero settings", "error");
+        if ((err as Error)?.name !== "AbortError") {
+          console.error("Failed to fetch hero settings:", err);
+          addToast("Failed to load hero settings", "error");
+        }
       } finally {
-        setLoading(false);
+        if (isMountedRef.current && !controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchHero();
-  }, [addToast]);
+
+    return () => {
+      isMountedRef.current = false;
+      controller.abort();
+
+      const currentImagePublicId = latestImagePublicIdRef.current;
+      if (currentImagePublicId && currentImagePublicId !== initialImagePublicIdRef.current) {
+        fetch('/api/upload-image', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ public_id: currentImagePublicId }),
+        }).catch(() => {});
+      }
+
+      onDirtyChange?.(false);
+    };
+  }, [addToast, onDirtyChange]);
 
   const handleSaveHero = async () => {
+    if (saving) return;
     setSaving(true);
     try {
       const res = await fetch("/api/admin/settings/hero", {
@@ -76,11 +127,16 @@ export default function HeroSettingsManagement() {
       });
 
       if (!res.ok) throw new Error("Failed to save");
+      initialImagePublicIdRef.current = heroSettings.image?.public_id || "";
+      initialSnapshotRef.current = currentSnapshot;
+      onDirtyChange?.(false);
       addToast("Hero section updated", "success");
     } catch (err) {
       addToast("Failed to update hero settings", "error");
     } finally {
-      setSaving(false);
+      if (isMountedRef.current) {
+        setSaving(false);
+      }
     }
   };
 
@@ -96,6 +152,9 @@ export default function HeroSettingsManagement() {
         body: JSON.stringify({ folder: "photogen/hero" }),
       });
       const signatureData = await signatureRes.json();
+      if (!signatureRes.ok || !signatureData?.ok) {
+        throw new Error(signatureData?.error || "Failed to initialize upload");
+      }
 
       const formData = new FormData();
       formData.append("file", file);
@@ -109,27 +168,35 @@ export default function HeroSettingsManagement() {
         { method: "POST", body: formData }
       );
       const data = await uploadRes.json();
-
-      if (data.secure_url) {
-        // Destroy previous hero image from Cloudinary to prevent orphans
-        const prevPublicId = heroSettings.image?.public_id;
-        if (prevPublicId) {
-          fetch('/api/upload-image', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ public_id: prevPublicId }),
-          }).catch(() => {}); // best-effort, don't block UI
-        }
-        setHeroSettings((prev) => ({
-          ...prev,
-          image: { url: data.secure_url, public_id: data.public_id },
-        }));
-        addToast("Hero image uploaded", "success");
+      if (!uploadRes.ok || !data?.secure_url || !data?.public_id) {
+        throw new Error(data?.error?.message || "Image upload failed");
       }
+
+      if (!isMountedRef.current) return;
+
+      // Only delete prior temporary uploads that were never persisted.
+      const prevPublicId = heroSettings.image?.public_id;
+      if (prevPublicId && prevPublicId !== data.public_id && prevPublicId !== initialImagePublicIdRef.current) {
+        fetch('/api/upload-image', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ public_id: prevPublicId }),
+        }).catch(() => {});
+      }
+
+      setHeroSettings((prev) => ({
+        ...prev,
+        image: { url: data.secure_url, public_id: data.public_id },
+      }));
+      latestImagePublicIdRef.current = data.public_id;
+      addToast("Hero image uploaded", "success");
     } catch (err) {
-      addToast("Image upload failed", "error");
+      addToast((err as Error)?.message || "Image upload failed", "error");
     } finally {
-      setUploadingImage(false);
+      e.currentTarget.value = "";
+      if (isMountedRef.current) {
+        setUploadingImage(false);
+      }
     }
   };
 

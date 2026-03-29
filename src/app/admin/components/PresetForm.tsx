@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Upload, Save, ArrowLeft, Trash2, Image as ImageIcon, Link2, Info, Loader2, ArrowUp, ArrowDown, Star, RotateCcw } from 'lucide-react';
+import { flushSync } from 'react-dom';
+import { Upload as UploadIcon, Save as SaveIcon, ArrowLeft as ArrowLeftIcon, Trash2 as Trash2Icon, Image as ImageIconAlt, Link2 as Link2Icon, Info as InfoIcon, Loader2 as Loader2Icon, ArrowUp as ArrowUpIcon, ArrowDown as ArrowDownIcon, Star as StarIcon, RotateCcw as RotateCcwIcon } from 'lucide-react';
 import ImageWithLqip from '../../../components/ImageWithLqip';
 import RichTextEditor from './RichTextEditor';
 import ConfirmDialog from './ConfirmDialog';
@@ -16,9 +17,13 @@ type PresetRow = {
   dng?: { url?: string; public_id?: string; format?: string } | null;
 };
 
+type BackNavigationOptions = {
+  skipUnsavedGuard?: boolean;
+};
+
 interface PresetFormProps {
   preset?: PresetRow;
-  onBack: () => void;
+  onBack: (options?: BackNavigationOptions) => void;
   onSave: (data: any) => Promise<void>;
   onDelete?: (preset: PresetRow) => Promise<void>;
   onDirtyChange?: (dirty: boolean) => void;
@@ -43,6 +48,61 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
   return next;
 }
 
+// PERFORMANCE: Memoized sub-component for upload progress to isolate re-renders
+const UploadCard = React.memo(({ item, onCancel, onRetry }: { item: UploadItem; onCancel: () => void; onRetry: () => void }) => {
+  return (
+    <div className="rounded-md border border-zinc-800 bg-zinc-950 overflow-hidden">
+      <div className="relative aspect-square">
+        <img src={item.previewUrl} alt="upload" className="h-full w-full object-cover opacity-50" />
+        <div className="absolute inset-0 flex items-center justify-center p-3">
+          {item.status === 'uploading' && (
+            <div className="w-full space-y-1">
+              <div className="h-1.5 w-full rounded-full bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-zinc-300 transition-all duration-300"
+                  style={{ width: `${item.progress}%` }}
+                />
+              </div>
+              <p className="text-center text-[11px] text-zinc-200">{item.progress}%</p>
+            </div>
+          )}
+          {item.status === 'error' && <p className="text-xs text-red-400 text-center">{item.error || 'Upload failed'}</p>}
+        </div>
+      </div>
+      {(item.status === 'uploading' || item.status === 'error') && (
+        <div className="grid grid-cols-2 border-t border-zinc-800">
+          {item.status === 'error' ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-900 border-r border-zinc-800"
+            >
+              <RotateCcwIcon size={11} />
+              Retry
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900 border-r border-zinc-800"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900"
+          >
+            Remove
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
+UploadCard.displayName = 'UploadCard';
+
 export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyChange }: PresetFormProps) {
   const [name, setName] = useState(preset?.name || '');
   const [description, setDescription] = useState(preset?.description || '');
@@ -61,6 +121,13 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
 
   const dropRef = useRef<HTMLDivElement>(null);
   const uploadItemsRef = useRef<UploadItem[]>([]);
+  const isMountedRef = useRef(true);
+  const uploadTimerIdsRef = useRef<number[]>([]);
+  const sessionUploadedPublicIdsRef = useRef<Set<string>>(new Set());
+  
+  // PERFORMANCE: Track last progress to throttle state updates
+  const lastProgressRef = useRef<Record<string, number>>({});
+
   const initialSnapshotRef = useRef(
     JSON.stringify({
       name: preset?.name || '',
@@ -74,6 +141,15 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
   useEffect(() => {
     uploadItemsRef.current = uploadItems;
   }, [uploadItems]);
+
+  const cleanupCloudinaryUpload = useCallback((publicId: string) => {
+    if (!publicId) return;
+    fetch('/api/upload-image', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ public_id: publicId }),
+    }).catch(() => {});
+  }, []);
 
   const currentSnapshot = useMemo(
     () =>
@@ -105,10 +181,29 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
   }, [isDirty]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
-      for (const it of uploadItemsRef.current) URL.revokeObjectURL(it.previewUrl);
+      isMountedRef.current = false;
+      for (const timerId of uploadTimerIdsRef.current) {
+        window.clearTimeout(timerId);
+      }
+      uploadTimerIdsRef.current = [];
+      for (const it of uploadItemsRef.current) {
+        if (it.xhr) {
+          try {
+            it.xhr.abort();
+          } catch {}
+        }
+        URL.revokeObjectURL(it.previewUrl);
+      }
+
+      const orphanedPublicIds = Array.from(sessionUploadedPublicIdsRef.current);
+      sessionUploadedPublicIdsRef.current.clear();
+      for (const publicId of orphanedPublicIds) {
+        cleanupCloudinaryUpload(publicId);
+      }
     };
-  }, []);
+  }, [cleanupCloudinaryUpload]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -147,11 +242,17 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
       xhr: null,
     }));
     setUploadItems((prev) => [...prev, ...items]);
-    items.forEach((it, idx) => setTimeout(() => startUpload(it), idx * 120));
+    items.forEach((it, idx) => {
+      const timerId = window.setTimeout(() => {
+        uploadTimerIdsRef.current = uploadTimerIdsRef.current.filter((id) => id !== timerId);
+        startUpload(it);
+      }, idx * 120);
+      uploadTimerIdsRef.current.push(timerId);
+    });
   };
 
   const startUpload = async (item: UploadItem) => {
-    if (!item.file) return;
+    if (!item.file || !isMountedRef.current) return;
     try {
       const signatureRes = await fetch('/api/admin/cloudinary-signature', {
         method: 'POST',
@@ -159,6 +260,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
         body: JSON.stringify({ folder: 'photogen/presets' }),
       });
       const signatureData = await signatureRes.json();
+      if (!isMountedRef.current) return;
       if (!signatureRes.ok || !signatureData?.ok) {
         throw new Error(signatureData?.error || 'Failed to initialize upload');
       }
@@ -175,17 +277,26 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
       xhr.open('POST', `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/${signatureData.resourceType || 'image'}/upload`);
 
       xhr.upload.onprogress = (ev) => {
+        if (!isMountedRef.current) return;
         if (!ev.lengthComputable) return;
         const pct = Math.round((ev.loaded / ev.total) * 100);
-        setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct } : p)));
+        
+        // PERFORMANCE: Throttle progress updates
+        const last = lastProgressRef.current[item.id] || 0;
+        if (pct === 100 || (pct - last >= 4)) {
+            lastProgressRef.current[item.id] = pct;
+            setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct, status: 'uploading' } : p)));
+        }
       };
 
       xhr.onload = () => {
+        if (!isMountedRef.current) return;
         try {
           const data = JSON.parse(xhr.responseText || '{}');
           if (xhr.status >= 200 && xhr.status < 300 && data?.secure_url && data?.public_id) {
             URL.revokeObjectURL(item.previewUrl);
             setUploadItems((prev) => prev.filter((p) => p.id !== item.id));
+            sessionUploadedPublicIdsRef.current.add(data.public_id);
             setImagesLocal((prev) => [...prev, { url: data.secure_url, public_id: data.public_id }]);
           } else {
             const errMsg = data?.error?.message || 'Upload failed';
@@ -197,12 +308,20 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
       };
 
       xhr.onerror = () => {
+        if (!isMountedRef.current) return;
         setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: 'error', error: 'Network error', xhr: null } : p)));
       };
 
+      if (!isMountedRef.current) {
+        try {
+          xhr.abort();
+        } catch {}
+        return;
+      }
       setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: 'uploading', xhr } : p)));
       xhr.send(form);
     } catch (err: unknown) {
+      if (!isMountedRef.current) return;
       const message = err instanceof Error ? err.message : 'Upload failed';
       setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: 'error', error: message, xhr: null } : p)));
     }
@@ -246,20 +365,17 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
     
     if (!isExisting) {
        // Newly uploaded during this session, delete immediately from Cloudinary
-       try {
-         await fetch('/api/upload-image', { 
-           method: 'DELETE', 
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ public_id: pid })
-         });
-       } catch (err) {
-         console.error('Failed to instantly delete unsaved image', err);
-       }
+       cleanupCloudinaryUpload(pid);
     } else {
        // It's an existing image, queue it for server-side Cloudinary destruction on save
-       setRemovePublicIds(prev => [...prev, pid]);
+       if (isMountedRef.current) {
+         setRemovePublicIds(prev => [...prev, pid]);
+       }
     }
-    
+
+    sessionUploadedPublicIdsRef.current.delete(pid);
+
+    if (!isMountedRef.current) return;
     setImagesLocal((list: any) => list.filter((i: any) => i.public_id !== pid));
     setDeleting((s) => s.filter((x) => x !== pid));
     setNotice({ type: 'info', message: 'Image removed from current draft.' });
@@ -292,11 +408,20 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
         removePublicIds,
       };
       await onSave(data);
-      onBack();
+      initialSnapshotRef.current = currentSnapshot;
+      sessionUploadedPublicIdsRef.current.clear();
+      if (isMountedRef.current) {
+        flushSync(() => onDirtyChange?.(false));
+        onBack({ skipUnsavedGuard: true });
+      }
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to save preset');
+      if (isMountedRef.current) {
+        setSubmitError(err instanceof Error ? err.message : 'Failed to save preset');
+      }
     } finally {
-      setBusy(false);
+      if (isMountedRef.current) {
+        setBusy(false);
+      }
     }
   };
 
@@ -305,14 +430,101 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
     try {
       setBusy(true);
       await onDelete(preset);
-      onBack();
+      const orphanedPublicIds = Array.from(sessionUploadedPublicIdsRef.current);
+      sessionUploadedPublicIdsRef.current.clear();
+      for (const publicId of orphanedPublicIds) {
+        cleanupCloudinaryUpload(publicId);
+      }
+      initialSnapshotRef.current = currentSnapshot;
+      if (isMountedRef.current) {
+        flushSync(() => onDirtyChange?.(false));
+        onBack({ skipUnsavedGuard: true });
+      }
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to delete preset');
+      if (isMountedRef.current) {
+        setSubmitError(err instanceof Error ? err.message : 'Failed to delete preset');
+      }
     } finally {
-      setBusy(false);
-      setPendingDelete(false);
+      if (isMountedRef.current) {
+        setBusy(false);
+        setPendingDelete(false);
+      }
     }
   };
+
+  // PERFORMANCE: Memoized form sections
+  const basicDetailsSection = useMemo(() => (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
+      <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
+        <InfoIcon size={14} />
+        Preset Details
+      </h3>
+
+      <div>
+        <label className="mb-1.5 block text-sm text-zinc-300">Name</label>
+        <input
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+          }}
+          placeholder="e.g. Golden Portrait"
+          className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+        />
+        {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name}</p>}
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-sm text-zinc-300">Description</label>
+        <RichTextEditor
+          content={description}
+          onChange={setDescription}
+          placeholder="Describe this preset look"
+        />
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-sm text-zinc-300">Tags</label>
+        <input
+          value={tags}
+          onChange={(e) => setTags(e.target.value)}
+          placeholder="portrait, warm, indoor"
+          className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+        />
+      </div>
+    </div>
+  ), [name, description, tags, errors.name]);
+
+  const asideSection = useMemo(() => (
+    <aside className="space-y-5">
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-3">
+        <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
+          <Link2Icon size={14} />
+          Download
+        </h3>
+        <div>
+          <label className="mb-1.5 block text-sm text-zinc-300">DNG URL</label>
+          <input
+            type="url"
+            value={dngUrl}
+            onChange={(e) => {
+              setDngUrl(e.target.value);
+              if (errors.dngUrl) setErrors((prev) => ({ ...prev, dngUrl: undefined }));
+            }}
+            placeholder="https://..."
+            className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+          />
+          {errors.dngUrl && <p className="mt-1 text-xs text-red-400">{errors.dngUrl}</p>}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 text-xs text-zinc-400 space-y-2">
+        <p className="font-normal uppercase tracking-wide text-zinc-500">Tips</p>
+        <p>Use 4 to 8 preview images and place the strongest image as cover.</p>
+        <p>Reorder controls define the exact public gallery sequence.</p>
+      </div>
+    </aside>
+  ), [dngUrl, errors.dngUrl]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
@@ -329,11 +541,11 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={onBack}
+            onClick={() => onBack()}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
             aria-label="Go back"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeftIcon size={16} />
           </button>
           <div>
             <h2 className="text-lg font-normal text-zinc-100">{preset ? 'Edit Preset' : 'Create Preset'}</h2>
@@ -345,6 +557,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
         <div className="flex items-center gap-2">
           {preset && onDelete && (
             <button
+              type="button"
               onClick={() => setPendingDelete(true)}
               className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300 hover:bg-red-950"
             >
@@ -352,11 +565,12 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
             </button>
           )}
           <button
+            form="preset-form"
             type="submit"
             disabled={busy}
             className="inline-flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-60"
           >
-            {busy ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            {busy ? <Loader2Icon size={15} className="animate-spin" /> : <SaveIcon size={15} />}
             {busy ? 'Saving' : 'Save'}
           </button>
         </div>
@@ -377,52 +591,14 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <section className="space-y-5 lg:col-span-2">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
-            <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
-              <Info size={14} />
-              Preset Details
-            </h3>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-zinc-300">Name</label>
-              <input
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
-                }}
-                placeholder="e.g. Golden Portrait"
-                className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-              />
-              {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name}</p>}
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-zinc-300">Description</label>
-              <RichTextEditor
-                content={description}
-                onChange={setDescription}
-                placeholder="Describe this preset look"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-zinc-300">Tags</label>
-              <input
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="portrait, warm, indoor"
-                className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-              />
-            </div>
-          </div>
+      <form id="preset-form" onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
+          {basicDetailsSection}
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
-                <ImageIcon size={14} />
+                <ImageIconAlt size={14} />
                 Preview Images
               </h3>
               <span className="text-xs text-zinc-500">{imagesLocal.length} images</span>
@@ -443,7 +619,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
                 onChange={(e) => handleFiles(e.target.files)}
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
-              <Upload size={18} className="mx-auto mb-2 text-zinc-500" />
+              <UploadIcon size={18} className="mx-auto mb-2 text-zinc-500" />
               <p className="text-sm text-zinc-300">Drop or click to upload</p>
               <p className="text-xs text-zinc-500 mt-1">Direct upload to Cloudinary</p>
             </div>
@@ -456,7 +632,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
                       <ImageWithLqip src={img.url} alt="preset" fill className="object-cover" transformOpts={{ w: 300, h: 300, fit: 'cover' }} />
                       {idx === 0 && (
                         <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-normal text-zinc-900">
-                          <Star size={10} /> Cover
+                          <StarIcon size={10} /> Cover
                         </span>
                       )}
                     </div>
@@ -468,7 +644,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
                         className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300 disabled:opacity-40"
                         title="Move up"
                       >
-                        <ArrowUp size={12} className="mx-auto" />
+                        <ArrowUpIcon size={12} className="mx-auto" />
                       </button>
                       <button
                         type="button"
@@ -477,7 +653,7 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
                         className="rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300 disabled:opacity-40"
                         title="Move down"
                       >
-                        <ArrowDown size={12} className="mx-auto" />
+                        <ArrowDownIcon size={12} className="mx-auto" />
                       </button>
                       <button
                         type="button"
@@ -500,85 +676,14 @@ export default function PresetForm({ preset, onBack, onSave, onDelete, onDirtyCh
                 ))}
 
                 {uploadItems.map((it) => (
-                  <div key={it.id} className="rounded-md border border-zinc-800 bg-zinc-950 overflow-hidden">
-                    <div className="relative aspect-square">
-                      <img src={it.previewUrl} alt="upload" className="h-full w-full object-cover opacity-50" />
-                      <div className="absolute inset-0 flex items-center justify-center p-3">
-                        {it.status === 'uploading' && (
-                          <div className="w-full space-y-1">
-                            <div className="h-1.5 w-full rounded-full bg-zinc-800">
-                              <div className="h-full rounded-full bg-zinc-300" style={{ width: `${it.progress}%` }} />
-                            </div>
-                            <p className="text-center text-[11px] text-zinc-200">{it.progress}%</p>
-                          </div>
-                        )}
-                        {it.status === 'error' && <p className="text-xs text-red-400 text-center">{it.error || 'Upload failed'}</p>}
-                      </div>
-                    </div>
-                    {(it.status === 'uploading' || it.status === 'error') && (
-                      <div className="grid grid-cols-2 border-t border-zinc-800">
-                        {it.status === 'error' ? (
-                          <button
-                            type="button"
-                            onClick={() => retryUpload(it.id)}
-                            className="inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-900 border-r border-zinc-800"
-                          >
-                            <RotateCcw size={11} />
-                            Retry
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => cancelUpload(it.id)}
-                            className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900 border-r border-zinc-800"
-                          >
-                            Cancel
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => cancelUpload(it.id)}
-                          className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <UploadCard key={it.id} item={it} onCancel={() => cancelUpload(it.id)} onRetry={() => retryUpload(it.id)} />
                 ))}
               </div>
             )}
           </div>
-        </section>
+        </div>
 
-        <aside className="space-y-5">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-3">
-            <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
-              <Link2 size={14} />
-              Download
-            </h3>
-            <div>
-              <label className="mb-1.5 block text-sm text-zinc-300">DNG URL</label>
-              <input
-                type="url"
-                value={dngUrl}
-                onChange={(e) => {
-                  setDngUrl(e.target.value);
-                  if (errors.dngUrl) setErrors((prev) => ({ ...prev, dngUrl: undefined }));
-                }}
-                placeholder="https://..."
-                className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-              />
-              {errors.dngUrl && <p className="mt-1 text-xs text-red-400">{errors.dngUrl}</p>}
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 text-xs text-zinc-400 space-y-2">
-            <p className="font-normal uppercase tracking-wide text-zinc-500">Tips</p>
-            <p>Use 4 to 8 preview images and place the strongest image as cover.</p>
-            <p>Reorder controls define the exact public gallery sequence.</p>
-          </div>
-        </aside>
+        {asideSection}
       </form>
     </div>
   );

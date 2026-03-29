@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, useSpring, useMotionValue } from "framer-motion";
+import { usePathname } from "next/navigation";
 
 export default function CustomCursor() {
+  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
 
@@ -18,7 +20,16 @@ export default function CustomCursor() {
   useEffect(() => {
     // Only show on desktop (fine pointer)
     const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
-    if (isTouchDevice) return;
+    const isAdmin = pathname && pathname.startsWith('/admin');
+
+    if (isTouchDevice || isAdmin) {
+      setIsVisible(false);
+      document.documentElement.classList.remove("custom-cursor-active");
+      return;
+    }
+
+    // Add class for custom cursor logic in CSS (globals.css hides browser cursor)
+    document.documentElement.classList.add("custom-cursor-active");
 
     const handleMouseMove = (e: MouseEvent) => {
       mouseX.set(e.clientX);
@@ -44,8 +55,14 @@ export default function CustomCursor() {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseout", handleMouseLeave);
       window.removeEventListener("mouseover", handleMouseEnter);
+      document.documentElement.classList.remove("custom-cursor-active");
     };
-  }, [isVisible, mouseX, mouseY]);
+  }, [isVisible, mouseX, mouseY, pathname]);
+
+  // Don't render for admin panel
+  if (pathname && pathname.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <motion.div

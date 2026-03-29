@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { ArrowLeft, BookOpenText, Clock, Eye, FileText, Hash, Layout, Loader2, Save, Trash2, Upload, X } from 'lucide-react';
 import ImageWithLqip from '../../../components/ImageWithLqip';
 import RichTextEditor from './RichTextEditor';
@@ -21,9 +22,13 @@ export type BlogFormRow = {
   seoDescription?: string;
 };
 
+type BackNavigationOptions = {
+  skipUnsavedGuard?: boolean;
+};
+
 interface BlogFormProps {
   post?: BlogFormRow;
-  onBack: () => void;
+  onBack: (options?: BackNavigationOptions) => void;
   onSave: (payload: any) => Promise<void>;
   onDelete?: (post: BlogFormRow) => Promise<void>;
   onDirtyChange?: (dirty: boolean) => void;
@@ -91,6 +96,8 @@ export default function BlogForm({ post, onBack, onSave, onDelete, onDirtyChange
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'info'; message: string } | null>(null);
+  const isMountedRef = useRef(true);
+  const sessionUploadedPublicIdsRef = useRef<Set<string>>(new Set());
   const initialSnapshotRef = useRef(
     JSON.stringify({
       title: post?.title || '',
@@ -135,6 +142,15 @@ export default function BlogForm({ post, onBack, onSave, onDelete, onDirtyChange
 
   const isDirty = currentSnapshot !== initialSnapshotRef.current;
 
+  const cleanupCloudinaryUpload = useCallback((publicId: string) => {
+    if (!publicId) return;
+    fetch('/api/upload-image', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ public_id: publicId }),
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     onDirtyChange?.(isDirty);
     return () => onDirtyChange?.(false);
@@ -149,6 +165,18 @@ export default function BlogForm({ post, onBack, onSave, onDelete, onDirtyChange
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [isDirty]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      const orphanedPublicIds = Array.from(sessionUploadedPublicIdsRef.current);
+      sessionUploadedPublicIdsRef.current.clear();
+      for (const publicId of orphanedPublicIds) {
+        cleanupCloudinaryUpload(publicId);
+      }
+    };
+  }, [cleanupCloudinaryUpload]);
 
   const addTag = useCallback((value: string) => {
     const trimmed = value.trim().toLowerCase();
@@ -209,17 +237,32 @@ export default function BlogForm({ post, onBack, onSave, onDelete, onDirtyChange
     setSubmitError(null);
     try {
       const uploaded = await uploadToCloudinary(file);
-      setCoverImage(uploaded);
+      if (!isMountedRef.current) return;
+      setCoverImage((prev) => {
+        const previousId = prev?.public_id;
+        if (previousId && previousId !== uploaded.public_id && sessionUploadedPublicIdsRef.current.has(previousId)) {
+          sessionUploadedPublicIdsRef.current.delete(previousId);
+          cleanupCloudinaryUpload(previousId);
+        }
+        return uploaded;
+      });
+      sessionUploadedPublicIdsRef.current.add(uploaded.public_id);
       setNotice({ type: 'success', message: 'Cover image uploaded.' });
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to upload cover image');
+      if (isMountedRef.current) {
+        setSubmitError(err instanceof Error ? err.message : 'Failed to upload cover image');
+      }
     } finally {
-      setUploadingCover(false);
+      if (isMountedRef.current) {
+        setUploadingCover(false);
+      }
     }
   };
 
   const handleEditorImageUpload = async (file: File) => {
     const uploaded = await uploadToCloudinary(file);
+    if (!isMountedRef.current) return uploaded;
+    sessionUploadedPublicIdsRef.current.add(uploaded.public_id);
     setInlineImages((prev) => {
       if (prev.some((img) => img.public_id === uploaded.public_id)) return prev;
       return [...prev, uploaded];
@@ -257,11 +300,20 @@ export default function BlogForm({ post, onBack, onSave, onDelete, onDirtyChange
         seoTitle: seoTitle.trim(),
         seoDescription: seoDescription.trim(),
       });
-      onBack();
+      initialSnapshotRef.current = currentSnapshot;
+      sessionUploadedPublicIdsRef.current.clear();
+      if (isMountedRef.current) {
+        flushSync(() => onDirtyChange?.(false));
+        onBack({ skipUnsavedGuard: true });
+      }
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to save blog post');
+      if (isMountedRef.current) {
+        setSubmitError(err instanceof Error ? err.message : 'Failed to save blog post');
+      }
     } finally {
-      setSaving(false);
+      if (isMountedRef.current) {
+        setSaving(false);
+      }
     }
   };
 
@@ -270,12 +322,25 @@ export default function BlogForm({ post, onBack, onSave, onDelete, onDirtyChange
     try {
       setSaving(true);
       await onDelete(post);
-      onBack();
+      const orphanedPublicIds = Array.from(sessionUploadedPublicIdsRef.current);
+      sessionUploadedPublicIdsRef.current.clear();
+      for (const publicId of orphanedPublicIds) {
+        cleanupCloudinaryUpload(publicId);
+      }
+      initialSnapshotRef.current = currentSnapshot;
+      if (isMountedRef.current) {
+        flushSync(() => onDirtyChange?.(false));
+        onBack({ skipUnsavedGuard: true });
+      }
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to delete blog post');
+      if (isMountedRef.current) {
+        setSubmitError(err instanceof Error ? err.message : 'Failed to delete blog post');
+      }
     } finally {
-      setSaving(false);
-      setPendingDelete(false);
+      if (isMountedRef.current) {
+        setSaving(false);
+        setPendingDelete(false);
+      }
     }
   };
 
@@ -295,7 +360,7 @@ export default function BlogForm({ post, onBack, onSave, onDelete, onDirtyChange
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={onBack}
+            onClick={() => onBack()}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 transition-colors"
             aria-label="Go back"
           >
@@ -580,7 +645,14 @@ export default function BlogForm({ post, onBack, onSave, onDelete, onDirtyChange
                 <button
                   type="button"
                   onClick={() => {
-                    setCoverImage(null);
+                    setCoverImage((prev) => {
+                      const previousId = prev?.public_id;
+                      if (previousId && sessionUploadedPublicIdsRef.current.has(previousId)) {
+                        sessionUploadedPublicIdsRef.current.delete(previousId);
+                        cleanupCloudinaryUpload(previousId);
+                      }
+                      return null;
+                    });
                     setNotice({ type: 'info', message: 'Cover image removed.' });
                   }}
                   className="m-2 inline-flex items-center gap-1 rounded border border-zinc-700 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-800 transition-colors"

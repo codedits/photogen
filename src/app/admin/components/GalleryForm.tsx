@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import { Upload, Save, ArrowLeft, Trash2, Eye, EyeOff, MapPin, Info, Loader2, Image as ImageIcon, Settings, ArrowUp, ArrowDown, Star, RotateCcw } from 'lucide-react';
 import ImageWithLqip from '../../../components/ImageWithLqip';
 import RichTextEditor from './RichTextEditor';
@@ -17,9 +18,13 @@ const CATEGORIES = [
   { id: 'commercial', label: 'Commercial' },
 ];
 
+type BackNavigationOptions = {
+  skipUnsavedGuard?: boolean;
+};
+
 interface GalleryFormProps {
   item?: any;
-  onBack: () => void;
+  onBack: (options?: BackNavigationOptions) => void;
   onSave: (data: any) => Promise<void>;
   onDelete?: (item: any) => Promise<void>;
   onDirtyChange?: (dirty: boolean) => void;
@@ -42,6 +47,63 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
   next.splice(to, 0, picked);
   return next;
 }
+
+// PERFORMANCE: Memoized sub-component for upload progress to isolate re-renders
+const UploadCard = React.memo(({ item, onCancel, onRetry }: { item: UploadItem; onCancel: () => void; onRetry: () => void }) => {
+  return (
+    <div className="rounded-md border border-zinc-800 bg-zinc-950 overflow-hidden">
+      <div className="relative aspect-square">
+        <img src={item.previewUrl} alt="upload" className="h-full w-full object-cover opacity-50" />
+        <div className="absolute inset-0 flex items-center justify-center p-3">
+          {item.status === 'uploading' && (
+            <div className="w-full space-y-1">
+              <div className="h-1.5 w-full rounded-full bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-zinc-300 transition-all duration-300"
+                  style={{ width: `${item.progress}%` }}
+                />
+              </div>
+              <p className="text-center text-[11px] text-zinc-200">{item.progress}%</p>
+            </div>
+          )}
+          {item.status === 'error' && <p className="text-xs text-red-400 text-center">{item.error || 'Upload failed'}</p>}
+        </div>
+      </div>
+      {(item.status === 'uploading' || item.status === 'error') && (
+        <div className="grid grid-cols-2 border-t border-zinc-800">
+          {item.status === 'error' ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-900 border-r border-zinc-800"
+            >
+              <RotateCcw size={11} />
+              Retry
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900 border-r border-zinc-800"
+            >
+              <ArrowLeft size={11} className="rotate-90" />
+              Cancel
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900"
+          >
+            Remove
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
+UploadCard.displayName = 'UploadCard';
+
 
 export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyChange }: GalleryFormProps) {
   const [formData, setFormData] = useState({
@@ -75,6 +137,9 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
 
   const dropRef = useRef<HTMLDivElement>(null);
   const uploadItemsRef = useRef<UploadItem[]>([]);
+  const isMountedRef = useRef(true);
+  const uploadTimerIdsRef = useRef<number[]>([]);
+  const sessionUploadedPublicIdsRef = useRef<Set<string>>(new Set());
   const initialSnapshotRef = useRef(
     JSON.stringify({
       formData: {
@@ -98,9 +163,22 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
     })
   );
 
+  // PERFORMANCE: Track last progress to throttle state updates
+  const lastProgressRef = useRef<Record<string, number>>({});
+
+
   useEffect(() => {
     uploadItemsRef.current = uploadItems;
   }, [uploadItems]);
+
+  const cleanupCloudinaryUpload = useCallback((publicId: string) => {
+    if (!publicId) return;
+    fetch('/api/upload-image', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ public_id: publicId }),
+    }).catch(() => {});
+  }, []);
 
   const currentSnapshot = useMemo(
     () =>
@@ -129,10 +207,29 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
   }, [isDirty]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
-      for (const it of uploadItemsRef.current) URL.revokeObjectURL(it.previewUrl);
+      isMountedRef.current = false;
+      for (const timerId of uploadTimerIdsRef.current) {
+        window.clearTimeout(timerId);
+      }
+      uploadTimerIdsRef.current = [];
+      for (const it of uploadItemsRef.current) {
+        if (it.xhr) {
+          try {
+            it.xhr.abort();
+          } catch {}
+        }
+        URL.revokeObjectURL(it.previewUrl);
+      }
+
+      const orphanedPublicIds = Array.from(sessionUploadedPublicIdsRef.current);
+      sessionUploadedPublicIdsRef.current.clear();
+      for (const publicId of orphanedPublicIds) {
+        cleanupCloudinaryUpload(publicId);
+      }
     };
-  }, []);
+  }, [cleanupCloudinaryUpload]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -171,11 +268,17 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
       xhr: null,
     }));
     setUploadItems((prev) => [...prev, ...items]);
-    items.forEach((it, idx) => setTimeout(() => startUpload(it), idx * 120));
+    items.forEach((it, idx) => {
+      const timerId = window.setTimeout(() => {
+        uploadTimerIdsRef.current = uploadTimerIdsRef.current.filter((id) => id !== timerId);
+        startUpload(it);
+      }, idx * 120);
+      uploadTimerIdsRef.current.push(timerId);
+    });
   };
 
   const startUpload = async (item: UploadItem) => {
-    if (!item.file) return;
+    if (!item.file || !isMountedRef.current) return;
     try {
       const signatureRes = await fetch('/api/admin/cloudinary-signature', {
         method: 'POST',
@@ -183,6 +286,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
         body: JSON.stringify({ folder: 'photogen/gallery' }),
       });
       const signatureData = await signatureRes.json();
+      if (!isMountedRef.current) return;
       if (!signatureRes.ok || !signatureData?.ok) {
         throw new Error(signatureData?.error || 'Failed to initialize upload');
       }
@@ -199,17 +303,26 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
       xhr.open('POST', `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/${signatureData.resourceType || 'image'}/upload`);
 
       xhr.upload.onprogress = (ev) => {
+        if (!isMountedRef.current) return;
         if (!ev.lengthComputable) return;
         const pct = Math.round((ev.loaded / ev.total) * 100);
-        setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct } : p)));
+        
+        // PERFORMANCE: Throttle progress updates to prevent UI lag
+        const last = lastProgressRef.current[item.id] || 0;
+        if (pct === 100 || (pct - last >= 4)) {
+            lastProgressRef.current[item.id] = pct;
+            setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, progress: pct, status: 'uploading' } : p)));
+        }
       };
 
       xhr.onload = () => {
+        if (!isMountedRef.current) return;
         try {
           const data = JSON.parse(xhr.responseText || '{}');
           if (xhr.status >= 200 && xhr.status < 300 && data?.secure_url && data?.public_id) {
             URL.revokeObjectURL(item.previewUrl);
             setUploadItems((prev) => prev.filter((p) => p.id !== item.id));
+            sessionUploadedPublicIdsRef.current.add(data.public_id);
             setImagesLocal((prev: any) => [...prev, { url: data.secure_url, public_id: data.public_id }]);
           } else {
             const errMsg = data?.error?.message || 'Upload failed';
@@ -221,12 +334,20 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
       };
 
       xhr.onerror = () => {
+        if (!isMountedRef.current) return;
         setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: 'error', error: 'Network error', xhr: null } : p)));
       };
 
+      if (!isMountedRef.current) {
+        try {
+          xhr.abort();
+        } catch {}
+        return;
+      }
       setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: 'uploading', xhr } : p)));
       xhr.send(form);
     } catch (err: unknown) {
+      if (!isMountedRef.current) return;
       const message = err instanceof Error ? err.message : 'Upload failed';
       setUploadItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, status: 'error', error: message, xhr: null } : p)));
     }
@@ -277,20 +398,17 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
     
     if (!isExisting) {
        // Newly uploaded during this session, delete immediately from Cloudinary
-       try {
-         await fetch('/api/upload-image', { 
-           method: 'DELETE', 
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ public_id: pid })
-         });
-       } catch (err) {
-         console.error('Failed to instantly delete unsaved image', err);
-       }
+       cleanupCloudinaryUpload(pid);
     } else {
        // It's an existing image, queue it for server-side Cloudinary destruction on save
-       setRemovePublicIds(prev => [...prev, pid]);
+       if (isMountedRef.current) {
+         setRemovePublicIds(prev => [...prev, pid]);
+       }
     }
-    
+
+    sessionUploadedPublicIdsRef.current.delete(pid);
+
+    if (!isMountedRef.current) return;
     setImagesLocal((list: any) => list.filter((i: any) => i.public_id !== pid));
     setDeleting((s) => s.filter((x) => x !== pid));
     setNotice({ type: 'info', message: 'Image removed from current draft.' });
@@ -320,11 +438,20 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
         },
       };
       await onSave(payload);
-      onBack();
+      initialSnapshotRef.current = currentSnapshot;
+      sessionUploadedPublicIdsRef.current.clear();
+      if (isMountedRef.current) {
+        flushSync(() => onDirtyChange?.(false));
+        onBack({ skipUnsavedGuard: true });
+      }
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to save gallery item');
+      if (isMountedRef.current) {
+        setSubmitError(err instanceof Error ? err.message : 'Failed to save gallery item');
+      }
     } finally {
-      setBusy(false);
+      if (isMountedRef.current) {
+        setBusy(false);
+      }
     }
   };
 
@@ -333,14 +460,189 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
     try {
       setBusy(true);
       await onDelete(item);
-      onBack();
+      const orphanedPublicIds = Array.from(sessionUploadedPublicIdsRef.current);
+      sessionUploadedPublicIdsRef.current.clear();
+      for (const publicId of orphanedPublicIds) {
+        cleanupCloudinaryUpload(publicId);
+      }
+      initialSnapshotRef.current = currentSnapshot;
+      if (isMountedRef.current) {
+        flushSync(() => onDirtyChange?.(false));
+        onBack({ skipUnsavedGuard: true });
+      }
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to delete gallery item');
+      if (isMountedRef.current) {
+        setSubmitError(err instanceof Error ? err.message : 'Failed to delete gallery item');
+      }
     } finally {
-      setBusy(false);
-      setPendingDelete(false);
+      if (isMountedRef.current) {
+        setBusy(false);
+        setPendingDelete(false);
+      }
     }
   };
+
+  // PERFORMANCE: Memoize heavy form sections to avoid re-rendering during upload progress
+  const basicInfoSection = useMemo(() => (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
+      <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
+        <Info size={14} />
+        Basic Info
+      </h3>
+
+      <div>
+        <label className="mb-1.5 block text-sm text-zinc-300">Title</label>
+        <input
+          value={formData.name}
+          onChange={(e) => {
+            setFormData((prev) => ({ ...prev, name: e.target.value }));
+            if (errors.name) setErrors({});
+          }}
+          placeholder="e.g. Evening Street Portrait"
+          className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+        />
+        {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name}</p>}
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-sm text-zinc-300">Description</label>
+        <RichTextEditor
+          content={formData.description}
+          onChange={(content) => setFormData((prev) => ({ ...prev, description: content }))}
+          placeholder="Story, context, or style notes"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1.5 block text-sm text-zinc-300">Category</label>
+          <select
+            value={formData.category}
+            onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
+            className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+          >
+            {CATEGORIES.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm text-zinc-300">Visibility</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setFormData((prev) => ({ ...prev, visibility: 'public' }))}
+              className={`inline-flex items-center justify-center gap-1 rounded-md border px-3 py-2 text-sm ${
+                formData.visibility === 'public' ? 'border-zinc-500 bg-zinc-800 text-zinc-100' : 'border-zinc-700 bg-zinc-950 text-zinc-400'
+              }`}
+            >
+              <Eye size={14} /> Public
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData((prev) => ({ ...prev, visibility: 'private' }))}
+              className={`inline-flex items-center justify-center gap-1 rounded-md border px-3 py-2 text-sm ${
+                formData.visibility === 'private' ? 'border-zinc-500 bg-zinc-800 text-zinc-100' : 'border-zinc-700 bg-zinc-950 text-zinc-400'
+              }`}
+            >
+              <EyeOff size={14} /> Private
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  ), [formData.name, formData.description, formData.category, formData.visibility, errors.name]);
+
+  const asideSection = useMemo(() => (
+    <aside className="space-y-5">
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-3">
+        <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500">Details</h3>
+
+        <div>
+          <label className="mb-1.5 block text-sm text-zinc-300">Photographer</label>
+          <input
+            value={formData.photographer}
+            onChange={(e) => setFormData((prev) => ({ ...prev, photographer: e.target.value }))}
+            className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm text-zinc-300">Location</label>
+          <div className="relative">
+            <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <input
+              value={formData.location}
+              onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-950 pl-8 pr-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm text-zinc-300">Equipment</label>
+          <input
+            value={formData.equipment}
+            onChange={(e) => setFormData((prev) => ({ ...prev, equipment: e.target.value }))}
+            className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm text-zinc-300">Tags</label>
+          <input
+            value={formData.tags}
+            onChange={(e) => setFormData((prev) => ({ ...prev, tags: e.target.value }))}
+            className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setFormData((prev) => ({ ...prev, featured: !prev.featured }))}
+          className={`w-full rounded-md border px-3 py-2.5 text-sm ${
+            formData.featured ? 'border-zinc-500 bg-zinc-800 text-zinc-100' : 'border-zinc-700 bg-zinc-950 text-zinc-400'
+          }`}
+        >
+          {formData.featured ? 'Featured: On' : 'Featured: Off'}
+        </button>
+      </div>
+
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-3">
+        <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
+          <Settings size={14} />
+          Camera Metadata
+        </h3>
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            value={formData.metadata.aperture}
+            onChange={(e) => setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, aperture: e.target.value } }))}
+            placeholder="Aperture"
+            className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+          />
+          <input
+            value={formData.metadata.shutter}
+            onChange={(e) => setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, shutter: e.target.value } }))}
+            placeholder="Shutter"
+            className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+          />
+          <input
+            value={formData.metadata.iso}
+            onChange={(e) => setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, iso: e.target.value } }))}
+            placeholder="ISO"
+            className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+          />
+          <input
+            value={formData.metadata.focal_length}
+            onChange={(e) => setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, focal_length: e.target.value } }))}
+            placeholder="Focal length"
+            className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-500"
+          />
+        </div>
+      </div>
+    </aside>
+  ), [formData.photographer, formData.location, formData.equipment, formData.tags, formData.featured, formData.metadata]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
@@ -357,7 +659,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <button
-            onClick={onBack}
+            onClick={() => onBack()}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
             aria-label="Go back"
           >
@@ -373,6 +675,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
         <div className="flex items-center gap-2">
           {item && onDelete && (
             <button
+              type="button"
               onClick={() => setPendingDelete(true)}
               className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-sm text-red-300 hover:bg-red-950"
             >
@@ -380,6 +683,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
             </button>
           )}
           <button
+            form="gallery-form"
             type="submit"
             disabled={busy}
             className="inline-flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white disabled:opacity-60"
@@ -405,76 +709,9 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <section className="space-y-5 lg:col-span-2">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
-            <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
-              <Info size={14} />
-              Basic Info
-            </h3>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-zinc-300">Title</label>
-              <input
-                value={formData.name}
-                onChange={(e) => {
-                  setFormData((prev) => ({ ...prev, name: e.target.value }));
-                  if (errors.name) setErrors({});
-                }}
-                placeholder="e.g. Evening Street Portrait"
-                className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-              />
-              {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name}</p>}
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-zinc-300">Description</label>
-              <RichTextEditor
-                content={formData.description}
-                onChange={(content) => setFormData((prev) => ({ ...prev, description: content }))}
-                placeholder="Story, context, or style notes"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-sm text-zinc-300">Category</label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, category: e.target.value }))}
-                  className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-sm text-zinc-300">Visibility</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, visibility: 'public' }))}
-                    className={`inline-flex items-center justify-center gap-1 rounded-md border px-3 py-2 text-sm ${
-                      formData.visibility === 'public' ? 'border-zinc-500 bg-zinc-800 text-zinc-100' : 'border-zinc-700 bg-zinc-950 text-zinc-400'
-                    }`}
-                  >
-                    <Eye size={14} /> Public
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, visibility: 'private' }))}
-                    className={`inline-flex items-center justify-center gap-1 rounded-md border px-3 py-2 text-sm ${
-                      formData.visibility === 'private' ? 'border-zinc-500 bg-zinc-800 text-zinc-100' : 'border-zinc-700 bg-zinc-950 text-zinc-400'
-                    }`}
-                  >
-                    <EyeOff size={14} /> Private
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+      <form id="gallery-form" onSubmit={handleSubmit} className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="space-y-5 lg:col-span-2">
+          {basicInfoSection}
 
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-4">
             <div className="flex items-center justify-between">
@@ -555,144 +792,14 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
                 ))}
 
                 {uploadItems.map((it) => (
-                  <div key={it.id} className="rounded-md border border-zinc-800 bg-zinc-950 overflow-hidden">
-                    <div className="relative aspect-square">
-                      <img src={it.previewUrl} alt="upload" className="h-full w-full object-cover opacity-50" />
-                      <div className="absolute inset-0 flex items-center justify-center p-3">
-                        {it.status === 'uploading' && (
-                          <div className="w-full space-y-1">
-                            <div className="h-1.5 w-full rounded-full bg-zinc-800">
-                              <div className="h-full rounded-full bg-zinc-300" style={{ width: `${it.progress}%` }} />
-                            </div>
-                            <p className="text-center text-[11px] text-zinc-200">{it.progress}%</p>
-                          </div>
-                        )}
-                        {it.status === 'error' && <p className="text-xs text-red-400 text-center">{it.error || 'Upload failed'}</p>}
-                      </div>
-                    </div>
-                    {(it.status === 'uploading' || it.status === 'error') && (
-                      <div className="grid grid-cols-2 border-t border-zinc-800">
-                        {it.status === 'error' ? (
-                          <button
-                            type="button"
-                            onClick={() => retryUpload(it.id)}
-                            className="inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-900 border-r border-zinc-800"
-                          >
-                            <RotateCcw size={11} />
-                            Retry
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => cancelUpload(it.id)}
-                            className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900 border-r border-zinc-800"
-                          >
-                            Cancel
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => cancelUpload(it.id)}
-                          className="px-2 py-1.5 text-xs text-zinc-300 hover:bg-zinc-900"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <UploadCard key={it.id} item={it} onCancel={() => cancelUpload(it.id)} onRetry={() => retryUpload(it.id)} />
                 ))}
               </div>
             )}
           </div>
-        </section>
+        </div>
 
-        <aside className="space-y-5">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-3">
-            <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500">Details</h3>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-zinc-300">Photographer</label>
-              <input
-                value={formData.photographer}
-                onChange={(e) => setFormData((prev) => ({ ...prev, photographer: e.target.value }))}
-                className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-zinc-300">Location</label>
-              <div className="relative">
-                <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                <input
-                  value={formData.location}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-                  className="w-full rounded-md border border-zinc-700 bg-zinc-950 pl-8 pr-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-zinc-300">Equipment</label>
-              <input
-                value={formData.equipment}
-                onChange={(e) => setFormData((prev) => ({ ...prev, equipment: e.target.value }))}
-                className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm text-zinc-300">Tags</label>
-              <input
-                value={formData.tags}
-                onChange={(e) => setFormData((prev) => ({ ...prev, tags: e.target.value }))}
-                className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setFormData((prev) => ({ ...prev, featured: !prev.featured }))}
-              className={`w-full rounded-md border px-3 py-2.5 text-sm ${
-                formData.featured ? 'border-zinc-500 bg-zinc-800 text-zinc-100' : 'border-zinc-700 bg-zinc-950 text-zinc-400'
-              }`}
-            >
-              {formData.featured ? 'Featured: On' : 'Featured: Off'}
-            </button>
-          </div>
-
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 sm:p-5 space-y-3">
-            <h3 className="text-xs font-normal uppercase tracking-wide text-zinc-500 flex items-center gap-2">
-              <Settings size={14} />
-              Camera Metadata
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                value={formData.metadata.aperture}
-                onChange={(e) => setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, aperture: e.target.value } }))}
-                placeholder="Aperture"
-                className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-              />
-              <input
-                value={formData.metadata.shutter}
-                onChange={(e) => setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, shutter: e.target.value } }))}
-                placeholder="Shutter"
-                className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-              />
-              <input
-                value={formData.metadata.iso}
-                onChange={(e) => setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, iso: e.target.value } }))}
-                placeholder="ISO"
-                className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-              />
-              <input
-                value={formData.metadata.focal_length}
-                onChange={(e) => setFormData((prev) => ({ ...prev, metadata: { ...prev.metadata, focal_length: e.target.value } }))}
-                placeholder="Focal length"
-                className="rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-zinc-500"
-              />
-            </div>
-          </div>
-        </aside>
+        {asideSection}
       </form>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { memo, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Camera, Star, Eye, EyeOff, MapPin, Edit2, Trash2, Image as ImageIcon, Search, Grid3X3, List, Filter, X } from 'lucide-react';
 import ImageWithLqip from '../../components/ImageWithLqip';
 import ConfirmDialog from './components/ConfirmDialog';
@@ -24,6 +24,7 @@ const CATEGORIES = [
 ];
 
 function GalleryManagement({ onCreate, onEdit, onDelete }: GalleryManagementProps) {
+  const isMountedRef = useRef(true);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -34,21 +35,36 @@ function GalleryManagement({ onCreate, onEdit, onDelete }: GalleryManagementProp
   const [pendingDelete, setPendingDelete] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchGalleryItems = useCallback(async () => {
+  const fetchGalleryItems = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true);
-      const res = await fetch('/api/gallery?limit=100&visibility=all');
+      const res = await fetch('/api/gallery?limit=100&visibility=all', {
+        cache: 'no-store',
+        signal,
+      });
       const data = await res.json();
-      if (res.ok) setItems(data.items || []);
+      if (res.ok && isMountedRef.current && !signal?.aborted) {
+        setItems(data.items || []);
+      }
     } catch (error) {
-      console.error('Failed to fetch gallery items:', error);
+      if ((error as Error)?.name !== 'AbortError') {
+        console.error('Failed to fetch gallery items:', error);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current && !signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchGalleryItems();
+    isMountedRef.current = true;
+    const controller = new AbortController();
+    fetchGalleryItems(controller.signal);
+    return () => {
+      isMountedRef.current = false;
+      controller.abort();
+    };
   }, [fetchGalleryItems]);
 
   const filteredItems = useMemo(() => {

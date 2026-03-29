@@ -77,17 +77,16 @@ function serialize(doc: any) {
   };
 }
 
-function cloudinaryCleanup(publicIds: string[]) {
+async function cloudinaryCleanup(publicIds: string[]) {
   if (!publicIds.length) return;
-  Promise.resolve().then(async () => {
-    for (const pid of publicIds) {
-      try {
-        await cloudinary.uploader.destroy(pid, { invalidate: true });
-      } catch (e) {
+  await Promise.allSettled(
+    publicIds.map((pid) =>
+      cloudinary.uploader.destroy(pid, { invalidate: true }).catch((e) => {
         console.error(`Blog image cleanup failed for ${pid}:`, e);
-      }
-    }
-  }).catch((e) => console.error('Blog image cleanup failed:', e));
+        return null;
+      })
+    )
+  );
 }
 
 export async function GET(
@@ -246,7 +245,7 @@ export async function PATCH(
       removedIds.push(oldCoverId);
     }
 
-    cloudinaryCleanup(Array.from(new Set(removedIds)));
+    await cloudinaryCleanup(Array.from(new Set(removedIds)));
 
     delCachePrefix('blog:list:');
     invalidateCachePrefix('home:');
@@ -294,7 +293,7 @@ export async function DELETE(
       ...(existing.inlineImages || []).map((img) => img.public_id),
       existing.coverImage?.public_id || '',
     ].filter(Boolean);
-    cloudinaryCleanup(Array.from(new Set(imageIds)));
+    await cloudinaryCleanup(Array.from(new Set(imageIds)));
 
     delCachePrefix('blog:list:');
     invalidateCachePrefix('home:');

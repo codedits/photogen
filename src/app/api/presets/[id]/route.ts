@@ -95,13 +95,6 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
       return v && typeof v === 'object' && typeof v.url === 'string' && typeof v.public_id === 'string';
     }
 
-    // Remove requested images from Cloudinary (best effort)
-    if (removePublicIds.length) {
-      for (const pid of removePublicIds) {
-        try { await cloudinary.uploader.destroy(pid); } catch {}
-      }
-    }
-
     // Separate already-uploaded from new-to-upload
     let finalImages: { url: string; public_id: string }[] = imagesRaw.filter(isUploadedObj);
     const toUploadRaw = imagesRaw.filter((it): it is string => typeof it === 'string' && it.length > 0);
@@ -127,6 +120,12 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
       finalImages = [...picked, ...remaining];
     }
 
+    const existingImageIds = new Set((existing.images || []).map((img) => img.public_id).filter(Boolean));
+    const nextImageIds = new Set(finalImages.map((img) => img.public_id).filter(Boolean));
+    const removablePublicIds = Array.from(new Set(removePublicIds)).filter(
+      (pid) => existingImageIds.has(pid) && !nextImageIds.has(pid)
+    );
+
     // Determine the final DNG object
     const finalDng = newDngUrl 
       ? { url: newDngUrl, public_id: '' } 
@@ -151,6 +150,12 @@ export async function PATCH(req: Request, { params }: { params?: { id: string } 
         dng: finalDng
       } 
     });
+
+    if (removablePublicIds.length) {
+      for (const pid of removablePublicIds) {
+        try { await cloudinary.uploader.destroy(pid); } catch {}
+      }
+    }
     
     try { delCachePrefix('presets:'); } catch {}
     revalidatePath('/');

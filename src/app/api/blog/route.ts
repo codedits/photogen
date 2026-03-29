@@ -148,6 +148,8 @@ export async function GET(req: NextRequest) {
       contentText: 1,
       tags: 1,
       status: 1,
+      layout: 1,
+      readingTime: 1,
       publishedAt: 1,
       coverImage: 1,
       inlineImages: 1,
@@ -197,7 +199,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ ok: false, error: 'Invalid JSON body' }, { status: 400 });
+    }
+
     const title = String(body?.title || '').trim();
     const contentHtml = String(body?.contentHtml || '').trim();
     const slugInput = String(body?.slug || '').trim();
@@ -213,7 +221,8 @@ export async function POST(req: NextRequest) {
     const excerptRaw = String(body?.excerpt || '').trim();
     const excerpt = excerptRaw || `${contentText.slice(0, 180)}${contentText.length > 180 ? '...' : ''}`;
     const status: BlogStatus = body?.status === 'published' ? 'published' : 'draft';
-    const layout: BlogLayout = ['standard', 'magazine', 'minimal'].includes(body?.layout) ? body.layout : 'standard';
+    const layoutRaw = typeof body?.layout === 'string' ? body.layout : '';
+    const layout: BlogLayout = ['standard', 'magazine', 'minimal'].includes(layoutRaw) ? (layoutRaw as BlogLayout) : 'standard';
 
     const inlineImages = Array.isArray(body?.inlineImages)
       ? body.inlineImages.map((img: unknown) => sanitizeImage(img)).filter(Boolean)

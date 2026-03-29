@@ -3,6 +3,7 @@ import getDatabase from "@/lib/mongodb";
 import { isAdminRequest } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { invalidateCachePrefix } from "@/lib/multiLayerCache";
+import cloudinary from "@/lib/cloudinary";
 
 export async function GET(req: Request) {
   if (!isAdminRequest(req)) {
@@ -42,6 +43,13 @@ export async function PATCH(req: Request) {
   try {
     const body = await req.json();
     const db = await getDatabase();
+    const currentSettings = await db.collection("settings").findOne(
+      { _id: "hero_settings" as any },
+      { projection: { image: 1 } }
+    );
+    const previousPublicId = typeof (currentSettings as any)?.image?.public_id === "string"
+      ? ((currentSettings as any).image.public_id as string).trim()
+      : "";
     
     // We update only allowed fields from the body
     const allowedFields = [
@@ -51,8 +59,32 @@ export async function PATCH(req: Request) {
     
     const updateData: any = { updatedAt: new Date() };
     allowedFields.forEach(field => {
-      if (body[field] !== undefined) {
-        updateData[field] = body[field];
+      if (body[field] === undefined) {
+        return;
+      }
+
+      if (field === 'overlayBrightness') {
+        const parsed = Number(body[field]);
+        if (Number.isFinite(parsed)) {
+          updateData[field] = Math.min(1, Math.max(0.1, parsed));
+        }
+        return;
+      }
+
+      if (field === 'image') {
+        const image = body[field];
+        if (image && typeof image === 'object') {
+          const img = image as Record<string, unknown>;
+          updateData.image = {
+            url: typeof img.url === 'string' ? img.url.trim() : '',
+            public_id: typeof img.public_id === 'string' ? img.public_id.trim() : '',
+          };
+        }
+        return;
+      }
+
+      if (typeof body[field] === 'string') {
+        updateData[field] = body[field].trim();
       }
     });
 
@@ -61,6 +93,18 @@ export async function PATCH(req: Request) {
       { $set: updateData },
       { upsert: true }
     );
+
+    const nextPublicId = typeof updateData?.image?.public_id === "string"
+      ? (updateData.image.public_id as string).trim()
+      : previousPublicId;
+
+    if (previousPublicId && previousPublicId !== nextPublicId) {
+      try {
+        await cloudinary.uploader.destroy(previousPublicId, { invalidate: true });
+      } catch (cleanupErr) {
+        console.error("Failed to cleanup previous hero image:", cleanupErr);
+      }
+    }
 
     invalidateCachePrefix("home:");
     // Trigger on-demand revalidation for the home page

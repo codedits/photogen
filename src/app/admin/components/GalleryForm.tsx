@@ -18,6 +18,8 @@ const CATEGORIES = [
   { id: 'commercial', label: 'Commercial' },
 ];
 
+const MAX_GALLERY_IMAGES = 18;
+
 type BackNavigationOptions = {
   skipUnsavedGuard?: boolean;
 };
@@ -258,7 +260,21 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
 
   const handleFiles = (files?: FileList | null) => {
     if (!files || !files.length) return;
-    const list = Array.from(files).filter((f) => f.type.startsWith('image/')).slice(0, 10);
+    const imageFiles = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    const usedSlots = imagesLocal.length + uploadItemsRef.current.length;
+    const availableSlots = Math.max(0, MAX_GALLERY_IMAGES - usedSlots);
+
+    if (availableSlots <= 0) {
+      setNotice({ type: 'info', message: `Maximum ${MAX_GALLERY_IMAGES} images reached.` });
+      return;
+    }
+
+    const list = imageFiles.slice(0, availableSlots);
+    if (list.length < imageFiles.length) {
+      setNotice({ type: 'info', message: `Only ${availableSlots} image${availableSlots === 1 ? '' : 's'} added. Max ${MAX_GALLERY_IMAGES} allowed.` });
+    }
+
+    setSubmitError(null);
     const items = list.map((file, i) => ({
       id: `${Date.now()}_${i}`,
       previewUrl: URL.createObjectURL(file),
@@ -422,6 +438,11 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
 
     if (imagesLocal.length === 0) {
       setSubmitError('Please upload at least one image before saving.');
+      return;
+    }
+
+    if (imagesLocal.length > MAX_GALLERY_IMAGES) {
+      setSubmitError(`Please keep images at or below ${MAX_GALLERY_IMAGES}.`);
       return;
     }
 
@@ -719,7 +740,7 @@ export default function GalleryForm({ item, onBack, onSave, onDelete, onDirtyCha
                 <ImageIcon size={14} />
                 Images
               </h3>
-              <span className="text-xs text-zinc-500">{imagesLocal.length} images</span>
+              <span className="text-xs text-zinc-500">{imagesLocal.length}/{MAX_GALLERY_IMAGES} images</span>
             </div>
 
             <div

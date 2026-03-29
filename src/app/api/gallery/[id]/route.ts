@@ -122,6 +122,9 @@ export async function PUT(
       if (nextImages.length === 0) {
         return NextResponse.json({ error: 'At least one image is required' }, { status: 400 });
       }
+      if (nextImages.length > 18) {
+        return NextResponse.json({ error: 'Maximum 18 images allowed per gallery item' }, { status: 400 });
+      }
 
       updateDoc.images = nextImages;
     }
@@ -173,6 +176,7 @@ export async function PUT(
     delCachePrefix('gallery:list:');
     delCachePrefix('gallery:count:');
     invalidateCachePrefix('home:');
+    revalidatePath('/');
     revalidatePath('/gallery');
     revalidatePath(`/gallery/${id}`);
     
@@ -225,6 +229,7 @@ export async function DELETE(
     delCachePrefix('gallery:list:');
     delCachePrefix('gallery:count:');
     invalidateCachePrefix('home:');
+    revalidatePath('/');
     revalidatePath('/gallery');
     revalidatePath(`/gallery/${id}`);
     

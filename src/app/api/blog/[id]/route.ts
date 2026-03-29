@@ -249,6 +249,7 @@ export async function PATCH(
 
     delCachePrefix('blog:list:');
     invalidateCachePrefix('home:');
+    revalidatePath('/');
     revalidatePath('/blog');
     revalidatePath(`/blog/${existing.slug}`);
     if (updateDoc.slug && updateDoc.slug !== existing.slug) {

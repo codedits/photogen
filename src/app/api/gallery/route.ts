@@ -201,6 +201,9 @@ export async function POST(req: NextRequest) {
     if (images.length === 0) {
       return NextResponse.json({ ok: false, error: 'At least one image is required' }, { status: 400 });
     }
+    if (images.length > 18) {
+      return NextResponse.json({ ok: false, error: 'Maximum 18 images allowed per gallery item' }, { status: 400 });
+    }
     if (!payload.category?.trim()) {
       return NextResponse.json({ ok: false, error: 'Category is required' }, { status: 400 });
     }

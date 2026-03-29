@@ -41,7 +41,7 @@ export default function ImageWithLqip({
   noBlur?: boolean;
 }) {
   // Skip blur fetches entirely when noBlur is true (saves 14+ network requests on gallery page)
-  const blur = useOptionalBlur(src, { w: Math.min(transformOpts?.w || width || 400, 24), h: Math.min(transformOpts?.h || height || 300, 24), fit: transformOpts?.fit || 'cover' }, noBlur);
+  const blur = useOptionalBlur(src, { w: Math.min(transformOpts?.w || width || 400, 64), h: Math.min(transformOpts?.h || height || 300, 64), fit: transformOpts?.fit || 'cover' }, noBlur);
   
   if (!src || src === "undefined") {
     return <div className={className} style={{ width, height, position: fill ? 'absolute' : 'relative', inset: fill ? 0 : undefined, backgroundColor: 'rgba(255,255,255,0.05)' }} />;

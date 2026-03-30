@@ -87,7 +87,7 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body className="font-sans antialiased bg-background text-foreground">
+      <body className="font-sans antialiased bg-background text-foreground" suppressHydrationWarning>
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
             <CustomCursor />

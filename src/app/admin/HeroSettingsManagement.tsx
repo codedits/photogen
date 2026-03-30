@@ -140,7 +140,9 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
       return;
     }
 
+    // When media changes, we start loading the new preview
     setPreviewLoading(true);
+
     const timeoutId = window.setTimeout(() => {
       if (isMountedRef.current) {
         setPreviewLoading(false);
@@ -150,6 +152,18 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
     return () => {
       window.clearTimeout(timeoutId);
     };
+  }, [activeMediaUrl, activeMediaType]);
+
+  // Handle immediate state changes for existing media that might already be cached or fast-loading
+  useEffect(() => {
+    const video = document.querySelector("#hero-preview-video") as HTMLVideoElement;
+    const img = document.querySelector("#hero-preview-img") as HTMLImageElement;
+
+    if (activeMediaType === "video" && video?.readyState >= 3) {
+      setPreviewLoading(false);
+    } else if (activeMediaType === "image" && img?.complete) {
+      setPreviewLoading(false);
+    }
   }, [activeMediaUrl, activeMediaType]);
 
   const cleanupCloudinaryUpload = useCallback((publicId: string, resourceType: HeroMediaType) => {
@@ -357,12 +371,18 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
           (persistErr as Error)?.message || "Image uploaded, but DB save failed. Click Save Hero Section.",
           "error"
         );
+      } finally {
+        if (isMountedRef.current) {
+          setPreviewLoading(false);
+        }
       }
     } catch (err) {
       addToast((err as Error)?.message || "Image upload failed", "error");
       setPreviewLoading(false);
     } finally {
-      e.currentTarget.value = "";
+      if (e.currentTarget) {
+        e.currentTarget.value = "";
+      }
       if (isMountedRef.current) {
         setUploadingImage(false);
       }
@@ -400,12 +420,18 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
           (persistErr as Error)?.message || "Video uploaded, but DB save failed. Click Save Hero Section.",
           "error"
         );
+      } finally {
+        if (isMountedRef.current) {
+          setPreviewLoading(false);
+        }
       }
     } catch (err) {
       addToast((err as Error)?.message || "Video upload failed", "error");
       setPreviewLoading(false);
     } finally {
-      e.currentTarget.value = "";
+      if (e.currentTarget) {
+        e.currentTarget.value = "";
+      }
       if (isMountedRef.current) {
         setUploadingVideo(false);
       }
@@ -597,6 +623,7 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
             <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden border border-zinc-800 bg-zinc-950">
               {heroSettings.mediaType === "video" && heroSettings.video.url ? (
                 <video
+                  id="hero-preview-video"
                   src={heroSettings.video.url}
                   className="w-full h-full object-cover transition-all duration-300"
                   style={{ filter: `brightness(${heroSettings.overlayBrightness || 0.85})` }}
@@ -604,12 +631,14 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
                   loop
                   muted
                   playsInline
-                  preload="metadata"
+                  preload="auto"
                   onLoadedData={() => setPreviewLoading(false)}
+                  onCanPlay={() => setPreviewLoading(false)}
                   onError={() => setPreviewLoading(false)}
                 />
               ) : heroSettings.image.url ? (
                 <img
+                  id="hero-preview-img"
                   src={heroSettings.image.url}
                   alt="Hero preview"
                   className="w-full h-full object-cover transition-all duration-300"

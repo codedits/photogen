@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import { cloudinaryPresetUrl } from '@/lib/cloudinaryUrl';
 
 interface ProductLightboxProps {
   images: string[];
@@ -254,7 +255,7 @@ export function ProductLightbox({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               key={images[currentIndex]}
-              src={images[currentIndex]}
+              src={cloudinaryPresetUrl(images[currentIndex], 'lightbox')}
               alt={`${alt} — view ${currentIndex + 1}`}
               className="w-full h-full object-contain object-center transition-transform duration-150 ease-out"
               style={{
@@ -303,7 +304,7 @@ export function ProductLightbox({
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={img}
+                      src={cloudinaryPresetUrl(img, 'card')}
                       alt=""
                       className="w-full h-full object-contain"
                       loading="lazy"

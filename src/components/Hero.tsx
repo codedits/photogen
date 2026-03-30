@@ -83,16 +83,24 @@ export default function Hero({ settings }: HeroProps) {
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
-  const [videoUrlAttempt, setVideoUrlAttempt] = useState<0 | 1>(0);
-  const heroVideo = videoUrlAttempt === 0 ? heroVideoWithToken : heroVideoBase;
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const heroVideo = heroVideoWithToken;
   const usingVideo = desiredMediaType === "video" && !!heroVideoBase && !videoFailed;
   const lqipUrl = heroImageSource ? appendCacheToken(cloudinaryPresetUrl(heroImageSource, "lqip"), imageToken) : "";
 
   React.useEffect(() => {
     setIsLoaded(false);
     setVideoFailed(false);
-    setVideoUrlAttempt(0);
   }, [heroImageSource, heroVideoWithToken, heroVideoBase, desiredMediaType]);
+
+  // Check if video is already loaded (e.g., from cache)
+  React.useEffect(() => {
+    if (usingVideo && videoRef.current) {
+      if (videoRef.current.readyState >= 2) { // HAVE_CURRENT_DATA
+        setIsLoaded(true);
+      }
+    }
+  }, [usingVideo, heroVideo]);
 
   return (
     <section className="relative w-full flex flex-col bg-background selection:bg-white selection:text-black overflow-hidden font-sans">
@@ -129,6 +137,7 @@ export default function Hero({ settings }: HeroProps) {
           >
             {usingVideo ? (
               <video
+                ref={videoRef}
                 key={heroVideo}
                 src={heroVideo}
                 className="h-full w-full object-cover contrast-[1.05] grayscale-[0.02]"
@@ -147,11 +156,11 @@ export default function Hero({ settings }: HeroProps) {
                   setVideoFailed(false);
                   setIsLoaded(true);
                 }}
+                onCanPlay={() => {
+                  setVideoFailed(false);
+                  setIsLoaded(true);
+                }}
                 onError={() => {
-                  if (videoUrlAttempt === 0 && heroVideoBase && heroVideoWithToken !== heroVideoBase) {
-                    setVideoUrlAttempt(1);
-                    return;
-                  }
                   setVideoFailed(true);
                   setIsLoaded(false);
                 }}

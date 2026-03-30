@@ -5,7 +5,7 @@
  */
 export type ThumbOpts = { w?: number; h?: number; fit?: 'cover' | 'crop' | 'fill' | 'scale' | 'contain'; q?: string | number; f?: 'auto' | string; dpr?: number | 'auto'; g?: string };
 
-export type CloudinaryPreset = 'hero' | 'hero_mobile' | 'card' | 'content' | 'social' | 'lqip';
+export type CloudinaryPreset = 'hero' | 'hero_mobile' | 'card' | 'content' | 'social' | 'lqip' | 'lightbox';
 
 const CLOUDINARY_HOST = 'res.cloudinary.com';
 
@@ -16,6 +16,7 @@ const PRESET_DEFAULTS: Record<CloudinaryPreset, ThumbOpts> = {
   content: { w: 1280, h: 960, fit: 'contain', q: 'auto:good', f: 'auto', dpr: 'auto' },
   social: { w: 1200, h: 630, fit: 'cover', q: 'auto:good', f: 'auto', dpr: 1 },
   lqip: { w: 64, h: 64, fit: 'cover', q: 'auto:eco', f: 'auto', dpr: 1 },
+  lightbox: { w: 2048, h: 2048, fit: 'contain', q: 'auto:good', f: 'auto', dpr: 'auto' },
 };
 
 export function thumbUrl(source: string, opts: ThumbOpts = {}) {

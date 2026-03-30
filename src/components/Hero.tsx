@@ -11,6 +11,7 @@ interface HeroProps {
     introText?: string;
     mainHeadline?: string;
     mediaType?: "image" | "video";
+    updatedAt?: string;
     image?: {
       url?: string;
       public_id?: string;
@@ -27,12 +28,53 @@ interface HeroProps {
   };
 }
 
+function appendCacheToken(url: string, token: string) {
+  if (!url || !token) return url;
+  if (url.startsWith("blob:")) return url;
+  const joiner = url.includes("?") ? "&" : "?";
+  return `${url}${joiner}v=${encodeURIComponent(token)}`;
+}
+
+function toCompatibleHeroVideoUrl(url: string) {
+  if (!url) return url;
+
+  try {
+    const parsed = new URL(url);
+    const parts = parsed.pathname.split("/video/upload/");
+    if (parts.length !== 2) {
+      return url;
+    }
+
+    const resourcePath = parts[1].replace(/^\/+/, "");
+    const looksTransformed =
+      resourcePath.startsWith("f_") || resourcePath.startsWith("q_") || resourcePath.startsWith("vc_");
+
+    if (looksTransformed) {
+      return url;
+    }
+
+    const transform = "f_mp4,vc_h264,ac_aac,q_auto";
+    return `${parsed.protocol}//${parsed.host}${parts[0]}/video/upload/${transform}/${resourcePath}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
 export default function Hero({ settings }: HeroProps) {
   const introText = settings?.introText ?? "";
   const mainHeadline = settings?.mainHeadline ?? "";
-  const heroImage = settings?.image?.url || "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?width=1600";
-  const heroVideo = settings?.video?.url || "";
-  const desiredMediaType = settings?.mediaType === "video" ? "video" : "image";
+  const heroImageSource = settings?.image?.url || "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?width=1600";
+  const rawHeroVideo = typeof settings?.video?.url === "string" ? settings.video.url.trim() : "";
+  const heroVideoBase = toCompatibleHeroVideoUrl(rawHeroVideo);
+  const mediaUpdateToken = settings?.updatedAt || "";
+  const imageToken = settings?.image?.public_id || mediaUpdateToken;
+  const videoToken = settings?.video?.public_id || mediaUpdateToken;
+  const heroVideoWithToken = appendCacheToken(heroVideoBase, videoToken);
+  const heroImageMobile = appendCacheToken(cloudinaryPresetUrl(heroImageSource, "hero_mobile"), imageToken);
+  const heroImageDesktop = appendCacheToken(cloudinaryPresetUrl(heroImageSource, "hero"), imageToken);
+  const rawMediaType = typeof settings?.mediaType === "string" ? settings.mediaType.trim().toLowerCase() : "";
+  const desiredMediaType: "image" | "video" =
+    rawMediaType === "video" || (rawMediaType !== "image" && !!heroVideoBase) ? "video" : "image";
   const overlayBrightness = settings?.overlayBrightness ?? 0.85;
   const ctaText = settings?.ctaText || "Gallery";
   const ctaLink = settings?.ctaLink || "/gallery";
@@ -41,13 +83,16 @@ export default function Hero({ settings }: HeroProps) {
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
-  const usingVideo = desiredMediaType === "video" && !!heroVideo && !videoFailed;
-  const lqipUrl = heroImage ? cloudinaryPresetUrl(heroImage, "lqip") : "";
+  const [videoUrlAttempt, setVideoUrlAttempt] = useState<0 | 1>(0);
+  const heroVideo = videoUrlAttempt === 0 ? heroVideoWithToken : heroVideoBase;
+  const usingVideo = desiredMediaType === "video" && !!heroVideoBase && !videoFailed;
+  const lqipUrl = heroImageSource ? appendCacheToken(cloudinaryPresetUrl(heroImageSource, "lqip"), imageToken) : "";
 
   React.useEffect(() => {
     setIsLoaded(false);
     setVideoFailed(false);
-  }, [heroImage, heroVideo, desiredMediaType]);
+    setVideoUrlAttempt(0);
+  }, [heroImageSource, heroVideoWithToken, heroVideoBase, desiredMediaType]);
 
   return (
     <section className="relative w-full flex flex-col bg-background selection:bg-white selection:text-black overflow-hidden font-sans">
@@ -84,6 +129,7 @@ export default function Hero({ settings }: HeroProps) {
           >
             {usingVideo ? (
               <video
+                key={heroVideo}
                 src={heroVideo}
                 className="h-full w-full object-cover contrast-[1.05] grayscale-[0.02]"
                 style={{ filter: `brightness(${overlayBrightness})` }}
@@ -91,9 +137,21 @@ export default function Hero({ settings }: HeroProps) {
                 muted
                 loop
                 playsInline
-                preload="metadata"
-                onLoadedData={() => setIsLoaded(true)}
+                preload="auto"
+                poster={lqipUrl || undefined}
+                onLoadedMetadata={() => {
+                  setVideoFailed(false);
+                  setIsLoaded(true);
+                }}
+                onLoadedData={() => {
+                  setVideoFailed(false);
+                  setIsLoaded(true);
+                }}
                 onError={() => {
+                  if (videoUrlAttempt === 0 && heroVideoBase && heroVideoWithToken !== heroVideoBase) {
+                    setVideoUrlAttempt(1);
+                    return;
+                  }
                   setVideoFailed(true);
                   setIsLoaded(false);
                 }}
@@ -102,7 +160,8 @@ export default function Hero({ settings }: HeroProps) {
               <>
                 {/* Mobile Image (9:16) */}
                 <Image
-                  src={cloudinaryPresetUrl(heroImage, "hero_mobile")}
+                  key={heroImageMobile}
+                  src={heroImageMobile}
                   alt="Hero Background Mobile"
                   fill
                   className="object-cover md:hidden contrast-[1.05] grayscale-[0.02]"
@@ -113,7 +172,8 @@ export default function Hero({ settings }: HeroProps) {
                 />
                 {/* Desktop Image (16:9) */}
                 <Image
-                  src={cloudinaryPresetUrl(heroImage, "hero")}
+                  key={heroImageDesktop}
+                  src={heroImageDesktop}
                   alt="Hero Background Desktop"
                   fill
                   className="object-cover hidden md:block contrast-[1.05] grayscale-[0.02]"

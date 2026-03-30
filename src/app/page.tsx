@@ -85,6 +85,7 @@ const getLatestBlogPosts = createRequestScopedCachedFn("home:latest-blog", 45, f
 type HeroSettings = {
   introText?: string;
   mainHeadline?: string;
+  updatedAt?: string;
   image?: {
     url?: string;
     public_id?: string;
@@ -107,18 +108,38 @@ async function fetchHeroSettingsFromDb(): Promise<HeroSettings | null> {
     const settings = await db.collection("settings").findOne({ _id: "hero_settings" as any });
     if (!settings) return null;
 
+    const readMediaRef = (value: unknown) => {
+      if (typeof value === "string") {
+        return { url: value.trim(), public_id: "" };
+      }
+
+      if (!value || typeof value !== "object") {
+        return { url: "", public_id: "" };
+      }
+
+      const media = value as { url?: unknown; public_id?: unknown };
+      return {
+        url: typeof media.url === "string" ? media.url.trim() : "",
+        public_id: typeof media.public_id === "string" ? media.public_id.trim() : "",
+      };
+    };
+
+    const image = readMediaRef(settings.image);
+    const video = readMediaRef(settings.video);
+
+    const rawMediaType =
+      typeof settings.mediaType === "string" ? settings.mediaType.trim().toLowerCase() : "";
+    const hasVideoUrl = video.url.length > 0;
+    const normalizedMediaType: "image" | "video" =
+      rawMediaType === "video" || (rawMediaType !== "image" && hasVideoUrl) ? "video" : "image";
+
     return {
       introText: settings.introText,
       mainHeadline: settings.mainHeadline,
-      image: {
-        url: settings.image?.url,
-        public_id: settings.image?.public_id,
-      },
-      video: {
-        url: settings.video?.url,
-        public_id: settings.video?.public_id,
-      },
-      mediaType: settings.mediaType === "video" ? "video" : "image",
+      updatedAt: settings.updatedAt ? new Date(settings.updatedAt).toISOString() : undefined,
+      image,
+      video,
+      mediaType: normalizedMediaType,
       overlayBrightness: typeof settings.overlayBrightness === "number" ? settings.overlayBrightness : 0.85,
       ctaText: settings.ctaText || "Gallery",
       ctaLink: settings.ctaLink || "/gallery",
@@ -131,7 +152,7 @@ async function fetchHeroSettingsFromDb(): Promise<HeroSettings | null> {
   }
 }
 
-const getHeroSettings = createRequestScopedCachedFn("home:hero-settings", 30, fetchHeroSettingsFromDb);
+const getHeroSettings = fetchHeroSettingsFromDb;
 
 export default async function Home() {
   const [presets, featuredGallery, heroSettings, latestBlogPosts] = await Promise.all([

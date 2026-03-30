@@ -42,6 +42,10 @@ const defaultSettings: HeroSettingsDoc = {
 };
 
 function normalizeMediaRef(value: unknown): HeroMediaRef {
+  if (typeof value === "string") {
+    return { url: value.trim(), public_id: "" };
+  }
+
   if (!value || typeof value !== "object") {
     return { url: "", public_id: "" };
   }
@@ -59,7 +63,9 @@ function normalizeHeroSettings(settings: Record<string, unknown> | null | undefi
 
   const image = normalizeMediaRef(settings.image);
   const video = normalizeMediaRef(settings.video);
-  const mediaType = settings.mediaType === "video" ? "video" : "image";
+  const rawMediaType = typeof settings.mediaType === "string" ? settings.mediaType.trim().toLowerCase() : "";
+  const mediaType: "image" | "video" =
+    rawMediaType === "video" || (rawMediaType !== "image" && !!video.url) ? "video" : "image";
 
   return {
     introText: typeof settings.introText === "string" ? settings.introText : defaultSettings.introText,
@@ -144,7 +150,7 @@ export async function PATCH(req: Request) {
       }
 
       if (field === 'mediaType') {
-        const mediaType = body[field];
+        const mediaType = typeof body[field] === 'string' ? body[field].trim().toLowerCase() : '';
         if (mediaType === 'image' || mediaType === 'video') {
           updateData.mediaType = mediaType;
         }

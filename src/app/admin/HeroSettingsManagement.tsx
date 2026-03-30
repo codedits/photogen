@@ -100,9 +100,20 @@ function parseSnapshot(snapshot: string): HeroSettings {
   }
 }
 
+function appendCacheToken(url: string, token: string): string {
+  if (!url || !token) return url;
+  if (url.startsWith("blob:")) return url;
+  const joiner = url.includes("?") ? "&" : "?";
+  return `${url}${joiner}v=${encodeURIComponent(token)}`;
+}
+
 export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsManagementProps) {
   const { addToast } = useToast();
   const isMountedRef = useRef(true);
+  const imagePreviewRef = useRef<HTMLImageElement | null>(null);
+  const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
+  const imageObjectUrlRef = useRef("");
+  const videoObjectUrlRef = useRef("");
   const initialImagePublicIdRef = useRef("");
   const initialVideoPublicIdRef = useRef("");
   const latestImagePublicIdRef = useRef("");
@@ -112,14 +123,26 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [persistingMedia, setPersistingMedia] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [localImagePreviewUrl, setLocalImagePreviewUrl] = useState("");
+  const [localVideoPreviewUrl, setLocalVideoPreviewUrl] = useState("");
   const [heroSettings, setHeroSettings] = useState<HeroSettings>(defaultSettings);
 
   const currentSnapshot = useMemo(() => JSON.stringify(heroSettings), [heroSettings]);
   const isDirty = !loading && currentSnapshot !== initialSnapshotRef.current;
   const uploadingMedia = uploadingImage || uploadingVideo;
+  const mediaBusy = uploadingMedia || persistingMedia;
   const activeMediaType = heroSettings.mediaType;
-  const activeMediaUrl = activeMediaType === "video" ? heroSettings.video.url : heroSettings.image.url;
+  const previewImageUrl = useMemo(() => {
+    const source = uploadingImage && localImagePreviewUrl ? localImagePreviewUrl : heroSettings.image.url;
+    return appendCacheToken(source, heroSettings.image.public_id || "");
+  }, [uploadingImage, localImagePreviewUrl, heroSettings.image.url, heroSettings.image.public_id]);
+  const previewVideoUrl = useMemo(() => {
+    const source = uploadingVideo && localVideoPreviewUrl ? localVideoPreviewUrl : heroSettings.video.url;
+    return appendCacheToken(source, heroSettings.video.public_id || "");
+  }, [uploadingVideo, localVideoPreviewUrl, heroSettings.video.url, heroSettings.video.public_id]);
+  const activeMediaUrl = activeMediaType === "video" ? previewVideoUrl : previewImageUrl;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -133,6 +156,19 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
   useEffect(() => {
     latestVideoPublicIdRef.current = heroSettings.video?.public_id || "";
   }, [heroSettings.video?.public_id]);
+
+  useEffect(() => {
+    return () => {
+      if (imageObjectUrlRef.current) {
+        URL.revokeObjectURL(imageObjectUrlRef.current);
+        imageObjectUrlRef.current = "";
+      }
+      if (videoObjectUrlRef.current) {
+        URL.revokeObjectURL(videoObjectUrlRef.current);
+        videoObjectUrlRef.current = "";
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!activeMediaUrl) {
@@ -154,14 +190,11 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
     };
   }, [activeMediaUrl, activeMediaType]);
 
-  // Handle immediate state changes for existing media that might already be cached or fast-loading
+  // Handle immediate state changes for existing media that might already be cached or fast-loading.
   useEffect(() => {
-    const video = document.querySelector("#hero-preview-video") as HTMLVideoElement;
-    const img = document.querySelector("#hero-preview-img") as HTMLImageElement;
-
-    if (activeMediaType === "video" && video?.readyState >= 3) {
+    if (activeMediaType === "video" && (videoPreviewRef.current?.readyState ?? 0) >= 3) {
       setPreviewLoading(false);
-    } else if (activeMediaType === "image" && img?.complete) {
+    } else if (activeMediaType === "image" && imagePreviewRef.current?.complete) {
       setPreviewLoading(false);
     }
   }, [activeMediaUrl, activeMediaType]);
@@ -306,7 +339,7 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
   }, [addToast, cleanupCloudinaryUpload, onDirtyChange]);
 
   const handleSaveHero = async () => {
-    if (saving || uploadingMedia) return;
+    if (saving || mediaBusy) return;
     setSaving(true);
     try {
       const res = await fetch("/api/admin/settings/hero", {
@@ -340,9 +373,19 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
   };
 
   const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
 
+    if (imageObjectUrlRef.current) {
+      URL.revokeObjectURL(imageObjectUrlRef.current);
+      imageObjectUrlRef.current = "";
+    }
+    const nextLocalUrl = URL.createObjectURL(file);
+    imageObjectUrlRef.current = nextLocalUrl;
+
+    setLocalImagePreviewUrl(nextLocalUrl);
+    setHeroSettings((prev) => ({ ...prev, mediaType: "image" }));
     setUploadingImage(true);
     setPreviewLoading(true);
     try {
@@ -362,6 +405,8 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
         image: uploaded,
       }));
       latestImagePublicIdRef.current = uploaded.public_id;
+      setUploadingImage(false);
+      setPersistingMedia(true);
 
       try {
         await persistHeroMediaPatch({ mediaType: "image", image: uploaded });
@@ -373,26 +418,40 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
         );
       } finally {
         if (isMountedRef.current) {
-          setPreviewLoading(false);
+          setPersistingMedia(false);
         }
       }
     } catch (err) {
       addToast((err as Error)?.message || "Image upload failed", "error");
       setPreviewLoading(false);
     } finally {
-      if (e.currentTarget) {
-        e.currentTarget.value = "";
+      input.value = "";
+      if (imageObjectUrlRef.current) {
+        URL.revokeObjectURL(imageObjectUrlRef.current);
+        imageObjectUrlRef.current = "";
       }
       if (isMountedRef.current) {
+        setLocalImagePreviewUrl("");
         setUploadingImage(false);
+        setPersistingMedia(false);
       }
     }
   };
 
   const handleHeroVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
 
+    if (videoObjectUrlRef.current) {
+      URL.revokeObjectURL(videoObjectUrlRef.current);
+      videoObjectUrlRef.current = "";
+    }
+    const nextLocalUrl = URL.createObjectURL(file);
+    videoObjectUrlRef.current = nextLocalUrl;
+
+    setLocalVideoPreviewUrl(nextLocalUrl);
+    setHeroSettings((prev) => ({ ...prev, mediaType: "video" }));
     setUploadingVideo(true);
     setPreviewLoading(true);
     try {
@@ -411,6 +470,8 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
         video: uploaded,
       }));
       latestVideoPublicIdRef.current = uploaded.public_id;
+      setUploadingVideo(false);
+      setPersistingMedia(true);
 
       try {
         await persistHeroMediaPatch({ mediaType: "video", video: uploaded });
@@ -422,18 +483,22 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
         );
       } finally {
         if (isMountedRef.current) {
-          setPreviewLoading(false);
+          setPersistingMedia(false);
         }
       }
     } catch (err) {
       addToast((err as Error)?.message || "Video upload failed", "error");
       setPreviewLoading(false);
     } finally {
-      if (e.currentTarget) {
-        e.currentTarget.value = "";
+      input.value = "";
+      if (videoObjectUrlRef.current) {
+        URL.revokeObjectURL(videoObjectUrlRef.current);
+        videoObjectUrlRef.current = "";
       }
       if (isMountedRef.current) {
+        setLocalVideoPreviewUrl("");
         setUploadingVideo(false);
+        setPersistingMedia(false);
       }
     }
   };
@@ -457,7 +522,7 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
         </div>
         <button
           onClick={handleSaveHero}
-          disabled={saving || uploadingMedia}
+          disabled={saving || mediaBusy}
           className="flex items-center gap-2 px-4 py-2 bg-zinc-100 text-zinc-900 rounded-md font-medium hover:bg-white transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
@@ -598,7 +663,7 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
                   type="file"
                   className="hidden"
                   accept="image/*"
-                  disabled={uploadingMedia}
+                  disabled={mediaBusy}
                   onChange={handleHeroImageUpload}
                 />
               </label>
@@ -610,7 +675,7 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
                   type="file"
                   className="hidden"
                   accept="video/*"
-                  disabled={uploadingMedia}
+                  disabled={mediaBusy}
                   onChange={handleHeroVideoUpload}
                 />
               </label>
@@ -621,10 +686,11 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
             </p>
 
             <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden border border-zinc-800 bg-zinc-950">
-              {heroSettings.mediaType === "video" && heroSettings.video.url ? (
+              {heroSettings.mediaType === "video" && previewVideoUrl ? (
                 <video
-                  id="hero-preview-video"
-                  src={heroSettings.video.url}
+                  key={previewVideoUrl}
+                  ref={videoPreviewRef}
+                  src={previewVideoUrl}
                   className="w-full h-full object-cover transition-all duration-300"
                   style={{ filter: `brightness(${heroSettings.overlayBrightness || 0.85})` }}
                   autoPlay
@@ -632,14 +698,16 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
                   muted
                   playsInline
                   preload="auto"
+                  onLoadedMetadata={() => setPreviewLoading(false)}
                   onLoadedData={() => setPreviewLoading(false)}
                   onCanPlay={() => setPreviewLoading(false)}
                   onError={() => setPreviewLoading(false)}
                 />
-              ) : heroSettings.image.url ? (
+              ) : previewImageUrl ? (
                 <img
-                  id="hero-preview-img"
-                  src={heroSettings.image.url}
+                  key={previewImageUrl}
+                  ref={imagePreviewRef}
+                  src={previewImageUrl}
                   alt="Hero preview"
                   className="w-full h-full object-cover transition-all duration-300"
                   style={{ filter: `brightness(${heroSettings.overlayBrightness || 0.85})` }}
@@ -670,12 +738,12 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
                 </div>
               </div>
 
-              {(uploadingMedia || (previewLoading && !!activeMediaUrl)) && (
+              {(mediaBusy || (previewLoading && !!activeMediaUrl)) && (
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
                   <div className="flex items-center gap-2 text-white">
                     <Loader2 className="animate-spin" />
                     <span className="text-xs">
-                      {uploadingMedia ? "Uploading media..." : "Loading preview..."}
+                      {uploadingMedia ? "Uploading media..." : persistingMedia ? "Saving hero media..." : "Loading preview..."}
                     </span>
                   </div>
                 </div>

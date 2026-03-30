@@ -26,6 +26,7 @@ function invalidateSharedHome(includeHome = true) {
 
 export function invalidateHomeContent() {
   invalidateCachePrefix("home:");
+  revalidatePath("/", "layout");
   revalidatePath("/");
 }
 

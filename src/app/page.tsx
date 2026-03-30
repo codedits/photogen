@@ -31,7 +31,7 @@ async function fetchFeaturedPresetsFromDb(): Promise<Preset[]> {
   }
 }
 
-const getFeaturedPresets = createRequestScopedCachedFn("home:featured-presets", 600, fetchFeaturedPresetsFromDb);
+const getFeaturedPresets = createRequestScopedCachedFn("home:featured-presets", 60, fetchFeaturedPresetsFromDb);
 
 async function fetchFeaturedGalleryFromDb(): Promise<any[]> {
   try {
@@ -50,7 +50,7 @@ async function fetchFeaturedGalleryFromDb(): Promise<any[]> {
   }
 }
 
-const getFeaturedGallery = createRequestScopedCachedFn("home:featured-gallery", 600, fetchFeaturedGalleryFromDb);
+const getFeaturedGallery = createRequestScopedCachedFn("home:featured-gallery", 60, fetchFeaturedGalleryFromDb);
 
 async function fetchLatestBlogPostsFromDb(): Promise<any[]> {
   try {
@@ -80,7 +80,7 @@ async function fetchLatestBlogPostsFromDb(): Promise<any[]> {
   }
 }
 
-const getLatestBlogPosts = createRequestScopedCachedFn("home:latest-blog", 300, fetchLatestBlogPostsFromDb);
+const getLatestBlogPosts = createRequestScopedCachedFn("home:latest-blog", 45, fetchLatestBlogPostsFromDb);
 
 type HeroSettings = {
   introText?: string;
@@ -89,6 +89,11 @@ type HeroSettings = {
     url?: string;
     public_id?: string;
   };
+  video?: {
+    url?: string;
+    public_id?: string;
+  };
+  mediaType?: "image" | "video";
   overlayBrightness?: number;
   ctaText?: string;
   ctaLink?: string;
@@ -109,6 +114,11 @@ async function fetchHeroSettingsFromDb(): Promise<HeroSettings | null> {
         url: settings.image?.url,
         public_id: settings.image?.public_id,
       },
+      video: {
+        url: settings.video?.url,
+        public_id: settings.video?.public_id,
+      },
+      mediaType: settings.mediaType === "video" ? "video" : "image",
       overlayBrightness: typeof settings.overlayBrightness === "number" ? settings.overlayBrightness : 0.85,
       ctaText: settings.ctaText || "Gallery",
       ctaLink: settings.ctaLink || "/gallery",
@@ -121,7 +131,7 @@ async function fetchHeroSettingsFromDb(): Promise<HeroSettings | null> {
   }
 }
 
-const getHeroSettings = createRequestScopedCachedFn("home:hero-settings", 300, fetchHeroSettingsFromDb);
+const getHeroSettings = createRequestScopedCachedFn("home:hero-settings", 30, fetchHeroSettingsFromDb);
 
 export default async function Home() {
   const [presets, featuredGallery, heroSettings, latestBlogPosts] = await Promise.all([

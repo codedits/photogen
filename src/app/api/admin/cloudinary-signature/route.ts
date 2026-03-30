@@ -13,6 +13,14 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const requestedFolder = typeof body?.folder === 'string' ? body.folder.trim() : '';
     const folder = requestedFolder.startsWith('photogen/') ? requestedFolder : DEFAULT_FOLDER;
+    const requestedResourceType = typeof body?.resourceType === 'string' ? body.resourceType.trim() : '';
+    const resourceType =
+      requestedResourceType === 'image' ||
+      requestedResourceType === 'video' ||
+      requestedResourceType === 'raw' ||
+      requestedResourceType === 'auto'
+        ? requestedResourceType
+        : 'image';
 
     const timestamp = Math.floor(Date.now() / 1000);
     
@@ -44,7 +52,7 @@ export async function POST(req: Request) {
       apiKey,
       cloudName,
       folder,
-      resourceType: 'image',
+      resourceType,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

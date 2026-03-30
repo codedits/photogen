@@ -1,17 +1,23 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ExternalLink, Image as ImageIcon, Loader2, Save, SunMedium, Upload } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ExternalLink, Film, Image as ImageIcon, Loader2, Save, SunMedium, Upload } from "lucide-react";
 import { useToast } from "./page";
 import RichTextEditor from "./components/RichTextEditor";
+
+type HeroMediaType = "image" | "video";
+
+type HeroMediaRef = {
+  url: string;
+  public_id: string;
+};
 
 type HeroSettings = {
   introText: string;
   mainHeadline: string;
-  image: {
-    url: string;
-    public_id: string;
-  };
+  image: HeroMediaRef;
+  video: HeroMediaRef;
+  mediaType: HeroMediaType;
   overlayBrightness: number;
   ctaText: string;
   ctaLink: string;
@@ -30,6 +36,11 @@ const defaultSettings: HeroSettings = {
     url: "",
     public_id: "",
   },
+  video: {
+    url: "",
+    public_id: "",
+  },
+  mediaType: "image",
   overlayBrightness: 0.85,
   ctaText: "Gallery",
   ctaLink: "/gallery",
@@ -37,19 +48,78 @@ const defaultSettings: HeroSettings = {
   secondaryCtaLink: "/contact",
 };
 
+function normalizeMediaRef(value: unknown): HeroMediaRef {
+  if (!value || typeof value !== "object") {
+    return { url: "", public_id: "" };
+  }
+
+  const media = value as Record<string, unknown>;
+  return {
+    url: typeof media.url === "string" ? media.url : "",
+    public_id: typeof media.public_id === "string" ? media.public_id : "",
+  };
+}
+
+function normalizeHeroSettings(value: unknown): HeroSettings {
+  if (!value || typeof value !== "object") {
+    return defaultSettings;
+  }
+
+  const raw = value as Record<string, unknown>;
+
+  return {
+    introText: typeof raw.introText === "string" ? raw.introText : defaultSettings.introText,
+    mainHeadline: typeof raw.mainHeadline === "string" ? raw.mainHeadline : defaultSettings.mainHeadline,
+    image: {
+      ...defaultSettings.image,
+      ...normalizeMediaRef(raw.image),
+    },
+    video: {
+      ...defaultSettings.video,
+      ...normalizeMediaRef(raw.video),
+    },
+    mediaType: raw.mediaType === "video" ? "video" : "image",
+    overlayBrightness:
+      typeof raw.overlayBrightness === "number" && Number.isFinite(raw.overlayBrightness)
+        ? Math.min(1, Math.max(0.1, raw.overlayBrightness))
+        : defaultSettings.overlayBrightness,
+    ctaText: typeof raw.ctaText === "string" ? raw.ctaText : defaultSettings.ctaText,
+    ctaLink: typeof raw.ctaLink === "string" ? raw.ctaLink : defaultSettings.ctaLink,
+    secondaryCtaText:
+      typeof raw.secondaryCtaText === "string" ? raw.secondaryCtaText : defaultSettings.secondaryCtaText,
+    secondaryCtaLink:
+      typeof raw.secondaryCtaLink === "string" ? raw.secondaryCtaLink : defaultSettings.secondaryCtaLink,
+  };
+}
+
+function parseSnapshot(snapshot: string): HeroSettings {
+  try {
+    return normalizeHeroSettings(JSON.parse(snapshot));
+  } catch {
+    return defaultSettings;
+  }
+}
+
 export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsManagementProps) {
   const { addToast } = useToast();
   const isMountedRef = useRef(true);
   const initialImagePublicIdRef = useRef("");
+  const initialVideoPublicIdRef = useRef("");
   const latestImagePublicIdRef = useRef("");
+  const latestVideoPublicIdRef = useRef("");
   const initialSnapshotRef = useRef(JSON.stringify(defaultSettings));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [heroSettings, setHeroSettings] = useState<HeroSettings>(defaultSettings);
 
   const currentSnapshot = useMemo(() => JSON.stringify(heroSettings), [heroSettings]);
   const isDirty = !loading && currentSnapshot !== initialSnapshotRef.current;
+  const uploadingMedia = uploadingImage || uploadingVideo;
+  const activeMediaType = heroSettings.mediaType;
+  const activeMediaUrl = activeMediaType === "video" ? heroSettings.video.url : heroSettings.image.url;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -59,6 +129,115 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
   useEffect(() => {
     latestImagePublicIdRef.current = heroSettings.image?.public_id || "";
   }, [heroSettings.image?.public_id]);
+
+  useEffect(() => {
+    latestVideoPublicIdRef.current = heroSettings.video?.public_id || "";
+  }, [heroSettings.video?.public_id]);
+
+  useEffect(() => {
+    if (!activeMediaUrl) {
+      setPreviewLoading(false);
+      return;
+    }
+
+    setPreviewLoading(true);
+    const timeoutId = window.setTimeout(() => {
+      if (isMountedRef.current) {
+        setPreviewLoading(false);
+      }
+    }, 8000);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [activeMediaUrl, activeMediaType]);
+
+  const cleanupCloudinaryUpload = useCallback((publicId: string, resourceType: HeroMediaType) => {
+    if (!publicId) return;
+
+    fetch("/api/upload-image", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ public_id: publicId, resource_type: resourceType }),
+    }).catch(() => {});
+  }, []);
+
+  const persistHeroMediaPatch = useCallback(
+    async (patch: Partial<Pick<HeroSettings, "mediaType" | "image" | "video">>) => {
+      const res = await fetch("/api/admin/settings/hero", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error((data as { error?: string } | null)?.error || "Failed to persist hero media");
+      }
+
+      const persisted = normalizeHeroSettings((data as { settings?: unknown } | null)?.settings ?? patch);
+      const snapshot = parseSnapshot(initialSnapshotRef.current);
+      const nextSnapshot: HeroSettings = {
+        ...snapshot,
+        mediaType: patch.mediaType ? persisted.mediaType : snapshot.mediaType,
+        image: patch.image ? persisted.image : snapshot.image,
+        video: patch.video ? persisted.video : snapshot.video,
+      };
+
+      initialSnapshotRef.current = JSON.stringify(nextSnapshot);
+      initialImagePublicIdRef.current = nextSnapshot.image.public_id || "";
+      initialVideoPublicIdRef.current = nextSnapshot.video.public_id || "";
+
+      if (isMountedRef.current) {
+        setHeroSettings((prev) => ({
+          ...prev,
+          mediaType: patch.mediaType ? persisted.mediaType : prev.mediaType,
+          image: patch.image ? persisted.image : prev.image,
+          video: patch.video ? persisted.video : prev.video,
+        }));
+      }
+    },
+    []
+  );
+
+  const uploadToCloudinary = useCallback(
+    async (file: File, resourceType: HeroMediaType, folder: string): Promise<HeroMediaRef> => {
+      const signatureRes = await fetch("/api/admin/cloudinary-signature", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ folder, resourceType }),
+      });
+      const signatureData = await signatureRes.json();
+      if (!signatureRes.ok || !signatureData?.ok) {
+        throw new Error(signatureData?.error || "Failed to initialize upload");
+      }
+
+      const effectiveResourceType =
+        signatureData.resourceType === "video" || signatureData.resourceType === "image"
+          ? signatureData.resourceType
+          : resourceType;
+
+      const formData = new FormData();
+      formData.append("file", file, file.name);
+      formData.append("api_key", signatureData.apiKey);
+      formData.append("timestamp", String(signatureData.timestamp));
+      formData.append("signature", signatureData.signature);
+      formData.append("folder", signatureData.folder);
+      formData.append("resource_type", effectiveResourceType);
+
+      const uploadRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/${effectiveResourceType}/upload`,
+        { method: "POST", body: formData }
+      );
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData?.secure_url || !uploadData?.public_id) {
+        throw new Error(uploadData?.error?.message || "Media upload failed");
+      }
+
+      return { url: uploadData.secure_url as string, public_id: uploadData.public_id as string };
+    },
+    []
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -72,18 +251,13 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
         });
         const heroData = await heroRes.json();
         if (!heroData.error && isMountedRef.current && !controller.signal.aborted) {
-          const merged = {
-            ...defaultSettings,
-            ...heroData,
-            image: {
-              ...defaultSettings.image,
-              ...(heroData.image || {}),
-            },
-          };
+          const merged = normalizeHeroSettings(heroData);
           setHeroSettings(merged);
           initialImagePublicIdRef.current = merged.image?.public_id || "";
+          initialVideoPublicIdRef.current = merged.video?.public_id || "";
           initialSnapshotRef.current = JSON.stringify(merged);
           latestImagePublicIdRef.current = merged.image?.public_id || "";
+          latestVideoPublicIdRef.current = merged.video?.public_id || "";
         }
       } catch (err) {
         if ((err as Error)?.name !== "AbortError") {
@@ -105,19 +279,20 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
 
       const currentImagePublicId = latestImagePublicIdRef.current;
       if (currentImagePublicId && currentImagePublicId !== initialImagePublicIdRef.current) {
-        fetch('/api/upload-image', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ public_id: currentImagePublicId }),
-        }).catch(() => {});
+        cleanupCloudinaryUpload(currentImagePublicId, "image");
+      }
+
+      const currentVideoPublicId = latestVideoPublicIdRef.current;
+      if (currentVideoPublicId && currentVideoPublicId !== initialVideoPublicIdRef.current) {
+        cleanupCloudinaryUpload(currentVideoPublicId, "video");
       }
 
       onDirtyChange?.(false);
     };
-  }, [addToast, onDirtyChange]);
+  }, [addToast, cleanupCloudinaryUpload, onDirtyChange]);
 
   const handleSaveHero = async () => {
-    if (saving) return;
+    if (saving || uploadingMedia) return;
     setSaving(true);
     try {
       const res = await fetch("/api/admin/settings/hero", {
@@ -126,13 +301,23 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
         body: JSON.stringify(heroSettings),
       });
 
-      if (!res.ok) throw new Error("Failed to save");
-      initialImagePublicIdRef.current = heroSettings.image?.public_id || "";
-      initialSnapshotRef.current = currentSnapshot;
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error((data as { error?: string } | null)?.error || "Failed to save");
+      }
+
+      const normalizedSaved = normalizeHeroSettings((data as { settings?: unknown } | null)?.settings ?? heroSettings);
+      setHeroSettings(normalizedSaved);
+      initialImagePublicIdRef.current = normalizedSaved.image?.public_id || "";
+      initialVideoPublicIdRef.current = normalizedSaved.video?.public_id || "";
+      latestImagePublicIdRef.current = normalizedSaved.image?.public_id || "";
+      latestVideoPublicIdRef.current = normalizedSaved.video?.public_id || "";
+      initialSnapshotRef.current = JSON.stringify(normalizedSaved);
+
       onDirtyChange?.(false);
       addToast("Hero section updated", "success");
     } catch (err) {
-      addToast("Failed to update hero settings", "error");
+      addToast((err as Error)?.message || "Failed to update hero settings", "error");
     } finally {
       if (isMountedRef.current) {
         setSaving(false);
@@ -145,57 +330,84 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
     if (!file) return;
 
     setUploadingImage(true);
+    setPreviewLoading(true);
     try {
-      const signatureRes = await fetch("/api/admin/cloudinary-signature", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ folder: "photogen/hero" }),
-      });
-      const signatureData = await signatureRes.json();
-      if (!signatureRes.ok || !signatureData?.ok) {
-        throw new Error(signatureData?.error || "Failed to initialize upload");
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("api_key", signatureData.apiKey);
-      formData.append("timestamp", String(signatureData.timestamp));
-      formData.append("signature", signatureData.signature);
-      formData.append("folder", signatureData.folder);
-
-      const uploadRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
-        { method: "POST", body: formData }
-      );
-      const data = await uploadRes.json();
-      if (!uploadRes.ok || !data?.secure_url || !data?.public_id) {
-        throw new Error(data?.error?.message || "Image upload failed");
-      }
+      const uploaded = await uploadToCloudinary(file, "image", "photogen/hero/images");
 
       if (!isMountedRef.current) return;
 
       // Only delete prior temporary uploads that were never persisted.
-      const prevPublicId = heroSettings.image?.public_id;
-      if (prevPublicId && prevPublicId !== data.public_id && prevPublicId !== initialImagePublicIdRef.current) {
-        fetch('/api/upload-image', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ public_id: prevPublicId }),
-        }).catch(() => {});
+      const prevPublicId = latestImagePublicIdRef.current;
+      if (prevPublicId && prevPublicId !== uploaded.public_id && prevPublicId !== initialImagePublicIdRef.current) {
+        cleanupCloudinaryUpload(prevPublicId, "image");
       }
 
       setHeroSettings((prev) => ({
         ...prev,
-        image: { url: data.secure_url, public_id: data.public_id },
+        mediaType: "image",
+        image: uploaded,
       }));
-      latestImagePublicIdRef.current = data.public_id;
-      addToast("Hero image uploaded", "success");
+      latestImagePublicIdRef.current = uploaded.public_id;
+
+      try {
+        await persistHeroMediaPatch({ mediaType: "image", image: uploaded });
+        addToast("Hero image uploaded and saved", "success");
+      } catch (persistErr) {
+        addToast(
+          (persistErr as Error)?.message || "Image uploaded, but DB save failed. Click Save Hero Section.",
+          "error"
+        );
+      }
     } catch (err) {
       addToast((err as Error)?.message || "Image upload failed", "error");
+      setPreviewLoading(false);
     } finally {
       e.currentTarget.value = "";
       if (isMountedRef.current) {
         setUploadingImage(false);
+      }
+    }
+  };
+
+  const handleHeroVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingVideo(true);
+    setPreviewLoading(true);
+    try {
+      const uploaded = await uploadToCloudinary(file, "video", "photogen/hero/videos");
+
+      if (!isMountedRef.current) return;
+
+      const prevPublicId = latestVideoPublicIdRef.current;
+      if (prevPublicId && prevPublicId !== uploaded.public_id && prevPublicId !== initialVideoPublicIdRef.current) {
+        cleanupCloudinaryUpload(prevPublicId, "video");
+      }
+
+      setHeroSettings((prev) => ({
+        ...prev,
+        mediaType: "video",
+        video: uploaded,
+      }));
+      latestVideoPublicIdRef.current = uploaded.public_id;
+
+      try {
+        await persistHeroMediaPatch({ mediaType: "video", video: uploaded });
+        addToast("Hero video uploaded and saved", "success");
+      } catch (persistErr) {
+        addToast(
+          (persistErr as Error)?.message || "Video uploaded, but DB save failed. Click Save Hero Section.",
+          "error"
+        );
+      }
+    } catch (err) {
+      addToast((err as Error)?.message || "Video upload failed", "error");
+      setPreviewLoading(false);
+    } finally {
+      e.currentTarget.value = "";
+      if (isMountedRef.current) {
+        setUploadingVideo(false);
       }
     }
   };
@@ -215,11 +427,11 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="text-2xl font-normal text-white tracking-tight">Hero Section</h2>
-          <p className="text-zinc-500 text-sm mt-1">Edit image, overlay, copy, and CTA links with instant preview.</p>
+          <p className="text-zinc-500 text-sm mt-1">Edit hero media, overlay, copy, and CTA links with instant preview.</p>
         </div>
         <button
           onClick={handleSaveHero}
-          disabled={saving}
+          disabled={saving || uploadingMedia}
           className="flex items-center gap-2 px-4 py-2 bg-zinc-100 text-zinc-900 rounded-md font-medium hover:bg-white transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
@@ -326,25 +538,91 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
           <div className="bg-zinc-900/50 p-5 rounded-xl border border-zinc-800 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-normal text-zinc-400 uppercase tracking-wider">Live Preview</h3>
-              <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 text-[11px] rounded-md bg-zinc-100 text-zinc-900 hover:bg-white transition-colors">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setHeroSettings((prev) => ({ ...prev, mediaType: "image" }))}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-md border transition-colors ${
+                    heroSettings.mediaType === "image"
+                      ? "bg-zinc-100 text-zinc-900 border-zinc-100"
+                      : "bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-zinc-500"
+                  }`}
+                >
+                  <ImageIcon size={12} /> Image
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHeroSettings((prev) => ({ ...prev, mediaType: "video" }))}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] rounded-md border transition-colors ${
+                    heroSettings.mediaType === "video"
+                      ? "bg-zinc-100 text-zinc-900 border-zinc-100"
+                      : "bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-zinc-500"
+                  }`}
+                >
+                  <Film size={12} /> Video
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-3 py-2 text-[11px] rounded-md bg-zinc-100 text-zinc-900 hover:bg-white transition-colors disabled:opacity-50">
                 {uploadingImage ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-                Change Image
-                <input type="file" className="hidden" accept="image/*" onChange={handleHeroImageUpload} />
+                Upload Image
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  disabled={uploadingMedia}
+                  onChange={handleHeroImageUpload}
+                />
+              </label>
+
+              <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-3 py-2 text-[11px] rounded-md bg-zinc-800 text-zinc-100 hover:bg-zinc-700 transition-colors disabled:opacity-50">
+                {uploadingVideo ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                Upload Video
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="video/*"
+                  disabled={uploadingMedia}
+                  onChange={handleHeroVideoUpload}
+                />
               </label>
             </div>
 
+            <p className="text-[10px] text-zinc-500">
+              Active media: <span className="text-zinc-300 uppercase">{heroSettings.mediaType}</span>
+            </p>
+
             <div className="relative aspect-[3/4] w-full rounded-lg overflow-hidden border border-zinc-800 bg-zinc-950">
-              {heroSettings.image.url ? (
+              {heroSettings.mediaType === "video" && heroSettings.video.url ? (
+                <video
+                  src={heroSettings.video.url}
+                  className="w-full h-full object-cover transition-all duration-300"
+                  style={{ filter: `brightness(${heroSettings.overlayBrightness || 0.85})` }}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  preload="metadata"
+                  onLoadedData={() => setPreviewLoading(false)}
+                  onError={() => setPreviewLoading(false)}
+                />
+              ) : heroSettings.image.url ? (
                 <img
                   src={heroSettings.image.url}
                   alt="Hero preview"
                   className="w-full h-full object-cover transition-all duration-300"
                   style={{ filter: `brightness(${heroSettings.overlayBrightness || 0.85})` }}
+                  onLoad={() => setPreviewLoading(false)}
+                  onError={() => setPreviewLoading(false)}
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-zinc-600">
-                  <ImageIcon size={28} />
-                  <span className="text-xs">Upload hero image</span>
+                  {heroSettings.mediaType === "video" ? <Film size={28} /> : <ImageIcon size={28} />}
+                  <span className="text-xs">
+                    {heroSettings.mediaType === "video" ? "Upload hero video" : "Upload hero image"}
+                  </span>
                 </div>
               )}
 
@@ -363,14 +641,21 @@ export default function HeroSettingsManagement({ onDirtyChange }: HeroSettingsMa
                 </div>
               </div>
 
-              {uploadingImage && (
+              {(uploadingMedia || (previewLoading && !!activeMediaUrl)) && (
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-                  <Loader2 className="animate-spin text-white" />
+                  <div className="flex items-center gap-2 text-white">
+                    <Loader2 className="animate-spin" />
+                    <span className="text-xs">
+                      {uploadingMedia ? "Uploading media..." : "Loading preview..."}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
 
-            <p className="text-[10px] text-zinc-500 text-center">Live preview updates instantly while editing.</p>
+            <p className="text-[10px] text-zinc-500 text-center">
+              Uploaded media is persisted to DB immediately. Use Save for text/CTA/appearance edits.
+            </p>
           </div>
         </div>
       </div>

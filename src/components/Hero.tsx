@@ -10,7 +10,12 @@ interface HeroProps {
   settings?: {
     introText?: string;
     mainHeadline?: string;
+    mediaType?: "image" | "video";
     image?: {
+      url?: string;
+      public_id?: string;
+    };
+    video?: {
       url?: string;
       public_id?: string;
     };
@@ -25,7 +30,9 @@ interface HeroProps {
 export default function Hero({ settings }: HeroProps) {
   const introText = settings?.introText ?? "";
   const mainHeadline = settings?.mainHeadline ?? "";
-  const heroImage = settings?.image?.url ?? "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?width=1600";
+  const heroImage = settings?.image?.url || "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?width=1600";
+  const heroVideo = settings?.video?.url || "";
+  const desiredMediaType = settings?.mediaType === "video" ? "video" : "image";
   const overlayBrightness = settings?.overlayBrightness ?? 0.85;
   const ctaText = settings?.ctaText || "Gallery";
   const ctaLink = settings?.ctaLink || "/gallery";
@@ -33,7 +40,14 @@ export default function Hero({ settings }: HeroProps) {
   const secondaryCtaLink = settings?.secondaryCtaLink || "/studio";
 
   const [isLoaded, setIsLoaded] = useState(false);
-  const lqipUrl = cloudinaryPresetUrl(heroImage, "lqip");
+  const [videoFailed, setVideoFailed] = useState(false);
+  const usingVideo = desiredMediaType === "video" && !!heroVideo && !videoFailed;
+  const lqipUrl = heroImage ? cloudinaryPresetUrl(heroImage, "lqip") : "";
+
+  React.useEffect(() => {
+    setIsLoaded(false);
+    setVideoFailed(false);
+  }, [heroImage, heroVideo, desiredMediaType]);
 
   return (
     <section className="relative w-full flex flex-col bg-background selection:bg-white selection:text-black overflow-hidden font-sans">
@@ -47,7 +61,7 @@ export default function Hero({ settings }: HeroProps) {
           <div
             className="absolute inset-0 z-[-1] transition-opacity duration-1000"
             style={{
-              backgroundImage: `url(${lqipUrl})`,
+              backgroundImage: lqipUrl ? `url(${lqipUrl})` : undefined,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               filter: `blur(40px) brightness(${overlayBrightness})`,
@@ -68,28 +82,48 @@ export default function Hero({ settings }: HeroProps) {
             }}
             className="relative h-full w-full"
           >
-            {/* Mobile Image (9:16) */}
-            <Image
-              src={cloudinaryPresetUrl(heroImage, "hero_mobile")}
-              alt="Hero Background Mobile"
-              fill
-              className="object-cover md:hidden contrast-[1.05] grayscale-[0.02]"
-              style={{ filter: `brightness(${overlayBrightness})` }}
-              priority
-              quality={85}
-              onLoad={() => setIsLoaded(true)}
-            />
-            {/* Desktop Image (16:9) */}
-            <Image
-              src={cloudinaryPresetUrl(heroImage, "hero")}
-              alt="Hero Background Desktop"
-              fill
-              className="object-cover hidden md:block contrast-[1.05] grayscale-[0.02]"
-              style={{ filter: `brightness(${overlayBrightness})` }}
-              priority
-              quality={85}
-              onLoad={() => setIsLoaded(true)}
-            />
+            {usingVideo ? (
+              <video
+                src={heroVideo}
+                className="h-full w-full object-cover contrast-[1.05] grayscale-[0.02]"
+                style={{ filter: `brightness(${overlayBrightness})` }}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                onLoadedData={() => setIsLoaded(true)}
+                onError={() => {
+                  setVideoFailed(true);
+                  setIsLoaded(false);
+                }}
+              />
+            ) : (
+              <>
+                {/* Mobile Image (9:16) */}
+                <Image
+                  src={cloudinaryPresetUrl(heroImage, "hero_mobile")}
+                  alt="Hero Background Mobile"
+                  fill
+                  className="object-cover md:hidden contrast-[1.05] grayscale-[0.02]"
+                  style={{ filter: `brightness(${overlayBrightness})` }}
+                  priority
+                  quality={85}
+                  onLoad={() => setIsLoaded(true)}
+                />
+                {/* Desktop Image (16:9) */}
+                <Image
+                  src={cloudinaryPresetUrl(heroImage, "hero")}
+                  alt="Hero Background Desktop"
+                  fill
+                  className="object-cover hidden md:block contrast-[1.05] grayscale-[0.02]"
+                  style={{ filter: `brightness(${overlayBrightness})` }}
+                  priority
+                  quality={85}
+                  onLoad={() => setIsLoaded(true)}
+                />
+              </>
+            )}
           </motion.div>
 
           {/* Multi-layered Vignette for depth */}

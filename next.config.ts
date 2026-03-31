@@ -40,6 +40,31 @@ const nextConfig: NextConfig = {
       static: 3600,
     },
   },
+
+  // Headers
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // Don't cache HTML pages too aggressively
+        source: '/((?!_next|static|.*\\..*).*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

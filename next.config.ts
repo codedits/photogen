@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Image optimization
   images: {
-    unoptimized: true,
+
     // Use Cloudinary for responsive srcset generation instead of Next/Vercel optimizer.
     loader: 'custom',
     loaderFile: './src/lib/cloudinaryLoader.ts',
@@ -45,7 +45,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/(.*)\\.(jpg|jpeg|png|webp|avif|svg)',
         headers: [
           {
             key: 'Cache-Control',
@@ -54,8 +54,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // Don't cache HTML pages too aggressively
-        source: '/((?!_next|static|.*\\..*).*)',
+        source: '/((?!_next|.*\\..*).*)',
         headers: [
           {
             key: 'Cache-Control',

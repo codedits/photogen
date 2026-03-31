@@ -154,16 +154,16 @@ export default function WallpaperDetailClient({ item, downloadUrl }: WallpaperDe
                 initial={{ opacity: 0, x: 20, scale: 0.98 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 transition={{ duration: 1.2, ease: [0.19, 1, 0.22, 1] }}
-                className="relative w-full h-[60vh] lg:h-[85vh] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.4)] rounded-2xl overflow-hidden border border-white/5 bg-zinc-900/50 group"
+                className="relative w-full lg:w-[40vw] lg:max-w-[55vh] h-[80vh] mx-auto shadow-[0_40px_80px_-20px_rgba(0,0,0,0.4)] rounded-2xl overflow-hidden border border-white/5 bg-zinc-900/50 group"
             >
                 <ImageWithLqip
                   src={mainImage.url}
                   alt={item.name}
                   fill
-                  className="object-contain transition-transform duration-[4s] ease-out group-hover:scale-[1.02]"
+                  className="object-cover transition-transform duration-[4s] ease-out group-hover:scale-[1.02]"
                   sizes="(max-width: 1024px) 100vw, 85vw"
                   priority
-                  transformOpts={{ w: 2560, h: 2560, fit: 'contain', q: 'auto:best' }}
+                  transformOpts={{ w: 2560, h: 2560, fit: 'cover', q: 'auto:best', g: 'center' }}
                   onLoad={handleImageLoad}
                 />
                 
@@ -182,18 +182,6 @@ export default function WallpaperDetailClient({ item, downloadUrl }: WallpaperDe
         </div>
       </div>
 
-      {/* Mobile Floating CTA */}
-      <div className="lg:hidden fixed bottom-6 left-6 right-6 z-50 pointer-events-none">
-          <div className="pointer-events-auto shadow-2xl">
-              <LiquidRiseCTA 
-                href={downloadUrl}
-                className="w-full h-14 rounded-full border-foreground/10"
-                icon={<ArrowDownToLine className="w-4 h-4" />}
-              >
-                Download
-              </LiquidRiseCTA>
-          </div>
-      </div>
 
     </main>
   );

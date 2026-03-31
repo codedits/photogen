@@ -59,7 +59,7 @@ const WallpaperCard = ({ item, index }: { item: WallpaperItem; index: number }) 
               className="object-cover"
               priority={index < 2}
               noBlur={true}
-              transformOpts={{ w: 1200, h: 1800, q: "auto:best" }}
+              transformOpts={{ w: 1200, h: 1800, q: "auto:best", g: 'auto:subject' }}
             />
           </motion.div>
 

@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Image optimization
   images: {
+    unoptimized: true,
     // Use Cloudinary for responsive srcset generation instead of Next/Vercel optimizer.
     loader: 'custom',
     loaderFile: './src/lib/cloudinaryLoader.ts',

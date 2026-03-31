@@ -9,9 +9,11 @@ import ConfirmDialog from './components/ConfirmDialog';
 // Lazy load heavy components
 const PresetsManagement = lazy(() => import('./PresetsManagement'));
 const GalleryManagement = lazy(() => import('./GalleryManagement'));
+const WallpaperManagement = lazy(() => import('./WallpaperManagement'));
 const BlogManagement = lazy(() => import('./BlogManagement'));
 const PresetForm = lazy(() => import('./components/PresetForm'));
 const GalleryForm = lazy(() => import('./components/GalleryForm'));
+const WallpaperForm = lazy(() => import('./components/WallpaperForm'));
 const BlogForm = lazy(() => import('./components/BlogForm'));
 const SettingsManagement = lazy(() => import('./SettingsManagement'));
 const HeroSettingsManagement = lazy(() => import('./HeroSettingsManagement'));
@@ -42,11 +44,13 @@ type BlogRow = {
 };
 
 export type AdminView = 
-  | { type: 'list'; tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero' | 'theme' }
+  | { type: 'list'; tab: 'presets' | 'gallery' | 'wallpapers' | 'blog' | 'contact' | 'hero' | 'theme' }
   | { type: 'create-preset' }
   | { type: 'edit-preset'; preset: PresetRow }
   | { type: 'create-gallery' }
   | { type: 'edit-gallery'; item: any }
+  | { type: 'create-wallpaper' }
+  | { type: 'edit-wallpaper'; item: any }
   | { type: 'create-blog' }
   | { type: 'edit-blog'; post: BlogRow };
 
@@ -264,6 +268,38 @@ export default function AdminPage() {
     }
   }, [addToast]);
 
+  const handleSaveWallpaper = useCallback(async (data: any, itemId?: string) => {
+    const isEdit = Boolean(itemId);
+    const url = isEdit ? `/api/wallpapers/${itemId}` : '/api/wallpapers';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const result = await res.json();
+      throw new Error(result.error || 'Failed to save wallpaper');
+    }
+    addToast('Wallpaper saved successfully', 'success');
+  }, [addToast]);
+
+  const handleDeleteWallpaper = useCallback(async (item: any) => {
+    if (deletingIdRef.current === item._id) return; // debounce
+    deletingIdRef.current = item._id;
+    try {
+      const res = await fetch(`/api/wallpapers/${item._id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+      addToast('Wallpaper deleted', 'info');
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : 'Failed to delete wallpaper', 'error');
+      throw err; // re-throw so callers can handle rollback
+    } finally {
+      deletingIdRef.current = null;
+    }
+  }, [addToast]);
+
   const requestViewChange = useCallback((nextView: AdminView, options?: ViewChangeOptions) => {
     const currentView = viewRef.current;
     const isEditingForm =
@@ -299,7 +335,7 @@ export default function AdminPage() {
     setPendingView(null);
   }, []);
 
-  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero' | 'theme') => {
+  const handleSetActiveTab = useCallback((tab: 'presets' | 'gallery' | 'wallpapers' | 'blog' | 'contact' | 'hero' | 'theme') => {
     requestViewChange({ type: 'list', tab });
   }, [requestViewChange]);
 
@@ -307,6 +343,8 @@ export default function AdminPage() {
   const openEditPreset = useCallback((preset: PresetRow) => requestViewChange({ type: 'edit-preset', preset }), [requestViewChange]);
   const openCreateGallery = useCallback(() => requestViewChange({ type: 'create-gallery' }), [requestViewChange]);
   const openEditGallery = useCallback((item: any) => requestViewChange({ type: 'edit-gallery', item }), [requestViewChange]);
+  const openCreateWallpaper = useCallback(() => requestViewChange({ type: 'create-wallpaper' }), [requestViewChange]);
+  const openEditWallpaper = useCallback((item: any) => requestViewChange({ type: 'edit-wallpaper', item }), [requestViewChange]);
   const openCreateBlog = useCallback(() => requestViewChange({ type: 'create-blog' }), [requestViewChange]);
   const openEditBlog = useCallback(async (post: { id: string }) => {
     try {
@@ -322,6 +360,7 @@ export default function AdminPage() {
   }, [addToast, requestViewChange]);
   const backToPresets = useCallback((options?: ViewChangeOptions) => requestViewChange({ type: 'list', tab: 'presets' }, options), [requestViewChange]);
   const backToGallery = useCallback((options?: ViewChangeOptions) => requestViewChange({ type: 'list', tab: 'gallery' }, options), [requestViewChange]);
+  const backToWallpapers = useCallback((options?: ViewChangeOptions) => requestViewChange({ type: 'list', tab: 'wallpapers' }, options), [requestViewChange]);
   const backToBlog = useCallback((options?: ViewChangeOptions) => requestViewChange({ type: 'list', tab: 'blog' }, options), [requestViewChange]);
 
   const handleSaveBlog = useCallback(async (data: any, postId?: string) => {
@@ -462,35 +501,41 @@ export default function AdminPage() {
       ? 'presets'
       : view.type.includes('gallery')
         ? 'gallery'
-        : view.type.includes('blog')
-          ? 'blog'
-          : 'presets';
+        : view.type.includes('wallpaper')
+          ? 'wallpapers'
+          : view.type.includes('blog')
+            ? 'blog'
+            : 'presets';
 
   const title = view.type === 'list'
     ? activeTab === 'presets'
       ? 'Presets'
       : activeTab === 'gallery'
         ? 'Gallery'
-        : activeTab === 'blog'
-          ? 'Blog'
-          : activeTab === 'contact'
-            ? 'Contact Page'
-            : activeTab === 'hero'
-              ? 'Hero Section'
-              : 'Theme System'
+        : activeTab === 'wallpapers'
+          ? 'Wallpapers'
+          : activeTab === 'blog'
+            ? 'Blog'
+            : activeTab === 'contact'
+              ? 'Contact Page'
+              : activeTab === 'hero'
+                ? 'Hero Section'
+                : 'Theme System'
     : view.type.includes('preset')
       ? 'Edit Preset'
       : view.type.includes('gallery')
         ? 'Edit Gallery'
-        : 'Edit Blog';
+        : view.type.includes('wallpaper')
+          ? 'Edit Wallpaper'
+          : 'Edit Blog';
 
   const breadcrumb = view.type !== 'list'
     ? [
         {
-          label: view.type.includes('preset') ? 'Presets' : view.type.includes('gallery') ? 'Gallery' : 'Blog',
+          label: view.type.includes('preset') ? 'Presets' : view.type.includes('gallery') ? 'Gallery' : view.type.includes('wallpaper') ? 'Wallpapers' : 'Blog',
           onClick: () => requestViewChange({
             type: 'list',
-            tab: view.type.includes('preset') ? 'presets' : view.type.includes('gallery') ? 'gallery' : 'blog',
+            tab: view.type.includes('preset') ? 'presets' : view.type.includes('gallery') ? 'gallery' : view.type.includes('wallpaper') ? 'wallpapers' : 'blog',
           }),
         },
         { label: view.type.includes('create') ? 'Create New' : 'Editing' },
@@ -554,6 +599,13 @@ export default function AdminPage() {
                     onDelete={handleDeleteGallery}
                   />
                 )}
+                {view.type === 'list' && view.tab === 'wallpapers' && (
+                  <WallpaperManagement 
+                    onCreate={openCreateWallpaper}
+                    onEdit={openEditWallpaper}
+                    onDelete={handleDeleteWallpaper}
+                  />
+                )}
                 {view.type === 'list' && view.tab === 'blog' && (
                   <BlogManagement
                     onCreate={openCreateBlog}
@@ -603,6 +655,24 @@ export default function AdminPage() {
                     onBack={backToGallery}
                     onSave={(data) => handleSaveGallery(data, view.item._id || view.item.id)}
                     onDelete={handleDeleteGallery}
+                    onDirtyChange={handleFormDirtyChange}
+                  />
+                )}
+                {view.type === 'create-wallpaper' && (
+                  <WallpaperForm 
+                    key="create"
+                    onBack={backToWallpapers}
+                    onSave={(data) => handleSaveWallpaper(data)}
+                    onDirtyChange={handleFormDirtyChange}
+                  />
+                )}
+                {view.type === 'edit-wallpaper' && (
+                  <WallpaperForm 
+                    key={view.item._id || view.item.id}
+                    item={view.item}
+                    onBack={backToWallpapers}
+                    onSave={(data) => handleSaveWallpaper(data, view.item._id || view.item.id)}
+                    onDelete={handleDeleteWallpaper}
                     onDirtyChange={handleFormDirtyChange}
                   />
                 )}

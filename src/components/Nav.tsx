@@ -15,7 +15,7 @@ const NAV_LINKS = [
   { href: "/blog", label: "Blog" },
   { href: "/presets", label: "Presets" },
   { href: "/studio", label: "Studio" },
-  { href: "/contact", label: "About" },
+  { href: "/wallpapers", label: "Wallpapers" },
 ];
 
 export default function Nav() {

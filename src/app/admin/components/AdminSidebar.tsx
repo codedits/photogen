@@ -1,13 +1,13 @@
 "use client";
 
 import React from 'react';
-import { LayoutGrid, Image, LogOut, Home, X, ChevronLeft, ChevronRight, Mail, BookOpenText, Sparkles, Palette } from 'lucide-react';
+import { LayoutGrid, Image, Monitor, LogOut, Home, X, ChevronLeft, ChevronRight, Mail, BookOpenText, Sparkles, Palette } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import Link from 'next/link';
 
 interface AdminSidebarProps {
-  activeTab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero' | 'theme';
-  setActiveTab: (tab: 'presets' | 'gallery' | 'blog' | 'contact' | 'hero' | 'theme') => void;
+  activeTab: 'presets' | 'gallery' | 'wallpapers' | 'blog' | 'contact' | 'hero' | 'theme';
+  setActiveTab: (tab: 'presets' | 'gallery' | 'wallpapers' | 'blog' | 'contact' | 'hero' | 'theme') => void;
   onLogout: () => void;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
@@ -27,6 +27,7 @@ export default function AdminSidebar({
   const navItems = [
     { id: 'presets', label: 'Presets', icon: LayoutGrid },
     { id: 'gallery', label: 'Gallery', icon: Image },
+    { id: 'wallpapers', label: 'Wallpapers', icon: Monitor },
     { id: 'blog', label: 'Blog', icon: BookOpenText },
     { id: 'contact', label: 'Contact Page', icon: Mail },
     { id: 'hero', label: 'Hero Section', icon: Sparkles },

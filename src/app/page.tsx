@@ -2,6 +2,7 @@ import Hero from "../components/Hero";
 import PresetsSection from "../components/PresetsSection";
 import ParallaxGallery from "../components/ParallaxGallery";
 import FeaturedGallery from "../components/FeaturedGallery";
+import WallpaperFeaturedGrid from "../components/WallpaperFeaturedGrid";
 import LatestBlog from "../components/LatestBlog";
 import { PageContainer, FullBleed } from "../components/layout/Primitives";
 import getDatabase from "../lib/mongodb";
@@ -51,6 +52,24 @@ async function fetchFeaturedGalleryFromDb(): Promise<any[]> {
 }
 
 const getFeaturedGallery = createRequestScopedCachedFn("home:featured-gallery", 60, fetchFeaturedGalleryFromDb);
+
+async function fetchFeaturedWallpapersFromDb(): Promise<any[]> {
+  try {
+    const db = await getDatabase();
+    const coll = db.collection("wallpapers");
+    const docs = await coll.find({ featured: true, visibility: 'public' }).sort({ uploadDate: -1 }).limit(4).toArray();
+    
+    return docs.map(doc => ({
+      ...doc,
+      _id: doc._id.toString()
+    }));
+  } catch (e) {
+    console.error("Failed to fetch featured wallpapers:", e);
+    return [];
+  }
+}
+
+const getFeaturedWallpapers = createRequestScopedCachedFn("home:featured-wallpapers", 60, fetchFeaturedWallpapersFromDb);
 
 async function fetchLatestBlogPostsFromDb(): Promise<any[]> {
   try {
@@ -155,9 +174,10 @@ async function fetchHeroSettingsFromDb(): Promise<HeroSettings | null> {
 const getHeroSettings = fetchHeroSettingsFromDb;
 
 export default async function Home() {
-  const [presets, featuredGallery, heroSettings, latestBlogPosts] = await Promise.all([
+  const [presets, featuredGallery, featuredWallpapers, heroSettings, latestBlogPosts] = await Promise.all([
     getFeaturedPresets(),
     getFeaturedGallery(),
+    getFeaturedWallpapers(),
     getHeroSettings(),
     getLatestBlogPosts(),
   ]);
@@ -179,12 +199,30 @@ export default async function Home() {
       )}
 
       <FullBleed className="perf-section">
-        <LogoMarquee />
+        <PresetsSection presets={presets} />
       </FullBleed>
 
       <FullBleed className="perf-section">
-        <PresetsSection presets={presets} />
+        <LogoMarquee />
       </FullBleed>
+
+      {featuredWallpapers.length > 0 && (
+        <FullBleed className="perf-section">
+          <WallpaperFeaturedGrid 
+            items={featuredWallpapers} 
+            titleTop="Exclusive" 
+            titleBottom="Wallpapers" 
+            description={
+              <>
+                Download breathtaking high-resolution wallpapers tailored for your 
+                desktop and mobile screens.
+              </>
+            } 
+            viewAllLink="/wallpapers" 
+            viewAllText="Explore Wallpapers" 
+          />
+        </FullBleed>
+      )}
 
       <FullBleed className="perf-section">
         <LatestBlog posts={latestBlogPosts} />

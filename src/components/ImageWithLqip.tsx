@@ -37,7 +37,7 @@ export default function ImageWithLqip({
   priority?: boolean;
   sizes?: string;
   loading?: 'eager' | 'lazy';
-  onLoad?: () => void;
+  onLoad?: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void;
   noBlur?: boolean;
 }) {
   // Skip blur fetches entirely when noBlur is true (saves 14+ network requests on gallery page)

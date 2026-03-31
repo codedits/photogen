@@ -74,6 +74,21 @@ export function invalidatePresetContent(options: InvalidateContentOptions = {}) 
   ]);
 }
 
+export function invalidateWallpaperContent(options: InvalidateContentOptions = {}) {
+  const { includeHome = true, detailPath, extraPaths = [] } = options;
+
+  delCachePrefix("wallpapers:list:");
+  delCachePrefix("wallpapers:count:");
+  invalidateSharedHome(includeHome);
+
+  revalidateUniquePaths([
+    includeHome ? "/" : null,
+    "/wallpapers",
+    detailPath,
+    ...extraPaths,
+  ]);
+}
+
 export function invalidateContactContent(options: { includeHome?: boolean } = {}) {
   const { includeHome = true } = options;
 

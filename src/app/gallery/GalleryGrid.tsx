@@ -16,6 +16,8 @@ interface GalleryGridProps {
    initialItems?: GalleryItem[];
    initialTotal?: number;
    onResetFilters?: () => void;
+   apiUrl?: string;
+   basePath?: string;
 }
 
 interface GalleryItem extends Omit<GalleryDoc, '_id'> {
@@ -24,7 +26,7 @@ interface GalleryItem extends Omit<GalleryDoc, '_id'> {
 
 // --- MAIN COMPONENT ---
 
-export default function GalleryGrid({ filters, initialItems, initialTotal, onResetFilters }: GalleryGridProps) {
+export default function GalleryGrid({ filters, initialItems, initialTotal, onResetFilters, apiUrl = '/api/gallery', basePath = '/gallery' }: GalleryGridProps) {
    const hasInitialData = !!(initialItems && initialItems.length > 0);
    const [items, setItems] = useState<GalleryItem[]>(initialItems || []);
    const [loading, setLoading] = useState(!hasInitialData);
@@ -62,7 +64,7 @@ export default function GalleryGrid({ filters, initialItems, initialTotal, onRes
          if (filters?.featured) params.set('featured', 'true');
          if (filters?.search) params.set('q', filters.search);
 
-         const res = await fetch(`/api/gallery?${params}`, { signal: controller.signal });
+         const res = await fetch(`${apiUrl}?${params}`, { signal: controller.signal });
          const data = await res.json();
          if (!res.ok) throw new Error(data?.error || 'Failed to load gallery items');
 
@@ -135,6 +137,7 @@ export default function GalleryGrid({ filters, initialItems, initialTotal, onRes
                      index={index}
                      aspectRatio="4/5"
                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                     basePath={basePath}
                   />
                ))}
             </div>

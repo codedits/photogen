@@ -17,9 +17,30 @@ interface FeaturedItem {
 
 interface FeaturedGalleryProps {
   items: FeaturedItem[];
+  titleTop?: React.ReactNode;
+  titleBottom?: React.ReactNode;
+  description?: React.ReactNode;
+  viewAllLink?: string;
+  viewAllText?: string;
+  basePath?: string;
+  showBottomBanner?: boolean;
 }
 
-export default function FeaturedGallery({ items }: FeaturedGalleryProps) {
+export default function FeaturedGallery({ 
+  items,
+  titleTop = "Curated",
+  titleBottom = "Masterpieces",
+  description = (
+    <>
+      A selection of our most evocative captures, defined by light, <br className="hidden md:block" />
+      shadow, and the soul of the subject.
+    </>
+  ),
+  viewAllLink = "/gallery",
+  viewAllText = "View Full Gallery",
+  basePath = "/gallery",
+  showBottomBanner = true
+}: FeaturedGalleryProps) {
   if (!items || items.length === 0) return null;
 
   return (
@@ -35,8 +56,8 @@ export default function FeaturedGallery({ items }: FeaturedGalleryProps) {
               viewport={{ once: true }}
               className="text-4xl md:text-6xl font-normal tracking-tight text-foreground leading-[0.9]"
             >
-              Curated <br />
-              <span className="text-muted-foreground">Masterpieces</span>
+              {titleTop} <br />
+              <span className="text-muted-foreground">{titleBottom}</span>
             </motion.h2>
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
@@ -45,8 +66,7 @@ export default function FeaturedGallery({ items }: FeaturedGalleryProps) {
               transition={{ delay: 0.1 }}
               className="text-lg text-muted-foreground font-medium"
             >
-              A selection of our most evocative captures, defined by light, <br className="hidden md:block" />
-              shadow, and the soul of the subject.
+              {description}
             </motion.p>
           </div>
           
@@ -56,10 +76,10 @@ export default function FeaturedGallery({ items }: FeaturedGalleryProps) {
             viewport={{ once: true }}
           >
             <Link 
-              href="/gallery" 
+              href={viewAllLink} 
               className="group flex items-center gap-3 text-foreground font-normal text-lg hover:text-muted-foreground transition-colors"
             >
-              View Full Gallery
+              {viewAllText}
               <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center group-hover:border-foreground transition-all group-hover:translate-x-1">
                 <ArrowRight size={18} />
               </div>
@@ -80,32 +100,34 @@ export default function FeaturedGallery({ items }: FeaturedGalleryProps) {
               parallax={false}
               width={2000}
               quality="auto:best"
+              basePath={basePath}
             />
           ))}
         </div>
 
-        {/* Bottom Banner Area */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="pt-12 border-t border-border flex flex-col md:flex-row gap-8 items-center justify-between"
-        >
-          <div className="flex gap-12 items-center">
-            <div className="space-y-1">
-              <div className="text-foreground text-3xl font-normal">140+</div>
-              <div className="text-muted-foreground text-xs font-normal uppercase tracking-wider">Public Captures</div>
+        {showBottomBanner && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="pt-12 border-t border-border flex flex-col md:flex-row gap-8 items-center justify-between"
+          >
+            <div className="flex gap-12 items-center">
+              <div className="space-y-1">
+                <div className="text-foreground text-3xl font-normal">140+</div>
+                <div className="text-muted-foreground text-xs font-normal uppercase tracking-wider">Public Captures</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-foreground text-3xl font-normal">24</div>
+                <div className="text-muted-foreground text-xs font-normal uppercase tracking-wider">Premium Presets</div>
+              </div>
             </div>
-            <div className="space-y-1">
-              <div className="text-foreground text-3xl font-normal">24</div>
-              <div className="text-muted-foreground text-xs font-normal uppercase tracking-wider">Premium Presets</div>
-            </div>
-          </div>
-          
-          <p className="text-muted-foreground text-sm max-w-xs text-center md:text-right font-medium">
-            Every image tells a unique story, processed with precision using our signature workflow.
-          </p>
-        </motion.div>
+            
+            <p className="text-muted-foreground text-sm max-w-xs text-center md:text-right font-medium">
+              Every image tells a unique story, processed with precision using our signature workflow.
+            </p>
+          </motion.div>
+        )}
 
       </div>
     </section>

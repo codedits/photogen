@@ -27,6 +27,7 @@ interface GalleryCardProps {
   height?: number | string; 
   parallax?: boolean;
   quality?: string;
+  basePath?: string; // e.g. "/gallery" or "/wallpapers"
 }
 
 const ParallaxMedia = memo(function ParallaxMedia({
@@ -66,7 +67,8 @@ const GalleryCard = ({
   width = 1200,
   parallax = false,
   height,
-  quality = "auto:good"
+  quality = "auto:good",
+  basePath = "/gallery"
 }: GalleryCardProps) => {
   const [isMobile, setIsMobile] = React.useState(false);
   React.useEffect(() => {
@@ -121,7 +123,7 @@ const GalleryCard = ({
         animate="rest"
         className="group relative w-full bg-neutral-900 border border-white/10 hover:border-white/30 transition-colors duration-300 overflow-hidden"
       >
-        <Link href={`/gallery/${item._id}`} className="block">
+        <Link href={`${basePath}/${item._id}`} className="block">
           <div 
             className="relative overflow-hidden w-full"
             style={{ 

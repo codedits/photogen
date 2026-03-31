@@ -30,9 +30,18 @@ interface GalleryItem {
 interface GalleryClientShellProps {
   initialItems: GalleryItem[];
   totalCount: number;
+  headerText?: string;
+  apiUrl?: string;
+  basePath?: string;
 }
 
-export default function GalleryClientShell({ initialItems, totalCount }: GalleryClientShellProps) {
+export default function GalleryClientShell({ 
+  initialItems, 
+  totalCount,
+  headerText = "Archive / Collection",
+  apiUrl = "/api/gallery",
+  basePath = "/gallery"
+}: GalleryClientShellProps) {
   const [filters, setFilters] = useState({
     category: '',
     featured: false,
@@ -80,7 +89,7 @@ export default function GalleryClientShell({ initialItems, totalCount }: Gallery
             transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
           >
             <h1 className="text-[12px] uppercase tracking-[0.3em] text-foreground font-medium">
-              Archive / Collection
+              {headerText}
             </h1>
           </motion.div>
           
@@ -118,6 +127,8 @@ export default function GalleryClientShell({ initialItems, totalCount }: Gallery
             initialItems={initialItems} 
             initialTotal={totalCount} 
             onResetFilters={handleResetFilters}
+            apiUrl={apiUrl}
+            basePath={basePath}
           />
         </div>
       </section>

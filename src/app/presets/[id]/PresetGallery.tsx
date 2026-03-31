@@ -127,6 +127,7 @@ export default function PresetGallery({ images: rawImages, presetName }: PresetG
           src={thumbUrl(currentImage.url, { w: 200, h: 200, fit: 'cover', q: 30 })}
           alt="Ambience"
           fill
+          sizes="220px"
           className="object-cover opacity-20 blur-[50px] scale-110"
         />
       </div>

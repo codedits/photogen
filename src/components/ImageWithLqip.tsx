@@ -48,15 +48,25 @@ export default function ImageWithLqip({
   }
   
   const fit = transformOpts?.fit || 'cover';
+  const requestedWidth = Math.max(1, Math.round(transformOpts?.w || width || 400));
+  const requestedHeight = Math.max(1, Math.round(transformOpts?.h || height || 300));
   const url = thumbUrl(src, { 
-    w: transformOpts?.w || width || 400, 
-    h: transformOpts?.h || height || 300, 
+    w: requestedWidth,
+    h: requestedHeight,
     fit,
     q: transformOpts?.q ?? 'auto:good', 
     f: transformOpts?.f ?? 'auto', 
-    dpr: transformOpts?.dpr ?? 'auto',
+    dpr: transformOpts?.dpr,
     g: transformOpts?.g ?? (fit === 'cover' ? 'auto' : undefined)
   });
+
+  const effectiveSizes =
+    sizes ||
+    (fill
+      ? `${requestedWidth}px`
+      : typeof width === 'number'
+        ? `${Math.max(1, Math.round(width))}px`
+        : '100vw');
   const effectiveBlurDataUrl = !noBlur ? (blur || FALLBACK_SHIMMER) : undefined;
   const placeholder = effectiveBlurDataUrl ? ('blur' as const) : undefined;
 
@@ -66,8 +76,8 @@ export default function ImageWithLqip({
   const objectFit: 'cover' | 'contain' = hasObjectContain ? 'contain' : hasObjectCover ? 'cover' : (fill ? 'contain' : 'cover');
 
   if (fill) {
-    return <Image src={url} alt={alt || ''} fill style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={effectiveBlurDataUrl} priority={priority} sizes={sizes} loading={loading} onLoad={onLoad} />;
+    return <Image src={url} alt={alt || ''} fill style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={effectiveBlurDataUrl} priority={priority} sizes={effectiveSizes} loading={loading} onLoad={onLoad} />;
   }
 
-  return <Image src={url} alt={alt || ''} width={width} height={height} style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={effectiveBlurDataUrl} priority={priority} sizes={sizes} loading={loading} onLoad={onLoad} />;
+  return <Image src={url} alt={alt || ''} width={width} height={height} style={{ objectFit }} className={className} placeholder={placeholder} blurDataURL={effectiveBlurDataUrl} priority={priority} sizes={effectiveSizes} loading={loading} onLoad={onLoad} />;
 }

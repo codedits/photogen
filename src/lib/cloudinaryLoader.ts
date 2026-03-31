@@ -7,7 +7,7 @@ function isHttpUrl(value: string): boolean {
 }
 
 function qualityToken(quality?: number): string {
-  return quality ? `q_${quality}` : 'q_auto:good';
+  return quality ? `q_${quality}` : '';
 }
 
 function ensureTransformToken(tokens: string[], keyPrefix: string, value: string) {
@@ -29,9 +29,14 @@ function rewriteTransformForWidth(transform: string, width: number, quality?: nu
     ensureTransformToken(tokens, 'h_', `h_${Math.max(1, Math.round(width * ratio))}`);
   }
 
-  ensureTransformToken(tokens, 'q_', qualityToken(quality));
+  const qualityValue = qualityToken(quality);
+  if (qualityValue) {
+    ensureTransformToken(tokens, 'q_', qualityValue);
+  } else if (!tokens.some((t) => t.startsWith('q_'))) {
+    tokens.push('q_auto:good');
+  }
+
   ensureTransformToken(tokens, 'f_', 'f_auto');
-  ensureTransformToken(tokens, 'dpr_', 'dpr_auto');
   ensureTransformToken(tokens, 'fl_', 'fl_progressive:none');
 
   if (!tokens.some((t) => t.startsWith('c_'))) {
@@ -58,7 +63,8 @@ function rewriteCloudinaryPath(pathname: string, width: number, quality?: number
       return `${parts[0]}${marker}${segments.join('/')}`;
     }
 
-    const inserted = `c_limit,w_${Math.round(width)},${qualityToken(quality)},f_auto,dpr_auto,fl_progressive:none`;
+    const qualityPart = qualityToken(quality) || 'q_auto:good';
+    const inserted = `c_limit,w_${Math.round(width)},${qualityPart},f_auto,fl_progressive:none`;
     return `${parts[0]}${marker}${inserted}/${suffix}`;
   }
 
@@ -69,7 +75,8 @@ function cloudinaryFetchUrl(src: string, width: number, quality?: number): strin
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   if (!cloudName) return src;
 
-  const transform = `c_limit,w_${Math.round(width)},${qualityToken(quality)},f_auto,dpr_auto,fl_progressive:none`;
+  const qualityPart = qualityToken(quality) || 'q_auto:good';
+  const transform = `c_limit,w_${Math.round(width)},${qualityPart},f_auto,fl_progressive:none`;
   return `https://${CLOUDINARY_HOST}/${cloudName}/image/fetch/${transform}/${encodeURIComponent(src)}`;
 }
 

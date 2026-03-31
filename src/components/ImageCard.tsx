@@ -29,10 +29,9 @@ export default function ImageCard({
             width={width}
             height={height}
             priority={priority}
-            quality={85}
             className="w-full h-full object-cover"
             onError={onError}
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 85vw"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 92vw, 960px"
           />
         </div>
       </div>

@@ -176,7 +176,7 @@ export default function Hero({ settings }: HeroProps) {
                   className="object-cover md:hidden contrast-[1.05] grayscale-[0.02]"
                   style={{ filter: `brightness(${overlayBrightness})` }}
                   priority
-                  quality={85}
+                  sizes="100vw"
                   onLoad={() => setIsLoaded(true)}
                 />
                 {/* Desktop Image (16:9) */}
@@ -188,7 +188,7 @@ export default function Hero({ settings }: HeroProps) {
                   className="object-cover hidden md:block contrast-[1.05] grayscale-[0.02]"
                   style={{ filter: `brightness(${overlayBrightness})` }}
                   priority
-                  quality={85}
+                  sizes="100vw"
                   onLoad={() => setIsLoaded(true)}
                 />
               </>

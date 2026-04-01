@@ -84,6 +84,18 @@ export default function Hero({ settings }: HeroProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  // Auto-resolve loading state after 3 seconds as a fallback
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isLoaded) {
+        console.log("Hero: Loading timed out, forcing isLoaded = true");
+        setIsLoaded(true);
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [isLoaded]);
+
   const heroVideo = heroVideoWithToken;
   const usingVideo = desiredMediaType === "video" && !!heroVideoBase && !videoFailed;
   const lqipUrl = heroImageSource ? appendCacheToken(cloudinaryPresetUrl(heroImageSource, "lqip"), imageToken) : "";

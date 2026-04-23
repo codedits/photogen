@@ -11,7 +11,7 @@ import { ThemeProvider } from "../components/ThemeProvider";
 import CustomCursor from "../components/CustomCursor";
 import { getStoreConfig, getThemeCookieBootstrapScript, toThemeCssVariables } from "@/services/config";
 import { Providers } from "../components/Providers";
-
+import SmoothScrolling from "../components/SmoothScrolling";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -90,12 +90,14 @@ export default async function RootLayout({
       <body className="font-sans antialiased bg-background text-foreground" suppressHydrationWarning>
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
-            <CustomCursor />
-            <Nav />
-            {children}
-            <LazyChatWidget />
-            <Footer />
-            <VercelAnalytics />
+            <SmoothScrolling>
+              <CustomCursor />
+              <Nav />
+              {children}
+              <LazyChatWidget />
+              <Footer />
+              <VercelAnalytics />
+            </SmoothScrolling>
           </ThemeProvider>
         </Providers>
       </body>

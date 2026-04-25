@@ -8,6 +8,7 @@ import GalleryImageGrid from '../../../components/GalleryImageGrid';
 import type { GalleryDoc } from '../../api/gallery/route';
 import LiquidRiseCTA from '../../../components/LiquidRiseCTA';
 import LogoMarquee from '../../../components/LogoMarquee';
+import { sanitizeRichHtml } from '../../../lib/sanitizeHtml';
 
 // --- TYPES ---
 interface GalleryItem extends Omit<GalleryDoc, '_id'> {
@@ -88,6 +89,8 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
       </div>
     );
   }
+
+  const safeDescription = sanitizeRichHtml(item.description || '');
   
   return (
     <main className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground/20">
@@ -129,8 +132,8 @@ export default async function GalleryDetail({ params }: { params: Promise<{ id: 
 
               {/* Main Description */}
               <div className="prose prose-invert max-w-none text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight text-muted-foreground [&_strong]:text-foreground [&_strong]:font-semibold [&_em]:text-foreground [&_em]:italic prose-p:mb-4 last:prose-p:mb-0 prose-ul:list-disc prose-ul:pl-5 prose-ol:list-decimal prose-ol:pl-5 prose-li:mb-1 prose-li:marker:text-muted-foreground/50">
-                {item.description ? (
-                  <div dangerouslySetInnerHTML={{ __html: item.description }} />
+                {safeDescription ? (
+                  <div dangerouslySetInnerHTML={{ __html: safeDescription }} />
                 ) : (
                   <p>Capturing visual stories through light and shadow.</p>
                 )}

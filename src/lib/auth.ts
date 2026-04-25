@@ -4,11 +4,44 @@ import { NextResponse } from 'next/server';
 export const ADMIN_COOKIE_NAME = 'pg_admin';
 
 function getAdminPassword() {
-  return process.env.ADMIN_PASSWORD || 'kauntalha1101';
+  const value = process.env.ADMIN_PASSWORD;
+  if (!value || !value.trim()) {
+    throw new Error('Missing ADMIN_PASSWORD environment variable');
+  }
+  return value;
 }
 
 function getSecret() {
-  return process.env.APP_SECRET || process.env.NEXTAUTH_SECRET || process.env.SECRET || 'photogen-dev-secret';
+  const value = process.env.APP_SECRET || process.env.NEXTAUTH_SECRET || process.env.SECRET;
+  if (!value || !value.trim()) {
+    throw new Error('Missing APP_SECRET (or NEXTAUTH_SECRET/SECRET) environment variable');
+  }
+  return value;
+}
+
+function timingSafeEqualStrings(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a);
+  const bBuf = Buffer.from(b);
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
+export function hasAdminAuthConfig(): boolean {
+  try {
+    getAdminPassword();
+    getSecret();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function verifyAdminPassword(password: string): boolean {
+  try {
+    return timingSafeEqualStrings(password, getAdminPassword());
+  } catch {
+    return false;
+  }
 }
 
 export function adminToken(): string {
@@ -37,7 +70,7 @@ export function isAdminRequest(req: Request): boolean {
     const map = parseCookieHeader(cookie);
     const val = map[ADMIN_COOKIE_NAME];
     if (!val) return false;
-    return val === adminToken();
+    return timingSafeEqualStrings(val, adminToken());
   } catch {
     return false;
   }

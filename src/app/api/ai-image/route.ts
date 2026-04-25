@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Simple in-memory cache for recent image generations (expires after 5 minutes)
 const generationCache = new Map<string, { data: Record<string, unknown>; expires: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const ALLOWED_TASK_HOST_SUFFIX = 'paxsenix.org';
 
 function getCached(key: string): Record<string, unknown> | null {
   const entry = generationCache.get(key);
@@ -23,6 +24,47 @@ function setCache(key: string, data: Record<string, unknown>): void {
   generationCache.set(key, { data, expires: Date.now() + CACHE_TTL_MS });
 }
 
+function isPrivateHost(hostname: string): boolean {
+  const host = hostname.trim().toLowerCase();
+  if (!host) return true;
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true;
+
+  const ipv4 = host.match(/^(\d{1,3})(?:\.(\d{1,3})){3}$/);
+  if (ipv4) {
+    const parts = host.split('.').map((v) => Number(v));
+    if (parts.some((n) => Number.isNaN(n) || n < 0 || n > 255)) return true;
+    if (parts[0] === 10) return true;
+    if (parts[0] === 127) return true;
+    if (parts[0] === 0) return true;
+    if (parts[0] === 169 && parts[1] === 254) return true;
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+    if (parts[0] === 192 && parts[1] === 168) return true;
+    return false;
+  }
+
+  if (host === '::1' || host.startsWith('fe80:') || host.startsWith('fc') || host.startsWith('fd')) {
+    return true;
+  }
+
+  return false;
+}
+
+function parseHttpsUrl(raw: string): URL | null {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:') return null;
+    if (isPrivateHost(url.hostname)) return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+function isAllowedTaskUrl(url: URL): boolean {
+  const host = url.hostname.toLowerCase();
+  return host === ALLOWED_TASK_HOST_SUFFIX || host.endsWith(`.${ALLOWED_TASK_HOST_SUFFIX}`);
+}
+
 // Simple server-side proxy to avoid CORS and keep the client domain constant
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -34,7 +76,7 @@ export async function GET(req: NextRequest) {
   const filenameParam = searchParams.get("filename") || "";
 
   // Read API key from environment (server-side). Do not expose this to clients.
-  const PAXSENIX_API_KEY = process.env.PAXSENIX_API_KEY || process.env.NEXT_PUBLIC_PAXSENIX_API_KEY;
+  const PAXSENIX_API_KEY = process.env.PAXSENIX_API_KEY;
   
   function paxsenixHeadersFor(u?: string | URL | null): HeadersInit | undefined {
     try {
@@ -52,9 +94,9 @@ export async function GET(req: NextRequest) {
   // 1. Direct image download proxy
   if (imageUrlParam) {
     try {
-      const u = new URL(imageUrlParam);
-      if (u.protocol !== "https:") {
-        return NextResponse.json({ ok: false, error: "Only https URLs are allowed" }, { status: 400 });
+      const u = parseHttpsUrl(imageUrlParam);
+      if (!u) {
+        return NextResponse.json({ ok: false, error: "Invalid or unsafe image_url" }, { status: 400 });
       }
       const upstreamRes = await fetch(u.toString(), { 
         cache: "no-store",
@@ -83,9 +125,14 @@ export async function GET(req: NextRequest) {
   // 2. Polling logic (if task_url is provided, we don't need 'text')
   if (taskUrlParam) {
     try {
-      const taskRes = await fetch(taskUrlParam, { 
+      const taskUrl = parseHttpsUrl(taskUrlParam);
+      if (!taskUrl || !isAllowedTaskUrl(taskUrl)) {
+        return NextResponse.json({ ok: false, error: "Invalid or unsafe task_url" }, { status: 400 });
+      }
+
+      const taskRes = await fetch(taskUrl.toString(), { 
         cache: "no-store",
-        headers: paxsenixHeadersFor(taskUrlParam),
+        headers: paxsenixHeadersFor(taskUrl),
       });
       const taskCt = taskRes.headers.get("content-type") || "";
 

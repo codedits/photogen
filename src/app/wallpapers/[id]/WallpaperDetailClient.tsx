@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import ImageWithLqip from '../../../components/ImageWithLqip';
 import LiquidRiseCTA from '../../../components/LiquidRiseCTA';
+import { sanitizeRichHtml } from '../../../lib/sanitizeHtml';
 
 // --- TYPES ---
 interface WallpaperItem {
@@ -26,6 +27,7 @@ interface WallpaperDetailClientProps {
 
 export default function WallpaperDetailClient({ item, downloadUrl }: WallpaperDetailClientProps) {
   const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
+  const safeDescription = sanitizeRichHtml(item.description || '');
   
   const mainImage = item.images[0];
   if (!mainImage) return null;
@@ -85,7 +87,7 @@ export default function WallpaperDetailClient({ item, downloadUrl }: WallpaperDe
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
                 className="prose prose-invert max-w-none text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight text-muted-foreground [&_strong]:text-foreground [&_strong]:font-semibold [&_em]:text-foreground [&_em]:italic"
-                dangerouslySetInnerHTML={{ __html: item.description || '<p>High-resolution digital asset curated for visual perfection.</p>' }} 
+                dangerouslySetInnerHTML={{ __html: safeDescription || '<p>High-resolution digital asset curated for visual perfection.</p>' }} 
               />
 
               {/* Action (LiquidRiseCTA) */}

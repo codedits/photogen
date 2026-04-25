@@ -8,6 +8,7 @@ import GalleryImageGrid from '../../../components/GalleryImageGrid';
 import Carousel from '../../../components/Carousel';
 import LiquidRiseCTA from '../../../components/LiquidRiseCTA';
 import ScrollToTop from '../../../components/ScrollToTop';
+import { sanitizeRichHtml } from '../../../lib/sanitizeHtml';
 
 // --- TYPES ---
 type PresetDoc = {
@@ -98,6 +99,7 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
 
   const images = Array.isArray(preset.images) ? preset.images : [];
   const carouselItems = images.map(img => ({ url: img.url, alt: preset.name }));
+  const safeDescription = sanitizeRichHtml(preset.description || '');
 
   return (
     <main className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground/20">
@@ -152,8 +154,8 @@ export default async function PresetDetail({ params }: { params: Promise<{ id: s
 
               {/* Main Description */}
               <div className="text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight text-muted-foreground [&_strong]:text-foreground [&_strong]:font-semibold [&_em]:text-foreground [&_em]:italic prose-p:mb-4 last:prose-p:mb-0">
-                {preset.description ? (
-                  <div dangerouslySetInnerHTML={{ __html: preset.description }} />
+                {safeDescription ? (
+                  <div dangerouslySetInnerHTML={{ __html: safeDescription }} />
                 ) : (
                   <p>Refined color grading for cinematic visual narratives.</p>
                 )}

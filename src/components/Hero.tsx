@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import LiquidRiseCTA from "./LiquidRiseCTA";
 import { cloudinaryPresetUrl } from "../lib/cloudinaryUrl";
+import { sanitizeInlineHtml } from "../lib/sanitizeHtml";
 
 interface HeroProps {
   settings?: {
@@ -63,6 +64,8 @@ function toCompatibleHeroVideoUrl(url: string) {
 export default function Hero({ settings }: HeroProps) {
   const introText = settings?.introText ?? "";
   const mainHeadline = settings?.mainHeadline ?? "";
+  const safeIntroText = React.useMemo(() => sanitizeInlineHtml(introText), [introText]);
+  const safeMainHeadline = React.useMemo(() => sanitizeInlineHtml(mainHeadline), [mainHeadline]);
   const heroImageSource = settings?.image?.url || "https://framerusercontent.com/images/twX7Aze7rBnuv17EgJDs5qO4nE.jpeg?width=1600";
   const rawHeroVideo = typeof settings?.video?.url === "string" ? settings.video.url.trim() : "";
   const heroVideoBase = toCompatibleHeroVideoUrl(rawHeroVideo);
@@ -226,7 +229,7 @@ export default function Hero({ settings }: HeroProps) {
               <span className="w-8 h-[1px] bg-white/10" />
               <span
                 className="text-[10px] md:text-[11px] uppercase tracking-[0.5em] font-medium"
-                dangerouslySetInnerHTML={{ __html: introText }}
+                dangerouslySetInnerHTML={{ __html: safeIntroText }}
               />
               <span className="w-8 h-[1px] bg-white/10" />
             </motion.div>
@@ -238,7 +241,7 @@ export default function Hero({ settings }: HeroProps) {
               transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             >
               <h1 className="text-white text-[clamp(1.85rem,6vw,3.5rem)] font-light leading-[0.95] tracking-tighter">
-                <span dangerouslySetInnerHTML={{ __html: mainHeadline }} className="[&_strong]:font-semibold [&_em]:italic" />
+                <span dangerouslySetInnerHTML={{ __html: safeMainHeadline }} className="[&_strong]:font-semibold [&_em]:italic" />
               </h1>
             </motion.div>
 

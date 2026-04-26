@@ -21,9 +21,21 @@ const NAV_LINKS = [
 export default function Nav() {
   const pathname = usePathname() || "";
   const [open, setOpen] = useState(false);
+  const [navShapeExpanded, setNavShapeExpanded] = useState(false);
+  const [menuContentVisible, setMenuContentVisible] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [time, setTime] = useState("");
   const prefersReducedMotion = useReducedMotion();
+
+  // Determine if nav is in scrolled/contracted state
+  const isGalleryDetail = /^\/gallery\/[0-9a-fA-F]{24}\/?$/.test(pathname);
+  const isPresetDetail = /^\/presets\/[0-9a-fA-F]{24}\/?$/.test(pathname);
+  const activeScrolled = isScrolled && !isGalleryDetail && !isPresetDetail;
+
+  const activeScrolledRef = React.useRef(activeScrolled);
+  useEffect(() => {
+    activeScrolledRef.current = activeScrolled;
+  }, [activeScrolled]);
 
   useEffect(() => {
     setOpen(false);
@@ -67,12 +79,28 @@ export default function Nav() {
     };
   }, []);
 
-  if (pathname.startsWith("/admin")) return null;
+  // Orchestrate the sequential open/close animations
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (open) {
+      setNavShapeExpanded(true);
+      if (activeScrolledRef.current) {
+        timer = setTimeout(() => {
+          setMenuContentVisible(true);
+        }, 450); // wait for width expansion
+      } else {
+        setMenuContentVisible(true);
+      }
+    } else {
+      setMenuContentVisible(false);
+      timer = setTimeout(() => {
+        setNavShapeExpanded(false);
+      }, 450); // wait for height collapse
+    }
+    return () => clearTimeout(timer);
+  }, [open]);
 
-  // Disable morphing on detail pages
-  const isGalleryDetail = /^\/gallery\/[0-9a-fA-F]{24}\/?$/.test(pathname);
-  const isPresetDetail = /^\/presets\/[0-9a-fA-F]{24}\/?$/.test(pathname);
-  const activeScrolled = isScrolled && !isGalleryDetail && !isPresetDetail;
+  if (pathname.startsWith("/admin")) return null;
 
   const springConfig = {
     type: prefersReducedMotion ? "tween" as const : "spring" as const,
@@ -92,26 +120,27 @@ export default function Nav() {
             prefersReducedMotion
               ? { duration: 0.2 }
               : {
-                  type: "spring",
-                  stiffness: 400,
-                  damping: 30,
-                  opacity: { delay: 0.35, duration: 1 },
-                  y: { delay: 0.45, duration: 1.2 }
-                }
+                type: "spring",
+                stiffness: 400,
+                damping: 30,
+                opacity: { delay: 0.35, duration: 1 },
+                y: { delay: 0.45, duration: 1.2 },
+                layout: { duration: 0.45, ease: [0.22, 1, 0.36, 1] }
+              }
           }
           className={cn(
             "pointer-events-auto relative flex flex-col overflow-hidden shadow-[0_12px_48px_rgba(0,0,0,0.32)]",
             "bg-background border border-white/10 transition-colors duration-500",
-            activeScrolled && !open
+            activeScrolled && !navShapeExpanded
               ? "mt-5 w-auto rounded-full px-2"
               : "w-[98vw] md:w-[94vw] max-w-[1600px] mt-0 rounded-b-[1rem] md:rounded-b-[1.2rem]",
-            open && "rounded-[2.5rem] mt-4 w-[96vw] md:w-[90vw]"
+            navShapeExpanded && "rounded-[2.5rem] mt-4 w-[96vw] md:w-[90vw]"
           )}
         >
           {/* TOP BAR */}
           <div className={cn(
             "flex items-center justify-between relative z-20",
-            activeScrolled && !open ? "px-4 py-2 gap-8" : "px-6 py-2 md:px-10 md:py-3"
+            activeScrolled && !navShapeExpanded ? "px-4 py-1 gap-8" : "px-6 py-1 md:px-10 md:py-2"
           )}>
             {/* Logo */}
             <motion.div layout layoutId="nav-logo" className="shrink-0 group">
@@ -126,13 +155,13 @@ export default function Nav() {
             </motion.div>
 
             {/* Links */}
-            <motion.div 
+            <motion.div
               layout
               layoutId="nav-links"
               className={cn(
                 "hidden md:flex items-center relative transition-all duration-300",
-                activeScrolled && !open ? "gap-6 px-2" : "gap-10 ml-auto mr-12",
-                open && "opacity-0 pointer-events-none translate-y-2"
+                activeScrolled && !navShapeExpanded ? "gap-6 px-2" : "gap-10 ml-auto mr-12",
+                navShapeExpanded && "opacity-0 pointer-events-none translate-y-2"
               )}
             >
               {NAV_LINKS.map((link) => {
@@ -156,7 +185,7 @@ export default function Nav() {
             <motion.div layout layoutId="nav-actions" className="flex items-center gap-2 md:gap-4 shrink-0">
               <ThemeToggle className={cn(
                 "transition-transform duration-300",
-                activeScrolled && !open ? "scale-90" : "scale-100"
+                activeScrolled && !navShapeExpanded ? "scale-90" : "scale-100"
               )} />
 
               <button
@@ -165,14 +194,14 @@ export default function Nav() {
                 aria-expanded={open}
                 aria-controls="site-nav-panel"
                 className={cn(
-                    "focus-ring flex items-center justify-center rounded-full bg-secondary/30 text-foreground hover:bg-secondary transition-all border border-white/5",
-                    activeScrolled && !open ? "w-[30px] h-[30px]" : "w-[38px] h-[38px]"
+                  "focus-ring flex items-center justify-center rounded-full bg-secondary/30 text-foreground hover:bg-secondary transition-all border border-white/5",
+                  activeScrolled && !navShapeExpanded ? "w-[30px] h-[30px]" : "w-[38px] h-[38px]"
                 )}
               >
                 <Plus
                   className={cn(
                     "transition-transform duration-500",
-                    activeScrolled && !open ? "w-3.5 h-3.5" : "w-4.5 h-4.5",
+                    activeScrolled && !navShapeExpanded ? "w-3.5 h-3.5" : "w-4.5 h-4.5",
                     open ? "rotate-45" : "rotate-0"
                   )}
                 />
@@ -182,7 +211,7 @@ export default function Nav() {
 
           {/* EXPANDED NAV PANEL */}
           <AnimatePresence initial={false}>
-            {open && (
+            {menuContentVisible && (
               <motion.div
                 id="site-nav-panel"
                 initial={{ height: 0, opacity: 0 }}

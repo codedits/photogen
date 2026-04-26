@@ -10,7 +10,6 @@ export default function SmoothScrolling({ children }: { children: React.ReactNod
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
@@ -21,7 +20,7 @@ export default function SmoothScrolling({ children }: { children: React.ReactNod
   }
 
   return (
-    <ReactLenis root options={{ lerp: 0.05, duration: 2, smoothWheel: true }}>
+    <ReactLenis root options={{ lerp: 0.05, duration: 2, smoothWheel: true, syncTouch: true }}>
       {children}
     </ReactLenis>
   );

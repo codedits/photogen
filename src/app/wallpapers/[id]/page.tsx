@@ -103,10 +103,27 @@ export default async function WallpaperDetail({ params }: { params: Promise<{ id
     ? mainImage.url.replace('/upload/', `/upload/fl_attachment:${encodeURIComponent(item.name.replace(/[^a-zA-Z0-9-]/g, '_'))}/`)
     : mainImage.url;
 
+  let prevId: string | undefined;
+  let nextId: string | undefined;
+
+  try {
+    const db = await getDatabase();
+    const allItems = await db.collection('wallpapers').find({ visibility: 'public' }, { projection: { _id: 1 } }).toArray();
+    const currentIndex = allItems.findIndex(w => w._id.toString() === id);
+    if (currentIndex !== -1 && allItems.length > 1) {
+      prevId = currentIndex > 0 ? allItems[currentIndex - 1]._id.toString() : allItems[allItems.length - 1]._id.toString();
+      nextId = currentIndex < allItems.length - 1 ? allItems[currentIndex + 1]._id.toString() : allItems[0]._id.toString();
+    }
+  } catch (e) {
+    console.error("Failed to fetch adjacent wallpapers", e);
+  }
+
   return (
     <WallpaperDetailClient 
         item={item} 
         downloadUrl={downloadUrl} 
+        prevId={prevId}
+        nextId={nextId}
     />
   );
 }

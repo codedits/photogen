@@ -73,7 +73,7 @@ function GalleryFilters({ onFiltersChange, resetSignal = 0 }: GalleryFiltersProp
   return (
     <div className="flex items-center justify-between w-full">
       {/* Category List - Minimal Horizontal Scroll */}
-      <div role="tablist" aria-label="Gallery categories" className="flex items-center gap-8 md:gap-12 overflow-x-auto no-scrollbar py-2 overflow-y-hidden">
+      <div role="tablist" aria-label="Gallery categories" className="flex items-center gap-8 md:gap-12 overflow-x-auto hide-scrollbar py-2 overflow-y-hidden">
         {CATEGORIES.map((cat) => (
           <button
             key={cat}

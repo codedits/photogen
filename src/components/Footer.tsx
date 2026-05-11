@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 export default function Footer() {
   const pathname = usePathname() || '';
-  if (pathname.startsWith('/admin')) return null;
+  if (pathname.startsWith('/admin') || /^\/wallpapers\/[0-9a-fA-F]{24}\/?$/.test(pathname)) return null;
 
   return (
     <footer className="relative pt-32 pb-12 overflow-hidden bg-background text-foreground border-t border-white/5">

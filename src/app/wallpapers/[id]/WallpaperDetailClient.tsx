@@ -1,12 +1,14 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Monitor, ArrowDownToLine, Share2, Info, Maximize2 } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, ArrowDownToLine, Share2, LayoutGrid, Smartphone, Flashlight, Camera } from 'lucide-react';
+import { motion, PanInfo, AnimatePresence, useAnimation } from 'framer-motion';
 import ImageWithLqip from '../../../components/ImageWithLqip';
 import LiquidRiseCTA from '../../../components/LiquidRiseCTA';
+import GlassSurface from '../../../components/GlassSurface';
+import IphonePreviewMockup from '../../../components/IphonePreviewMockup';
 
 // --- TYPES ---
 interface WallpaperItem {
@@ -22,167 +24,192 @@ interface WallpaperItem {
 interface WallpaperDetailClientProps {
   item: WallpaperItem;
   downloadUrl: string;
+  prevId?: string;
+  nextId?: string;
 }
 
-export default function WallpaperDetailClient({ item, downloadUrl }: WallpaperDetailClientProps) {
-  const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
-  
+export default function WallpaperDetailClient({ item, downloadUrl, prevId, nextId }: WallpaperDetailClientProps) {
+  const router = useRouter();
+  const controls = useAnimation();
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+
   const mainImage = item.images[0];
   if (!mainImage) return null;
 
-  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    const img = e.currentTarget;
-    if (img.naturalWidth && img.naturalHeight) {
-      setDims({ w: img.naturalWidth, h: img.naturalHeight });
+  const handleDragEnd = async (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (isPreviewMode || isNavigating) return; // Disable swipe when previewing or navigating
+    const offset = info.offset.x;
+    const velocity = info.velocity.x;
+
+    const swipeThreshold = 80;
+    const velocityThreshold = 500;
+
+    if (offset < -swipeThreshold || velocity < -velocityThreshold) {
+      if (nextId) {
+        setIsNavigating(true);
+        // Animate out to the left
+        await controls.start({ x: -(typeof window !== 'undefined' ? window.innerWidth : 1000), opacity: 0, transition: { duration: 0.25, ease: "easeOut" } });
+        router.push(`/wallpapers/${nextId}`);
+      }
+    } else if (offset > swipeThreshold || velocity > velocityThreshold) {
+      if (prevId) {
+        setIsNavigating(true);
+        // Animate out to the right
+        await controls.start({ x: (typeof window !== 'undefined' ? window.innerWidth : 1000), opacity: 0, transition: { duration: 0.25, ease: "easeOut" } });
+        router.push(`/wallpapers/${prevId}`);
+      }
+    } else {
+      // Snap back if threshold not met
+      controls.start({ x: 0, transition: { type: "spring", stiffness: 400, damping: 30 } });
     }
   };
 
+  const formatTime = (date: Date) => {
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    return `${hours}:${minutes}`;
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  };
+
   return (
-    <main className="min-h-screen bg-background text-foreground font-sans selection:bg-foreground/20 overflow-x-hidden">
-      <div className="max-w-[1600px] mx-auto px-4 md:px-8 lg:px-10 pt-28 md:pt-40 pb-10">
-        
-        {/* Main Layout Grid - Matching Gallery Style */}
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-24 relative items-start">
-          
-          {/* --- LEFT SIDEBAR (Sticky on Desktop) --- */}
-          <aside className="w-full lg:w-[400px] xl:w-[440px] flex-shrink-0 lg:sticky lg:top-40 flex flex-col gap-12 pb-10 lg:pb-0">
-            
-            <div className="flex flex-col gap-10">
-              {/* Back to Wallpapers */}
-              <Link 
-                href="/wallpapers" 
-                className="group flex items-center gap-3 text-muted-foreground hover:text-foreground transition-all duration-500 w-fit"
-              >
-                <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                <span className="text-[11px] uppercase tracking-[0.4em] font-medium">Back to Papers</span>
-              </Link>
+    <main className="fixed inset-0 z-[100] bg-black text-white font-sans overflow-hidden">
+      {/* Draggable Background Image */}
+      <motion.div 
+        drag={isPreviewMode || isNavigating ? false : "x"}
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.4}
+        onDragEnd={handleDragEnd}
+        animate={controls}
+        initial={{ opacity: 0, scale: 1.02 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="absolute inset-0 z-0 touch-pan-y cursor-grab active:cursor-grabbing"
+      >
+        <ImageWithLqip
+          src={mainImage.url}
+          alt={item.name}
+          fill
+          className="object-cover"
+          sizes="100vw"
+          priority
+          transformOpts={{ w: 2560, h: 2560, fit: 'contain', q: 'auto:best' }}
+          noBlur={true}
+        />
+        {/* Subtle gradient overlay to ensure text legibility at top and bottom */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/30 pointer-events-none"></div>
+      </motion.div>
 
-              {/* Header: Item Info (Album Style) */}
-              <div className="flex items-center gap-4">
-                <motion.div 
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="relative w-14 h-14 rounded-xl overflow-hidden border border-white/10 shadow-lg shrink-0"
-                >
-                  <ImageWithLqip 
-                    src={mainImage.url} 
-                    alt="Wallpaper Thumbnail" 
-                    fill
-                    className="object-cover scale-150"
-                    transformOpts={{ w: 100, q: 20 }}
-                    noBlur={true}
-                  />
-                </motion.div>
-                <div>
-                  <h1 className="text-foreground font-light text-2xl tracking-tighter leading-tight">{item.name}</h1>
-                  <p className="text-muted-foreground text-[12px] uppercase tracking-[0.25em] mt-1 opacity-70">{item.category}</p>
-                </div>
-              </div>
-
-              {/* Main Description (Large/Bold matching Gallery vibe) */}
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="prose prose-invert max-w-none text-[1.4rem] md:text-[1.65rem] leading-[1.3] font-medium tracking-tight text-muted-foreground [&_strong]:text-foreground [&_strong]:font-semibold [&_em]:text-foreground [&_em]:italic"
-                dangerouslySetInnerHTML={{ __html: item.description || '<p>High-resolution digital asset curated for visual perfection.</p>' }} 
-              />
-
-              {/* Action (LiquidRiseCTA) */}
-              <div className="flex flex-col gap-6 pt-2">
-                <LiquidRiseCTA 
-                    href={downloadUrl}
-                    className="w-full h-16 rounded-2xl group-hover/cta:scale-[1.02] active:scale-[0.98] transition-all border-foreground/10 cursor-pointer shadow-xl"
-                    icon={<ArrowDownToLine className="w-5 h-5" />}
-                >
-                    Download Original
-                </LiquidRiseCTA>
-                
-                <div className="flex items-center gap-2 text-muted-foreground text-[11px] uppercase tracking-widest pl-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
-                  Commercial license included
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div className="w-full h-[1px] bg-border/50"></div>
-
-              {/* Technical Details */}
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="flex flex-col gap-8"
-              >
-                <div>
-                  <h3 className="text-foreground font-medium text-[15px] mb-4 uppercase tracking-widest">Metadata</h3>
-                  <p className="text-muted-foreground text-[14px] leading-relaxed font-light">
-                    High-resolution digital master optimized for modern displays. This asset captures maximum dynamic range and color accuracy for professional-grade aesthetics.
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-x-8 gap-y-6">
-                  {dims && (
-                    <div>
-                      <span className="text-foreground font-medium text-sm block mb-1 uppercase tracking-tight">
-                        {dims.w} &times; {dims.h}
-                      </span>
-                      <span className="text-muted-foreground text-[11px] uppercase tracking-[0.2em] opacity-60">Resolution</span>
-                    </div>
-                  )}
-                  {item.photographer && (
-                    <div className="overflow-hidden">
-                      <span className="text-foreground font-medium text-sm block mb-1 uppercase tracking-tight truncate">
-                        {item.photographer}
-                      </span>
-                      <span className="text-muted-foreground text-[11px] uppercase tracking-[0.2em] opacity-60">Curator</span>
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-foreground font-medium text-sm block mb-1 uppercase tracking-tight">sRGB High-Bit</span>
-                    <span className="text-muted-foreground text-[11px] uppercase tracking-[0.2em] opacity-60">Format</span>
-                  </div>
-                </div>
-              </motion.div>
-
-            </div>
-          </aside>
-
-          {/* --- RIGHT PREVIEW (Natural Orientation) --- */}
-          <main className="flex-1 w-full">
-            <motion.div 
-                initial={{ opacity: 0, x: 20, scale: 0.98 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                transition={{ duration: 1.2, ease: [0.19, 1, 0.22, 1] }}
-                className="relative w-full lg:w-[40vw] lg:max-w-[55vh] h-[80vh] mx-auto shadow-[0_40px_80px_-20px_rgba(0,0,0,0.4)] rounded-2xl overflow-hidden border border-white/5 bg-zinc-900/50 group"
-            >
-                <ImageWithLqip
-                  src={mainImage.url}
-                  alt={item.name}
-                  fill
-                  className="object-cover transition-transform duration-[4s] ease-out group-hover:scale-[1.02]"
-                  sizes="(max-width: 1024px) 100vw, 85vw"
-                  priority
-                  transformOpts={{ w: 2560, h: 2560, fit: 'cover', q: 'auto:best', g: 'center' }}
-                  onLoad={handleImageLoad}
-                />
-                
-                {/* Visual Interactivity */}
-                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
-                
-                {/* Floating Fullscreen (Visual) */}
-                <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0">
-                    <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white cursor-pointer hover:bg-white/20 transition-colors">
-                        <Maximize2 className="w-5 h-5" />
-                    </div>
-                </div>
-            </motion.div>
-          </main>
-
+      {/* Top Header */}
+      <header className="absolute top-0 left-0 right-0 z-10 p-6 md:p-10 flex justify-between items-start pointer-events-auto">
+        <div className="flex items-center gap-4">
+          <Link href="/wallpapers" className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors text-white shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div className="flex flex-col">
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white drop-shadow-md">PhotoGen</h1>
+            <span className="text-[10px] md:text-xs uppercase tracking-widest text-white/80 font-medium drop-shadow-md">Wallpapers</span>
+          </div>
         </div>
+        <div className="flex gap-3">
+          <Link href="/wallpapers" className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-colors text-white shrink-0">
+            <LayoutGrid className="w-4 h-4" />
+          </Link>
+        </div>
+      </header>
+
+      {/* Bottom Glass Panel */}
+      <div className="absolute bottom-6 left-4 right-4 md:bottom-10 md:left-1/2 md:-translate-x-1/2 md:w-[480px] z-10 pointer-events-none">
+        <motion.div 
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", damping: 25, stiffness: 200, delay: 0.2 }}
+          className="pointer-events-auto w-full"
+        >
+          <GlassSurface 
+            width="100%"
+            height="auto"
+            borderRadius={32}
+            style={{ maxHeight: '35vh' }}
+          >
+            <div className="flex flex-col gap-5 w-full h-full p-6 md:p-8">
+              {/* Pagination / Slider indicator */}
+              <div className="flex justify-center gap-1.5 opacity-60 relative z-10 shrink-0">
+                <div className="w-5 h-[3px] rounded-full bg-white"></div>
+                <div className="w-[3px] h-[3px] rounded-full bg-white/60"></div>
+                <div className="w-[3px] h-[3px] rounded-full bg-white/60"></div>
+                <div className="w-[3px] h-[3px] rounded-full bg-white/60"></div>
+                <div className="w-[3px] h-[3px] rounded-full bg-white/60"></div>
+              </div>
+
+              <div className="flex flex-col gap-4 relative z-10 overflow-y-auto no-scrollbar mask-image-bottom">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white">{item.name}</h2>
+                  {item.photographer && (
+                    <p className="text-[9px] md:text-[10px] uppercase tracking-[0.2em] text-white/60 mt-1.5 font-medium">
+                      Shot by @{item.photographer.replace('@', '').toUpperCase()}
+                    </p>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div 
+                  className="prose prose-invert max-w-none text-xs md:text-sm leading-relaxed text-white/80 [&_strong]:text-white [&_strong]:font-semibold [&_em]:text-white [&_em]:italic"
+                  dangerouslySetInnerHTML={{ __html: item.description || '<p>High-resolution digital asset curated for visual perfection.</p>' }} 
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 relative z-10 shrink-0 pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between gap-3 md:gap-4">
+                  {/* Download Button */}
+                  <LiquidRiseCTA 
+                      href={downloadUrl}
+                      className="flex-1 h-[46px] rounded-2xl group-hover/cta:scale-[1.02] active:scale-[0.98] transition-all border-white/10 cursor-pointer shadow-xl text-sm"
+                      icon={<ArrowDownToLine className="w-5 h-5" />}
+                  >
+                      Download Original
+                  </LiquidRiseCTA>
+
+                  {/* Action Buttons */}
+                  <button 
+                    onClick={() => setIsPreviewMode(true)}
+                    className="w-[46px] h-[46px] rounded-2xl bg-white/10 hover:bg-white/20 transition-all flex items-center justify-center border border-white/10 shrink-0 active:scale-95"
+                  >
+                    <Smartphone className="w-[16px] h-[16px] text-white" />
+                  </button>
+                  
+                  <button className="w-[46px] h-[46px] rounded-2xl bg-white/10 hover:bg-white/20 transition-all flex items-center justify-center border border-white/10 shrink-0 active:scale-95">
+                    <Share2 className="w-[16px] h-[16px] text-white" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </GlassSurface>
+        </motion.div>
       </div>
+      
+      {/* iOS Lockscreen Preview Overlay using iPhone Mockup */}
+      <AnimatePresence>
+        {isPreviewMode && (
+          <IphonePreviewMockup 
+            imageUrl={mainImage.url} 
+            imageAlt={item.name} 
+            onClose={() => setIsPreviewMode(false)} 
+          />
+        )}
+      </AnimatePresence>
 
-
+      {/* Add custom style for scrollbar hiding and mask */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .mask-image-bottom { -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%); mask-image: linear-gradient(to bottom, black 80%, transparent 100%); }
+      `}} />
     </main>
   );
 }

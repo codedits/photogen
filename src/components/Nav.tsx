@@ -100,7 +100,7 @@ export default function Nav() {
     return () => clearTimeout(timer);
   }, [open]);
 
-  if (pathname.startsWith("/admin")) return null;
+  if (pathname.startsWith("/admin") || /^\/wallpapers\/[0-9a-fA-F]{24}\/?$/.test(pathname)) return null;
 
   const springConfig = {
     type: prefersReducedMotion ? "tween" as const : "spring" as const,

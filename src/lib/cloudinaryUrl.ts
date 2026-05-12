@@ -20,7 +20,7 @@ const PRESET_DEFAULTS: Record<CloudinaryPreset, ThumbOpts> = {
 };
 
 export function thumbUrl(source: string, opts: ThumbOpts = {}) {
-  const { w = 400, h = 300, fit = 'cover', q = 'auto', f = 'auto', dpr, g } = opts;
+  const { w, h, fit = 'cover', q = 'auto', f = 'auto', dpr, g } = opts;
   if (!source) return source;
   if (!source.startsWith('http')) return source;
 
@@ -29,7 +29,11 @@ export function thumbUrl(source: string, opts: ThumbOpts = {}) {
   const c = cropMap[fit] || 'fill';
   const dp = typeof dpr !== 'undefined' ? `,dpr_${dpr}` : '';
   const grav = typeof g !== 'undefined' ? `,g_${g}` : '';
-  const t = `c_${c},w_${Math.round(w)},h_${Math.round(h)},q_${q},f_${f},fl_progressive:none${dp}${grav}`;
+  
+  const wParam = typeof w !== 'undefined' ? `,w_${Math.round(w)}` : '';
+  const hParam = typeof h !== 'undefined' ? `,h_${Math.round(h)}` : '';
+
+  const t = `c_${c}${wParam}${hParam},q_${q},f_${f},fl_progressive:none${dp}${grav}`;
 
   try {
     const u = new URL(source);

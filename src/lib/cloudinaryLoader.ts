@@ -30,10 +30,12 @@ function rewriteTransformForWidth(transform: string, width: number, quality?: nu
   }
 
   const qualityValue = qualityToken(quality);
-  if (qualityValue) {
-    ensureTransformToken(tokens, 'q_', qualityValue);
-  } else if (!tokens.some((t) => t.startsWith('q_'))) {
-    tokens.push('q_auto:good');
+  if (!tokens.some((t) => t.startsWith('q_'))) {
+    if (qualityValue) {
+      tokens.push(qualityValue);
+    } else {
+      tokens.push('q_auto:good');
+    }
   }
 
   ensureTransformToken(tokens, 'f_', 'f_auto');

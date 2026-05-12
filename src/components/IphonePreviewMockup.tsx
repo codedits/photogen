@@ -77,8 +77,7 @@ export default function IphonePreviewMockup({ imageUrl, imageAlt, onClose }: Iph
                 className="object-cover"
                 sizes="340px"
                 priority
-                transformOpts={{ w: 1080, h: 2340, fit: 'cover', q: 'auto:best' }}
-                noBlur={true}
+                transformOpts={{ w: 720, h: 1560, fit: 'cover', q: 'auto' }}
               />
             </div>
             

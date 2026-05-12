@@ -91,18 +91,36 @@ export default function WallpaperDetailClient({ item, downloadUrl, prevId, nextI
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="absolute inset-0 z-0 touch-pan-y cursor-grab active:cursor-grabbing"
       >
-        <ImageWithLqip
-          src={mainImage.url}
-          alt={item.name}
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-          transformOpts={{ w: 2560, h: 2560, fit: 'contain', q: 'auto:best' }}
-          noBlur={true}
-        />
+        {/* Layer 1: Blurred Background Fill for seamless ambiance */}
+        <div className="absolute inset-0 z-0">
+          <ImageWithLqip
+            src={mainImage.url}
+            alt={`${item.name} blurred background`}
+            fill
+            className="object-cover scale-110 blur-3xl opacity-60"
+            sizes="100vw"
+            priority
+            transformOpts={{ w: 400, fit: 'cover', q: 'auto:low' }}
+            noBlur={true}
+          />
+        </div>
+
+        {/* Layer 2: Sharp Uncropped Foreground displaying true aspect ratio on desktop, fully immersive on mobile */}
+        <div className="absolute inset-0 z-10 pointer-events-none md:p-10 md:pb-32">
+          <ImageWithLqip
+            src={mainImage.url}
+            alt={item.name}
+            fill
+            className="!object-cover md:!object-contain drop-shadow-2xl"
+            sizes="100vw"
+            priority
+            transformOpts={{ fit: 'contain', q: 'auto:best' }}
+            noBlur={true}
+          />
+        </div>
+
         {/* Subtle gradient overlay to ensure text legibility at top and bottom */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/30 pointer-events-none"></div>
+        <div className="absolute inset-0 z-20 bg-gradient-to-b from-black/40 via-transparent to-black/40 pointer-events-none"></div>
       </motion.div>
 
       {/* Top Header */}

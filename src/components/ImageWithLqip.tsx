@@ -48,8 +48,13 @@ export default function ImageWithLqip({
   }
   
   const fit = transformOpts?.fit || 'cover';
-  const requestedWidth = Math.max(1, Math.round(transformOpts?.w || width || 400));
-  const requestedHeight = Math.max(1, Math.round(transformOpts?.h || height || 300));
+  
+  // For the main image URL, only append explicit dimensions. 
+  // If `fill` is used, we rely on `next/image` and `cloudinaryLoader` to append `w_${width}` dynamically.
+  // Avoid forcing arbitrary aspect ratios (like 400x300) onto the image.
+  const requestedWidth = transformOpts?.w || width;
+  const requestedHeight = transformOpts?.h || height;
+
   const url = thumbUrl(src, { 
     w: requestedWidth,
     h: requestedHeight,
